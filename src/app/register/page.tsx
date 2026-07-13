@@ -1,0 +1,120 @@
+'use client';
+import { useState, Suspense } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ROUTES } from '@/core/routes';
+import { useAuth } from '@/features/auth/AuthContext';
+import { registerSchema, verifyOtpSchema, RegisterInput } from '@/features/auth/validations';
+import { FormInput } from '@/components/form/FormInput';
+
+function RegisterForm() {
+  const { register: registerUser, verifyOtp, resendOtp } = useAuth();
+  const [step, setStep] = useState<'register' | 'otp'>('register');
+  const [email, setEmail] = useState('');
+  const [otpFromServer, setOtpFromServer] = useState('');
+  const [apiError, setApiError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
+
+  const registerForm = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { email: '', name: '', companyName: '', password: '', confirmPassword: '' },
+  });
+
+  const otpForm = useForm({ resolver: zodResolver(verifyOtpSchema), defaultValues: { otp: '' } });
+
+  const onRegister = async (formData: RegisterInput) => {
+    setSubmitting(true);
+    setApiError('');
+    const result = await registerUser(formData);
+    setSubmitting(false);
+    if (result.success) {
+      setEmail(result.email || formData.email);
+      setOtpFromServer(result.otp || '');
+      setStep('otp');
+    } else {
+      setApiError(result.error || 'Registration failed');
+    }
+  };
+
+  const onVerifyOtp = async (data: any) => {
+    setSubmitting(true);
+    setApiError('');
+    const result = await verifyOtp({ email, otp: data.otp });
+    setSubmitting(false);
+    if (!result.success) {
+      setApiError(result.error || 'Verification failed');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">PEB CRM</h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            {step === 'register' ? 'Create your account' : 'Verify your email'}
+          </p>
+        </div>
+
+        {step === 'register' ? (
+          <form onSubmit={registerForm.handleSubmit(onRegister)} className="mt-8 space-y-4" noValidate>
+            <FormInput label="Full Name" type="text" placeholder="John Doe" autoComplete="name"
+              registration={registerForm.register('name')} error={registerForm.formState.errors.name?.message as string}
+              disabled={submitting} />
+            <FormInput label="Company Name" type="text" placeholder="Acme Corp" autoComplete="organization"
+              registration={registerForm.register('companyName')} error={registerForm.formState.errors.companyName?.message as string}
+              disabled={submitting} />
+            <FormInput label="Email" type="email" placeholder="you@example.com" autoComplete="email"
+              registration={registerForm.register('email')} error={registerForm.formState.errors.email?.message as string}
+              required disabled={submitting} />
+            <FormInput label="Password" type="password" placeholder="Min 8 chars, upper+lower+number" autoComplete="new-password"
+              registration={registerForm.register('password')} error={registerForm.formState.errors.password?.message as string}
+              required disabled={submitting} />
+            <FormInput label="Confirm Password" type="password" placeholder="Re-enter password" autoComplete="new-password"
+              registration={registerForm.register('confirmPassword')} error={registerForm.formState.errors.confirmPassword?.message as string}
+              required disabled={submitting} />
+            {apiError && (<div className="rounded-md bg-red-50 p-3"><p className="text-sm text-red-800">{apiError}</p></div>)}
+            <button type="submit" disabled={submitting}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+              {submitting ? 'Creating account...' : 'Create Account'}
+            </button>
+            <p className="text-center text-sm text-gray-600">
+              Already have an account?{' '}<Link href={ROUTES.login} className="font-medium text-blue-600">Sign in</Link>
+            </p>
+          </form>
+        ) : (
+          <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="mt-8 space-y-4" noValidate>
+            <p className="text-sm text-gray-600 text-center">We sent a 6-digit code to <strong>{email}</strong></p>
+            {otpFromServer && (
+              <div className="rounded-md bg-yellow-50 p-3 text-center">
+                <p className="text-sm text-yellow-800 font-mono tracking-widest text-2xl">{otpFromServer}</p>
+                <p className="text-xs text-yellow-600 mt-1">Dev mode OTP (copy this)</p>
+              </div>
+            )}
+            <FormInput label="OTP Code" type="text" placeholder="Enter 6-digit OTP" maxLength={6}
+              registration={otpForm.register('otp')} error={otpForm.formState.errors.otp?.message as string}
+              required disabled={submitting} />
+            {apiError && (<div className="rounded-md bg-red-50 p-3"><p className="text-sm text-red-800">{apiError}</p></div>)}
+            <button type="submit" disabled={submitting}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+              {submitting ? 'Verifying...' : 'Verify Email'}
+            </button>
+            <p className="text-center text-sm text-gray-600">
+              Didn&apos;t receive code?{' '}
+              <button type="button" onClick={() => resendOtp(email)} className="font-medium text-blue-600 hover:text-blue-500 bg-transparent border-none cursor-pointer">
+                Resend OTP
+              </button>
+            </p>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (<Suspense><RegisterForm /></Suspense>);
+}

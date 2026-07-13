@@ -1,0 +1,199 @@
+/**
+ * A4 print layout styles for client-facing documents.
+ * Used by the detail page as the future PDF source of truth.
+ */
+
+.document-print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .document-print-root,
+  .document-print-root * {
+    visibility: visible;
+  }
+
+  .document-print-root {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    color: #111827;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 10pt;
+    line-height: 1.45;
+  }
+
+  .print-screen-ui {
+    display: none !important;
+  }
+}
+
+.document-print-page {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 8mm;
+  background: white;
+}
+
+.document-print-section {
+  margin-bottom: 14px;
+  break-inside: avoid;
+}
+
+.document-print-section-title {
+  font-size: 11pt;
+  font-weight: 700;
+  color: #1e40af;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.document-print-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid #111827;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.document-print-company-name {
+  font-size: 16pt;
+  font-weight: 700;
+}
+
+.document-print-doc-type {
+  font-size: 14pt;
+  font-weight: 700;
+  color: #1e40af;
+  text-align: right;
+}
+
+.document-print-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.document-print-box {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.document-print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.document-print-table th,
+.document-print-table td {
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.document-print-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+.document-print-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.document-print-totals {
+  margin-left: auto;
+  width: min(100%, 280px);
+  border: 1px solid #d1d5db;
+}
+
+.document-print-totals-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.document-print-totals-row.grand {
+  background: #f3f4f6;
+  font-weight: 700;
+  font-size: 11pt;
+}
+
+.document-print-signature {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.document-print-signature-line {
+  border-top: 1px solid #111827;
+  margin-top: 48px;
+  padding-top: 6px;
+  text-align: center;
+  font-size: 9pt;
+}
+
+.document-print-footer {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #d1d5db;
+  font-size: 8pt;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+}
+
+.document-print-type-estimate .document-print-accent {
+  color: #1d4ed8;
+}
+
+.document-print-type-proposal .document-print-accent {
+  color: #7c3aed;
+}
+
+.document-print-type-quotation .document-print-accent {
+  color: #047857;
+}
+
+.document-print-type-invoice .document-print-accent {
+  color: #b45309;
+}
+
+.document-print-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 9pt;
+}
+
+.document-print-list li {
+  margin-bottom: 3px;
+}
+
+.document-print-preview-toggle {
+  display: block;
+}
+
+@media print {
+  .document-print-preview-toggle {
+    display: none !important;
+  }
+}

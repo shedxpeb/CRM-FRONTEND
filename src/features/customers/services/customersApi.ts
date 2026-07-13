@@ -1,0 +1,67 @@
+/**
+ * Customers API Service
+ * All API calls for customers module — uses centralized api client (see leadsApi pattern).
+ */
+import { api } from '@/core/api';
+import { Customer, CustomerActivity, CustomerFilters, ConvertLeadToCustomerDto } from '@/features/customers/types';
+import { PaginationParams } from '@/shared/types/pagination';
+
+export interface BackendResponse<T> {
+  message: string;
+  data: T;
+}
+
+export interface CustomersData {
+  rows: Customer[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+}
+
+export const customersApi = {
+  getAll: (params?: PaginationParams & CustomerFilters) =>
+    api.get<BackendResponse<CustomersData>>('/customer', { params }),
+
+  getById: (id: string) =>
+    api.get<BackendResponse<Customer>>(`/customer/${id}`),
+
+  create: (data: unknown) =>
+    api.post<BackendResponse<Customer>>('/customer', data),
+
+  update: (id: string, data: unknown) =>
+    api.patch<BackendResponse<Customer>>(`/customer/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete<BackendResponse<{ count: number }>>(`/customer/${id}`),
+
+  bulkUpdate: (ids: string[], data: { status?: string }) =>
+    api.patch<BackendResponse<{ count: number }>>('/customer/bulk/status', {
+      ids,
+      status: data.status,
+    }),
+
+  bulkDelete: (ids: string[]) =>
+    api.delete<BackendResponse<{ count: number }>>('/customer/bulk', { data: { ids } }),
+
+  export: (params?: CustomerFilters) =>
+    api.get<BackendResponse<CustomersData>>('/customer/export', { params }),
+
+  getStats: () =>
+    api.get<BackendResponse<Record<string, number>>>('/customer/stats'),
+
+  getActivities: (id: string) =>
+    api.get<BackendResponse<CustomerActivity[]>>(`/customer/${id}/activities`),
+
+  checkDuplicate: (mobile: string, email?: string) =>
+    api.get<BackendResponse<{ exists: boolean; customer?: Customer }>>('/customer/check-duplicate', {
+      params: { mobile, email },
+    }),
+
+  convertLeadToCustomer: (data: ConvertLeadToCustomerDto) =>
+    api.post<BackendResponse<{ customer: Customer; lead: unknown }>>('/customer/convert-lead', data),
+};
