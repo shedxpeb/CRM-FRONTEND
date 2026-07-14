@@ -30,6 +30,8 @@ export function LeadToCustomerConversionDialog({
 
   const convertLeadMutation = useConvertLeadToCustomer();
 
+  const mapSource = (s: string) => ({ ColdCall: 'Cold Call', SocialMedia: 'Social Media', TradeShow: 'Trade Show' }[s] || s);
+
   const handleConfirm = () => {
     setStep('form');
     setError(null);
@@ -53,6 +55,8 @@ export function LeadToCustomerConversionDialog({
         mobile: customerData.mobile || '',
         alternateMobile: customerData.alternateMobile,
         email: customerData.email,
+        gstNumber: customerData.gstNumber,
+        panNumber: customerData.panNumber,
         source: customerData.source || 'Website',
         address: customerData.address,
         city: customerData.city,
@@ -176,7 +180,7 @@ export function LeadToCustomerConversionDialog({
                 city: lead.city,
                 state: lead.state,
                 pincode: lead.pincode,
-                source: lead.source as any,
+                source: mapSource(lead.source) as any,
                 assignedEmployee: lead.assignedTo,
                 assignedEmployeeId: lead.assignedToId,
                 notes: lead.remarks,

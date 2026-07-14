@@ -188,7 +188,15 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
     if (!validateForm()) {
       return;
     }
-    onSubmit(formData);
+    const {
+      id: _id, customerId: _customerId, customerSince: _customerSince,
+      totalProjects: _tp, activeProjects: _ap, completedProjects: _cp,
+      totalRevenue: _tr, pendingQuotations: _pq, pendingFollowups: _pf,
+      projectIds: _pi, estimateIds: _ei, proposalIds: _proi, quotationIds: _qi,
+      attachments: _att, assignedEmployee: _ae, createdAt: _ca, updatedAt: _ua,
+      ...submitData
+    } = formData;
+    onSubmit(submitData);
   };
 
   return (
