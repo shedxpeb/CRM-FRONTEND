@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace(`${ROUTES.login}?reason=session_required`);
+      router.replace(ROUTES.login);
     }
   }, [isAuthenticated, isLoading, router]);
 
