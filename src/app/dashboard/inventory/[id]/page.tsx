@@ -4,36 +4,23 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { MainLayout } from '@/layouts/MainLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DataTable, Column } from '@/components/data-table/DataTable';
 import { CardSkeleton } from '@/components/loading/CardSkeleton';
 import { ErrorState } from '@/components/states/ErrorState';
-import { InventoryActivityTimeline } from '@/features/inventory/components/InventoryActivityTimeline';
-import { InventoryCustomFields } from '@/features/inventory/components/InventoryCustomFields';
+import { TrackingEngine } from '@/components/tracking/TrackingEngine';
+import { ActivityAuditLog } from '@/components/tracking/ActivityAuditLog';
 import {
   useInventoryItem,
   useUpdateInventoryItem,
-  useInventoryConfiguration,
-  useInventoryActivities,
-  useStockMovementHistory,
 } from '@/features/inventory/hooks/useInventory';
-import { InventoryItem, StockMovement, CreateInventoryItemDto } from '@/features/inventory/types';
-import { getStockStatusVariant, getMovementTypeVariant } from '@/features/inventory/constants';
-import { MOCK_PROJECT_ALLOCATIONS } from '@/features/inventory/data/mockInventoryData';
+import { getStockStatusVariant } from '@/features/inventory/constants';
 import { ROUTES } from '@/core/routes';
 import {
-  ArrowLeft,
-  Edit,
-  Package,
-  AlertTriangle,
-  Warehouse,
-  ExternalLink,
-  Truck,
-  Building2,
+  ArrowLeft, Edit, ChevronDown, ChevronRight, Package, AlertTriangle,
+  DollarSign, Warehouse, Building2, ExternalLink, Truck, Scale, Box, Hash,
 } from 'lucide-react';
 
 const InventoryItemForm = dynamic(
@@ -41,13 +28,35 @@ const InventoryItemForm = dynamic(
   { loading: () => <CardSkeleton />, ssr: false }
 );
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Section({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium break-words">{value ?? '-'}</p>
+    <div className="border rounded-lg bg-card overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold bg-muted/30 hover:bg-muted/50 transition-colors">
+        {title}
+        {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="p-4">{children}</div>}
     </div>
   );
+}
+
+function InfoGrid({ items }: { items: { label: string; value: React.ReactNode; icon?: React.ReactNode }[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {items.map(item => (
+        <div key={item.label} className="space-y-1">
+          <p className="text-xs text-muted-foreground flex items-center gap-1">{item.icon}{item.label}</p>
+          <p className="text-sm font-medium">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatDate(value?: Date | string | null) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export default function InventoryDetailPage() {
@@ -55,12 +64,8 @@ export default function InventoryDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const { data: item, isLoading, refetch } = useInventoryItem(id);
-  const inventoryConfig = useInventoryConfiguration();
   const updateMutation = useUpdateInventoryItem();
-  const [activeTab, setActiveTab] = useState('overview');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const { data: activities } = useInventoryActivities(id, activeTab === 'activity');
-  const { data: movements } = useStockMovementHistory(id, activeTab === 'stock-history');
 
   if (isLoading) {
     return (
@@ -85,30 +90,20 @@ export default function InventoryDetailPage() {
 
   const needsReorder = item.currentStock <= item.reorderLevel;
 
-  const movementColumns: Column<StockMovement>[] = [
-    { key: 'movementNumber', label: 'Movement #', sortable: true, render: (v) => <span className="font-mono text-xs">{v}</span> },
-    { key: 'type', label: 'Type', render: (v) => <Badge variant={getMovementTypeVariant(v as StockMovement['type'])} className="text-[10px]">{v}</Badge> },
-    { key: 'quantity', label: 'Qty', sortable: true, render: (v) => <span className="text-xs font-medium">{Number(v).toLocaleString()}</span> },
-    { key: 'warehouse', label: 'Warehouse' },
-    { key: 'referenceNumber', label: 'Reference', render: (v) => <span className="text-xs font-mono">{v || '-'}</span> },
-    { key: 'date', label: 'Date', render: (v) => v ? new Date(v).toLocaleDateString('en-IN') : '-' },
-  ];
-
   return (
     <MainLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="sm" onClick={() => router.push(ROUTES.inventory)}>
+            <Button variant="ghost" size="sm" onClick={() => (typeof window !== 'undefined' && window.history.length > 1 ? router.back() : router.push(ROUTES.inventory))}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Inventory
             </Button>
             <div className="h-4 w-px bg-border" />
             <div className="min-w-0">
               <h1 className="text-lg font-semibold truncate">{item.itemName}</h1>
-              <p className="text-sm text-muted-foreground truncate">
-                {item.itemCode} · {item.warehouseName} · {item.category || 'No category'}
-              </p>
+              <p className="text-sm text-muted-foreground truncate">{item.itemCode} &middot; {item.warehouseName}</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
@@ -117,204 +112,169 @@ export default function InventoryDetailPage() {
           </Button>
         </div>
 
+        {/* Badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={getStockStatusVariant(item.status)}>{item.status}</Badge>
           {item.itemTypeClass && <Badge variant="outline">{item.itemTypeClass}</Badge>}
           {needsReorder && <Badge variant="destructive">Reorder Required</Badge>}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
           <Card>
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs text-muted-foreground mb-1">Current Stock</p>
-              <p className="text-base font-bold">{Number(item.currentStock).toLocaleString()} {item.unit}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                <span className="text-[10px] sm:text-sm text-muted-foreground">Current Stock</span>
+              </div>
+              <p className="text-base sm:text-lg font-bold">{Number(item.currentStock).toLocaleString()} {item.unit}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs text-muted-foreground mb-1">Available</p>
-              <p className="text-base font-bold text-green-700">{Number(item.availableStock).toLocaleString()} {item.unit}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Box className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                <span className="text-[10px] sm:text-sm text-muted-foreground">Available</span>
+              </div>
+              <p className="text-base sm:text-lg font-bold text-green-700">{Number(item.availableStock).toLocaleString()} {item.unit}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs text-muted-foreground mb-1">Reserved</p>
-              <p className="text-base font-bold">{Number(item.reservedStock).toLocaleString()} {item.unit}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                <span className="text-[10px] sm:text-sm text-muted-foreground">Incoming</span>
+              </div>
+              <p className="text-base sm:text-lg font-bold">{Number(item.incomingStock ?? 0).toLocaleString()} {item.unit}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs text-muted-foreground mb-1">Incoming</p>
-              <p className="text-base font-bold">{Number(item.incomingStock ?? 0).toLocaleString()} {item.unit}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-4">
-              <p className="text-xs text-muted-foreground mb-1">Outgoing</p>
-              <p className="text-base font-bold">{Number(item.outgoingStock ?? 0).toLocaleString()} {item.unit}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-4">
-              <p className="text-xs text-muted-foreground mb-1">Stock Value</p>
-              <p className="text-base font-bold">₹{Number(item.totalValue).toLocaleString()}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                <span className="text-[10px] sm:text-sm text-muted-foreground">Outgoing</span>
+              </div>
+              <p className="text-base sm:text-lg font-bold">{Number(item.outgoingStock ?? 0).toLocaleString()} {item.unit}</p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="flex flex-wrap h-auto gap-1">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="stock">Stock</TabsTrigger>
-            <TabsTrigger value="warehouse">Warehouse</TabsTrigger>
-            <TabsTrigger value="stock-history">Movement</TabsTrigger>
-            <TabsTrigger value="references">References</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+        {/* Collapsible Sections */}
+        <div className="space-y-3">
+          {/* Workflow / Status Pipeline */}
+          <Section title="Workflow / Status Pipeline" defaultOpen={true}>
+            <TrackingEngine entityType="inventory" entityId={id} />
+          </Section>
 
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    Item Reference (Read-only)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-3">
-                  <Field label="Item Code" value={<span className="font-mono">{item.itemCode}</span>} />
-                  <Field label="Item Master ID" value={item.itemMasterId} />
-                  <Field label="Category" value={item.category} />
-                  <Field label="Brand" value={item.brand} />
-                  <Field label="Item Type" value={item.itemTypeClass} />
-                  <Field label="Unit" value={item.unit} />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    Reorder Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-3">
-                  <Field label="Minimum Stock" value={`${Number(item.minimumStock).toLocaleString()} ${item.unit}`} />
-                  <Field label="Reorder Level" value={`${Number(item.reorderLevel).toLocaleString()} ${item.unit}`} />
-                  <Field label="Reorder Quantity" value={`${Number(item.reorderQuantity ?? 0).toLocaleString()} ${item.unit}`} />
-                  <Field label="Safety Stock" value={`${Number(item.safetyStock).toLocaleString()} ${item.unit}`} />
-                </CardContent>
-              </Card>
-            </div>
-            <Card>
-              <CardContent className="pt-6">
-                <InventoryCustomFields mode="view" fields={inventoryConfig.customFields} values={item.customFields} />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Overview */}
+          <Section title="Overview" defaultOpen={false}>
+            <InfoGrid
+              items={[
+                { label: 'Item Name', value: item.itemName, icon: <Package className="w-3 h-3" /> },
+                { label: 'Item Code', value: item.itemCode, icon: <Hash className="w-3 h-3" /> },
+                { label: 'Category', value: item.category || '-' },
+                { label: 'Warehouse', value: item.warehouseName, icon: <Warehouse className="w-3 h-3" /> },
+                { label: 'Unit', value: item.unit, icon: <Scale className="w-3 h-3" /> },
+              ]}
+            />
+          </Section>
 
-          <TabsContent value="stock">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Stock Information</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <Field label="Current Stock" value={`${Number(item.currentStock).toLocaleString()} ${item.unit}`} />
-                <Field label="Reserved Stock" value={`${Number(item.reservedStock).toLocaleString()} ${item.unit}`} />
-                <Field label="Issued Stock" value={`${Number(item.issuedStock).toLocaleString()} ${item.unit}`} />
-                <Field label="Available Stock" value={`${Number(item.availableStock).toLocaleString()} ${item.unit}`} />
-                <Field label="Incoming Stock" value={`${Number(item.incomingStock ?? 0).toLocaleString()} ${item.unit}`} />
-                <Field label="Outgoing Stock" value={`${Number(item.outgoingStock ?? 0).toLocaleString()} ${item.unit}`} />
-                <Field label="Purchase Rate" value={item.purchaseRate != null ? `₹${item.purchaseRate.toLocaleString()}` : '-'} />
-                <Field label="Total Value" value={`₹${Number(item.totalValue).toLocaleString()}`} />
-                <Field
-                  label="Last Movement"
-                  value={item.lastMovementDate ? new Date(item.lastMovementDate).toLocaleDateString('en-IN') : '-'}
+          {/* Information */}
+          <Section title="Information" defaultOpen={false}>
+            <div className="space-y-6">
+              {/* Basic */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Basic</p>
+                <InfoGrid
+                  items={[
+                    { label: 'Item Code', value: <span className="font-mono">{item.itemCode}</span> },
+                    { label: 'Item Name', value: item.itemName },
+                    { label: 'Category', value: item.category || '-' },
+                    { label: 'Unit', value: item.unit },
+                    { label: 'Warehouse', value: item.warehouseName },
+                    { label: 'Bin Location', value: item.binLocation || '-' },
+                  ]}
                 />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
 
-          <TabsContent value="warehouse">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Warehouse className="h-4 w-4" />
-                  Warehouse Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
-                <Field label="Warehouse" value={item.warehouseName} />
-                <Field label="Bin Location" value={item.binLocation} />
-                <Field label="Warehouse ID" value={item.warehouseId} />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              {/* Stock */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Stock</p>
+                <InfoGrid
+                  items={[
+                    { label: 'Current Stock', value: `${Number(item.currentStock).toLocaleString()} ${item.unit}` },
+                    { label: 'Available Stock', value: `${Number(item.availableStock).toLocaleString()} ${item.unit}` },
+                    { label: 'Reserved Stock', value: `${Number(item.reservedStock).toLocaleString()} ${item.unit}` },
+                    { label: 'Issued Stock', value: `${Number(item.issuedStock).toLocaleString()} ${item.unit}` },
+                    { label: 'Min Stock', value: `${Number(item.minimumStock).toLocaleString()} ${item.unit}` },
+                    { label: 'Reorder Level', value: `${Number(item.reorderLevel).toLocaleString()} ${item.unit}` },
+                    { label: 'Reorder Qty', value: `${Number(item.reorderQuantity ?? 0).toLocaleString()} ${item.unit}` },
+                    { label: 'Safety Stock', value: `${Number(item.safetyStock).toLocaleString()} ${item.unit}` },
+                    { label: 'Status', value: <Badge variant={getStockStatusVariant(item.status)}>{item.status}</Badge> },
+                  ]}
+                />
+              </div>
 
-          <TabsContent value="stock-history">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Movement History</CardTitle></CardHeader>
-              <CardContent>
-                <DataTable columns={movementColumns} data={movements || []} rowIdKey="id" compact showToolbar={false} />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              {/* Pricing */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pricing</p>
+                <InfoGrid
+                  items={[
+                    { label: 'Purchase Rate', value: item.purchaseRate != null ? `₹${item.purchaseRate.toLocaleString()}` : '-', icon: <DollarSign className="w-3 h-3" /> },
+                    { label: 'Total Value', value: `₹${Number(item.totalValue).toLocaleString()}`, icon: <DollarSign className="w-3 h-3" /> },
+                  ]}
+                />
+              </div>
 
-          <TabsContent value="references">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Cross-Module References</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.items)}>
-                    Item Master <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.documentsEstimates)}>
-                    Estimates <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.documentsProposals)}>
-                    Proposals <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.documentsQuotations)}>
-                    Quotations <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.finance)}>
-                    Finance <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
+              {/* Specs */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Specifications</p>
+                <InfoGrid
+                  items={[
+                    { label: 'Brand', value: item.brand || '-' },
+                    { label: 'Item Type', value: item.itemTypeClass || '-' },
+                    { label: 'Last Movement', value: formatDate(item.lastMovementDate) },
+                  ]}
+                />
+              </div>
+            </div>
+          </Section>
+
+          {/* Related Records */}
+          <Section title="Related Records" defaultOpen={false}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.items)}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  <span className="text-xs font-medium">Item Master</span>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Project Allocations
-                  </h4>
-                  <div className="space-y-2">
-                    {MOCK_PROJECT_ALLOCATIONS.map((alloc) => (
-                      <div key={alloc.projectId} className="p-3 border rounded-lg text-sm">
-                        <div className="flex justify-between items-start gap-2">
-                          <div>
-                            <p className="font-medium">{alloc.projectName}</p>
-                            <p className="text-xs text-muted-foreground">{alloc.customerName}</p>
-                          </div>
-                          <Badge variant={alloc.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{alloc.status}</Badge>
-                        </div>
-                        <p className="text-xs mt-2 text-muted-foreground">
-                          Reserved: {alloc.reservedQuantity} · Issued: {alloc.issuedQuantity} · Balance: {alloc.balanceQuantity}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                <p className="text-sm font-semibold">{item.itemMasterId}</p>
+                <Button variant="link" size="sm" className="h-auto p-0 text-xs">View Item Master</Button>
+              </div>
+              <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.documentsEstimates)}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="h-4 w-4 text-purple-600" />
+                  <span className="text-xs font-medium">Estimates</span>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                    <Truck className="h-4 w-4" />
-                    Vendor Reference
-                  </h4>
-                  <p className="text-sm text-muted-foreground">Supplier linkage available when backend is connected.</p>
+                <p className="text-sm font-semibold">Linked Documents</p>
+                <Button variant="link" size="sm" className="h-auto p-0 text-xs">View Estimates</Button>
+              </div>
+              <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.finance)}>
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  <span className="text-xs font-medium">Finance</span>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <p className="text-sm font-semibold">Financial Records</p>
+                <Button variant="link" size="sm" className="h-auto p-0 text-xs">View Finance</Button>
+              </div>
+            </div>
+          </Section>
 
-          <TabsContent value="activity">
-            <InventoryActivityTimeline activities={activities || []} />
-          </TabsContent>
-        </Tabs>
+          {/* Activities & Audit Log */}
+          <Section title="Activities & Audit Log" defaultOpen={false}>
+            <ActivityAuditLog entityType="inventory" entityId={id} />
+          </Section>
+        </div>
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

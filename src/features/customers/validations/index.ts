@@ -17,10 +17,10 @@ export const createCustomerSchema = z.object({
     .max(100, 'Company name must be less than 100 characters'),
 
   mobile: z.string()
-    .regex(/^\+91\s\d{5}\s\d{5}$/, 'Mobile number must be in format: +91 XXXXX XXXXX'),
+    .regex(/^\+?[\d\s\-()]{7,15}$/, 'Mobile number is invalid (7-15 digits, optional +country code)'),
 
   alternateMobile: z.string()
-    .regex(/^\+91\s\d{5}\s\d{5}$/, 'Alternate mobile must be in format: +91 XXXXX XXXXX')
+    .regex(/^\+?[\d\s\-()]{7,15}$/, 'Alternate mobile number is invalid')
     .optional()
     .or(z.literal('')),
 
@@ -39,14 +39,9 @@ export const createCustomerSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  industry: z.enum([
-    'Manufacturing', 'Construction', 'Infrastructure', 'Logistics',
-    'Agriculture', 'Commercial', 'Healthcare', 'Education', 'Retail', 'Other',
-  ]),
+  industry: z.string().min(1, 'Industry is required'),
 
-  businessType: z.enum([
-    'Pvt Ltd', 'LLP', 'Partnership', 'Proprietorship', 'Trust', 'Government', 'Other',
-  ]),
+  businessType: z.string().min(1, 'Business type is required'),
 
   website: z.string()
     .url('Invalid website URL')
@@ -77,18 +72,17 @@ export const createCustomerSchema = z.object({
 
   assignedEmployeeId: z.string().optional(),
 
-  source: z.enum([
-    'Website', 'Referral', 'Cold Call', 'Email',
-    'Social Media', 'Trade Show', 'Advertisement', 'Other',
-  ]),
+  source: z.string().min(1, 'Source is required'),
 
-  status: z.enum(['Active', 'Inactive', 'Prospect', 'Converted', 'Churned'])
-    .optional()
-    .default('Prospect'),
+  status: z.string().optional().default('Prospect'),
 
   notes: z.string()
     .max(1000, 'Notes must be less than 1000 characters')
-    .optional(),
+    .optional()
+    .or(z.literal('')),
+
+  leadId: z.string().optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
 });
 
 /**

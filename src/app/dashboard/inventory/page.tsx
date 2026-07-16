@@ -8,7 +8,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { InventoryViewDrawer } from '@/features/inventory/components/InventoryViewDrawer';
 import { getInventoryCustomFieldValue } from '@/features/inventory/components/InventoryCustomFields';
 
 // Lazy load row actions to reduce initial bundle size
@@ -70,7 +69,6 @@ export default function InventoryPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
 
   const allItems = itemsResponse?.data ?? [];
@@ -293,21 +291,14 @@ export default function InventoryPage() {
   const columns = useMemo(() => [...baseColumns, ...settingsCustomColumnDefs], [baseColumns, settingsCustomColumnDefs]);
 
   const handleRowClick = useCallback((item: InventoryItem) => {
-    setSelectedItemId(item.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(ROUTES.inventoryDetail(item.id));
+  }, [router]);
 
   const handleViewDetails = useCallback((item: InventoryItem) => {
     router.push(ROUTES.inventoryDetail(item.id));
   }, [router]);
 
   const handleEditFromRow = useCallback((item: InventoryItem) => {
-    setSelectedItemId(item.id);
-    setIsEditDialogOpen(true);
-  }, []);
-
-  const handleEditFromDrawer = useCallback((item: InventoryItem) => {
-    setIsViewDrawerOpen(false);
     setSelectedItemId(item.id);
     setIsEditDialogOpen(true);
   }, []);
@@ -327,12 +318,11 @@ export default function InventoryPage() {
         onSuccess: (newItem) => {
           setIsCreateDialogOpen(false);
           refetch();
-          setSelectedItemId(newItem.id);
-          setIsViewDrawerOpen(true);
+          router.push(ROUTES.inventoryDetail(newItem.id));
         },
       });
     },
-    [createMutation, refetch]
+    [createMutation, refetch, router]
   );
 
   const handleEdit = useCallback(
@@ -344,7 +334,6 @@ export default function InventoryPage() {
           onSuccess: () => {
             setIsEditDialogOpen(false);
             refetch();
-            setIsViewDrawerOpen(true);
           },
         }
       );
@@ -449,13 +438,6 @@ export default function InventoryPage() {
           />
         </div>
       </StandardPageLayout>
-
-      <InventoryViewDrawer
-        item={selectedItem}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onEdit={handleEditFromDrawer}
-      />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

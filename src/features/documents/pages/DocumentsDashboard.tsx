@@ -7,7 +7,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { DocumentViewDrawer } from '@/features/documents/components/DocumentViewDrawer';
 import { DocumentRowActions } from '@/features/documents/components/DocumentRowActions';
 import { useUnifiedDocuments } from '@/features/documents/hooks/useUnifiedDocuments';
 import { useDocumentConfiguration } from '@/features/documents/hooks/useDocuments';
@@ -50,8 +49,6 @@ export function DocumentsDashboard() {
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
 
   useEffect(() => {
@@ -101,11 +98,6 @@ export function DocumentsDashboard() {
       return matchesType && matchesStatus && matchesCustomer && matchesProject && matchesCreator && matchesDate && matchesSearch;
     });
   }, [allDocuments, debouncedSearch, typeFilter, statusFilter, customerFilter, projectFilter, createdByFilter, dateFilter]);
-
-  const selectedDocument = useMemo(
-    () => (selectedDocId ? allDocuments.find((d) => d.id === selectedDocId) ?? null : null),
-    [allDocuments, selectedDocId]
-  );
 
   // Combine stats and KPI data computation to reduce re-renders
   const { filteredStats, kpiData } = useMemo(() => {
@@ -271,9 +263,8 @@ export function DocumentsDashboard() {
   );
 
   const handleRowClick = useCallback((doc: UnifiedDocument) => {
-    setSelectedDocId(doc.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(getDetailRoute(doc));
+  }, [router]);
 
   const handleViewDetails = useCallback((doc: UnifiedDocument) => {
     router.push(getDetailRoute(doc));
@@ -390,18 +381,6 @@ export function DocumentsDashboard() {
         </div>
       </StandardPageLayout>
 
-      <DocumentViewDrawer
-        document={selectedDocument?.source ?? null}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onPreviewPdf={previewPdf}
-        onDownloadPdf={downloadPdf}
-        onEdit={(doc) => {
-          setIsViewDrawerOpen(false);
-          const unified = allDocuments.find((d) => d.id === (doc as { id: string }).id);
-          if (unified) handleEdit(unified);
-        }}
-      />
       {PdfPreviewDialog}
     </MainLayout>
   );

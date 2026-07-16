@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, Suspense } from 'react';
+import { useEffect, useMemo, useState, Suspense, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -28,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toast } from '@/components/ui/toast';
 import { useDebounce } from '@/shared/hooks/useDebounce';
+import { ROUTES } from '@/core/routes';
 import {
   useBankAccounts,
   useExpenses,
@@ -86,27 +88,6 @@ const VendorForm = dynamic(() => import('@/features/finance/components/VendorFor
 const BankAccountForm = dynamic(() => import('@/features/finance/components/BankAccountForm').then(m => ({ default: m.BankAccountForm })), {
   loading: () => <div className="p-8 text-center">Loading form...</div>
 });
-const InvoiceViewDrawer = dynamic(() => import('@/features/finance/components/InvoiceViewDrawer').then(m => ({ default: m.InvoiceViewDrawer })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>
-});
-const PaymentViewDrawer = dynamic(() => import('@/features/finance/components/PaymentViewDrawer').then(m => ({ default: m.PaymentViewDrawer })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>
-});
-const ExpenseViewDrawer = dynamic(() => import('@/features/finance/components/ExpenseViewDrawer').then(m => ({ default: m.ExpenseViewDrawer })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>
-});
-const VendorViewDrawer = dynamic(() => import('@/features/finance/components/VendorViewDrawer').then(m => ({ default: m.VendorViewDrawer })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>
-});
-const BankAccountViewDrawer = dynamic(() => import('@/features/finance/components/BankAccountViewDrawer').then(m => ({ default: m.BankAccountViewDrawer })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>
-});
-const ReceivableViewDrawer = dynamic(() => import('@/features/finance/components/ReceivableViewDrawer').then(m => ({ default: m.ReceivableViewDrawer })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>
-});
-const PayableViewDrawer = dynamic(() => import('@/features/finance/components/PayableViewDrawer').then(m => ({ default: m.PayableViewDrawer })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>
-});
 
 type FinanceTab =
   | 'dashboard'
@@ -164,12 +145,12 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
 }
 
 export default function FinancePage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<FinanceTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 250);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedEntityTab, setSelectedEntityTab] = useState<FinanceTab>('invoices');
-  const [viewOpen, setViewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -407,7 +388,6 @@ export default function FinancePage() {
     setDeleteOpen(false);
     setRejectOpen(false);
     setRejectReason('');
-    setViewOpen(false);
     setEditorState(null);
   };
 
@@ -420,11 +400,20 @@ export default function FinancePage() {
     setEditorState({ mode: 'create', tab: activeTab as EditableFinanceTab });
   };
 
-  const handleView = (item: any, tab: FinanceTab = activeTab) => {
-    setSelectedItem(item);
-    setSelectedEntityTab(tab);
-    setViewOpen(true);
-  };
+  const handleView = useCallback((item: any, tab: FinanceTab = activeTab) => {
+    if (!item?.id) return;
+    const routeMap: Partial<Record<FinanceTab, (id: string) => string>> = {
+      invoices: ROUTES.financeInvoice,
+      payments: ROUTES.financePayment,
+      expenses: ROUTES.financeExpense,
+      receivables: ROUTES.financeReceivable,
+      payables: ROUTES.financePayable,
+      vendors: ROUTES.financeVendor,
+      'bank-accounts': ROUTES.financeBankAccount,
+    };
+    const toRoute = routeMap[tab];
+    if (toRoute) router.push(toRoute(item.id));
+  }, [activeTab, router]);
 
   const handleEdit = (item: any, tab: EditableFinanceTab = activeTab as EditableFinanceTab) => {
     setSelectedItem(item);
@@ -1634,6 +1623,7 @@ export default function FinancePage() {
               rowIdKey="id"
               showToolbar={false}
               emptyMessage="No invoices found"
+              onRowClick={(row) => handleView(row, 'invoices')}
               rowActions={(row) => (
                 <FinanceRowActions
                   onView={() => handleView(row, 'invoices')}
@@ -1653,6 +1643,7 @@ export default function FinancePage() {
               rowIdKey="id"
               showToolbar={false}
               emptyMessage="No payments found"
+              onRowClick={(row) => handleView(row, 'payments')}
               rowActions={(row) => (
                 <FinanceRowActions
                   onView={() => handleView(row, 'payments')}
@@ -1671,6 +1662,7 @@ export default function FinancePage() {
               rowIdKey="id"
               showToolbar={false}
               emptyMessage="No expenses found"
+              onRowClick={(row) => handleView(row, 'expenses')}
               rowActions={(row) => (
                 <FinanceRowActions
                   onView={() => handleView(row, 'expenses')}
@@ -1691,6 +1683,7 @@ export default function FinancePage() {
               rowIdKey="id"
               showToolbar={false}
               emptyMessage="No receivables found"
+              onRowClick={(row) => handleView(row, 'receivables')}
               rowActions={(row) => (
                 <FinanceRowActions onView={() => handleView(row, 'receivables')} />
               )}
@@ -1705,6 +1698,7 @@ export default function FinancePage() {
               rowIdKey="id"
               showToolbar={false}
               emptyMessage="No payables found"
+              onRowClick={(row) => handleView(row, 'payables')}
               rowActions={(row) => (
                 <FinanceRowActions onView={() => handleView(row, 'payables')} />
               )}
@@ -1719,6 +1713,7 @@ export default function FinancePage() {
               rowIdKey="id"
               showToolbar={false}
               emptyMessage="No vendors found"
+              onRowClick={(row) => handleView(row, 'vendors')}
               rowActions={(row) => (
                 <FinanceRowActions
                   onView={() => handleView(row, 'vendors')}
@@ -1737,6 +1732,7 @@ export default function FinancePage() {
               rowIdKey="id"
               showToolbar={false}
               emptyMessage="No bank accounts found"
+              onRowClick={(row) => handleView(row, 'bank-accounts')}
               rowActions={(row) => (
                 <FinanceRowActions
                   onView={() => handleView(row, 'bank-accounts')}
@@ -1748,42 +1744,6 @@ export default function FinancePage() {
           </TabsContent>
         </Tabs>
       </StandardPageLayout>
-
-      <InvoiceViewDrawer
-        invoice={selectedEntityTab === 'invoices' ? selectedItem : null}
-        open={viewOpen && selectedEntityTab === 'invoices'}
-        onOpenChange={setViewOpen}
-      />
-      <PaymentViewDrawer
-        payment={selectedEntityTab === 'payments' ? selectedItem : null}
-        open={viewOpen && selectedEntityTab === 'payments'}
-        onOpenChange={setViewOpen}
-      />
-      <ExpenseViewDrawer
-        expense={selectedEntityTab === 'expenses' ? selectedItem : null}
-        open={viewOpen && selectedEntityTab === 'expenses'}
-        onOpenChange={setViewOpen}
-      />
-      <ReceivableViewDrawer
-        receivable={selectedEntityTab === 'receivables' ? selectedItem : null}
-        open={viewOpen && selectedEntityTab === 'receivables'}
-        onOpenChange={setViewOpen}
-      />
-      <PayableViewDrawer
-        payable={selectedEntityTab === 'payables' ? selectedItem : null}
-        open={viewOpen && selectedEntityTab === 'payables'}
-        onOpenChange={setViewOpen}
-      />
-      <VendorViewDrawer
-        vendor={selectedEntityTab === 'vendors' ? selectedItem : null}
-        open={viewOpen && selectedEntityTab === 'vendors'}
-        onOpenChange={setViewOpen}
-      />
-      <BankAccountViewDrawer
-        bankAccount={selectedEntityTab === 'bank-accounts' ? selectedItem : null}
-        open={viewOpen && selectedEntityTab === 'bank-accounts'}
-        onOpenChange={setViewOpen}
-      />
 
       <Dialog open={editorState?.tab === 'invoices'} onOpenChange={(open) => !open && setEditorState(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

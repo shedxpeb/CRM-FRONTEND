@@ -7,7 +7,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { DocumentViewDrawer } from '@/features/documents/components/DocumentViewDrawer';
 import { QuotationBuilder } from '@/features/documents/components/QuotationBuilder';
 import { DocumentRowActions } from '@/features/documents/components/DocumentRowActions';
 import { useQuotations } from '@/features/documents/hooks';
@@ -46,8 +45,6 @@ export function QuotationsPage() {
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [createdByFilter, setCreatedByFilter] = useState<string>('all');
 
-  const [selectedQuotationId, setSelectedQuotationId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [isBuilderDialogOpen, setIsBuilderDialogOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -101,11 +98,6 @@ export function QuotationsPage() {
       return matchesStatus && matchesCustomer && matchesProject && matchesCreator && matchesSearch;
     });
   }, [quotations, debouncedSearch, statusFilter, customerFilter, projectFilter, createdByFilter]);
-
-  const selectedQuotation = useMemo(
-    () => (selectedQuotationId ? quotations.find((q) => q.id === selectedQuotationId) ?? null : null),
-    [quotations, selectedQuotationId]
-  );
 
   const filteredStats = useMemo(() => {
     let draft = 0;
@@ -173,9 +165,8 @@ export function QuotationsPage() {
   );
 
   const handleRowClick = useCallback((quot: Quotation) => {
-    setSelectedQuotationId(quot.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(getDetailRoute(normalizeQuotation(quot)));
+  }, [router]);
 
   const handleViewDetails = useCallback((quot: Quotation) => {
     router.push(getDetailRoute(normalizeQuotation(quot)));
@@ -307,14 +298,6 @@ export function QuotationsPage() {
         </DialogContent>
       </Dialog>
 
-      <DocumentViewDrawer
-        document={selectedQuotation}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onPreviewPdf={previewPdf}
-        onDownloadPdf={downloadPdf}
-        onEdit={(doc) => { setIsViewDrawerOpen(false); handleEditQuotation(doc as Quotation); }}
-      />
       {PdfPreviewDialog}
     </MainLayout>
   );

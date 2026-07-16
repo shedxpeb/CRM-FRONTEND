@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/layouts/MainLayout';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { DataTable } from '@/components/data-table/DataTable';
@@ -46,9 +47,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { CheckSquare, Plus, Camera, Upload, Clock, User, DollarSign, AlertTriangle, Trash2 } from 'lucide-react';
 import { TaskRowActions } from '@/features/task-management/components/TaskRowActions';
+import { TaskForm } from '@/features/task-management/components/TaskForm';
 import { TaskKanbanView } from '@/features/task-management/views/TaskKanbanView';
 import { TaskCalendarView } from '@/features/task-management/views/TaskCalendarView';
 import { TaskEisenhowerMatrixView } from '@/features/task-management/views/TaskEisenhowerMatrixView';
+import { ROUTES } from '@/core/routes';
 
 // Move constants outside component to prevent recreation
 const STATUSES: (TaskStatus | 'all')[] = ['all', 'Pending', 'In Progress', 'Blocked', 'Review', 'Completed', 'Cancelled', 'Reopened'];
@@ -236,6 +239,7 @@ function SalaryAdjustmentForm({
 }
 
 export default function TaskManagementPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -409,8 +413,7 @@ export default function TaskManagementPage() {
   };
 
   const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
-    setIsActivityDialogOpen(true);
+    router.push(ROUTES.tasksDetail(task.id));
   };
 
   const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
@@ -643,6 +646,7 @@ export default function TaskManagementPage() {
                 selectedRows={selectedRows}
                 onSelectionChange={setSelectedRows}
                 rowIdKey="id"
+                onRowClick={(row) => handleTaskClick(row as Task)}
                 emptyMessage="No tasks assigned to you yet. Use “Add Task” to create one."
                 rowActions={(row) => (
                   <TaskRowActions
@@ -1107,203 +1111,6 @@ export default function TaskManagementPage() {
         </DialogContent>
       </Dialog>
     </MainLayout>
-  );
-}
-
-function TaskForm({
-  task,
-  onSubmit,
-  onCancel
-}: {
-  task?: Task;
-  onSubmit: (data: CreateTaskDto) => void;
-  onCancel: () => void;
-}) {
-  const isEdit = !!task;
-  const [formData, setFormData] = useState({
-    title: task?.title || '',
-    description: task?.description || '',
-    assignedUserId: task?.assignedUserId || '',
-    dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-    startDate: task?.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '',
-    priority: task?.priority || 'Medium' as TaskPriority,
-    linkedModule: task?.linkedModule || 'General' as LinkedModule,
-    linkedRecordId: task?.linkedRecordId || '',
-    linkedRecordName: task?.linkedRecordName || '',
-    projectId: task?.projectId || '',
-    incentiveValue: task?.incentiveValue?.toString() || '',
-    notes: task?.notes || '',
-  });
-
-  const modules: LinkedModule[] = ['Leads', 'Customers', 'Projects', 'Inventory', 'Finance', 'Documents', 'General'];
-  const priorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation: Start date must be before due date
-    if (formData.startDate && formData.dueDate) {
-      const start = new Date(formData.startDate);
-      const due = new Date(formData.dueDate);
-      if (start > due) {
-        alert('Start date must be before due date');
-        return;
-      }
-    }
-
-    const dto: CreateTaskDto = {
-      title: formData.title,
-      description: formData.description,
-      assignedUserId: formData.assignedUserId,
-      dueDate: new Date(formData.dueDate),
-      startDate: formData.startDate ? new Date(formData.startDate) : undefined,
-      priority: formData.priority,
-      linkedModule: formData.linkedModule,
-      linkedRecordId: formData.linkedRecordId || undefined,
-      linkedRecordName: formData.linkedRecordName || undefined,
-      projectId: formData.projectId || undefined,
-      incentiveValue: parseFloat(formData.incentiveValue),
-      notes: formData.notes || undefined,
-    };
-
-    // This would call the mutation - for now just close the dialog
-    // In production: createMutation.mutate(dto);
-    onSubmit(dto);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="title">Title *</Label>
-        <Input
-          id="title"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          rows={3}
-        />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="assignedUserId">Assigned User ID *</Label>
-          <Input
-            id="assignedUserId"
-            value={formData.assignedUserId}
-            onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="startDate">Start Date</Label>
-          <Input
-            id="startDate"
-            type="date"
-            value={formData.startDate || ''}
-            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label htmlFor="dueDate">Due Date *</Label>
-          <Input
-            id="dueDate"
-            type="date"
-            value={formData.dueDate || ''}
-            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="priority">Priority *</Label>
-          <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value as TaskPriority })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {priorities.map(prio => (
-                <SelectItem key={prio} value={prio}>
-                  {prio}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="incentiveValue">Incentive Value (₹) *</Label>
-          <Input
-            id="incentiveValue"
-            type="number"
-            value={formData.incentiveValue}
-            onChange={(e) => setFormData({ ...formData, incentiveValue: e.target.value })}
-            required
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="linkedModule">Linked Module</Label>
-          <Select value={formData.linkedModule} onValueChange={(value) => setFormData({ ...formData, linkedModule: value as LinkedModule })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {modules.map(mod => (
-                <SelectItem key={mod} value={mod}>
-                  {mod}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="linkedRecordId">Linked Record ID</Label>
-          <Input
-            id="linkedRecordId"
-            value={formData.linkedRecordId}
-            onChange={(e) => setFormData({ ...formData, linkedRecordId: e.target.value })}
-          />
-        </div>
-      </div>
-      <div>
-        <Label htmlFor="linkedRecordName">Linked Record Name</Label>
-        <Input
-          id="linkedRecordName"
-          value={formData.linkedRecordName}
-          onChange={(e) => setFormData({ ...formData, linkedRecordName: e.target.value })}
-        />
-      </div>
-      <div>
-        <Label htmlFor="projectId">Project ID (Direct Link)</Label>
-        <Input
-          id="projectId"
-          value={formData.projectId}
-          onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-          placeholder="Enter project ID for direct hierarchy link"
-        />
-      </div>
-      <div>
-        <Label htmlFor="notes">Notes</Label>
-        <Textarea
-          id="notes"
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          rows={2}
-        />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit">{task ? 'Update Task' : 'Create Task'}</Button>
-      </div>
-    </form>
   );
 }
 

@@ -3,14 +3,13 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MainLayout } from '@/layouts/MainLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading/CardSkeleton';
 import { ErrorState } from '@/components/states/ErrorState';
-import { DocumentActivityTimeline } from '@/features/documents/components/DocumentActivityTimeline';
-import { DocumentCustomFields } from '@/features/documents/components/DocumentCustomFields';
+import { TrackingEngine } from '@/components/tracking/TrackingEngine';
+import { ActivityAuditLog } from '@/components/tracking/ActivityAuditLog';
 import { DocumentPrintView, companyToPrintInfo } from '@/features/documents/components/print/DocumentPrintView';
 import { useUnifiedDocument } from '@/features/documents/hooks/useUnifiedDocuments';
 import { useDocumentPdfActions } from '@/features/documents/hooks/useDocumentPdfActions';
@@ -33,26 +32,39 @@ import {
 import { DOCUMENT_STATUS_BADGE_VARIANTS } from '@/features/documents/constants';
 import { ROUTES } from '@/core/routes';
 import {
-  ArrowLeft,
-  Edit,
-  FileText,
-  IndianRupee,
-  Percent,
-  User,
-  Building2,
-  ExternalLink,
-  Download,
-  FileSearch,
-  Printer,
+  ArrowLeft, Edit, ChevronDown, ChevronRight, FileText, IndianRupee,
+  Percent, FileSearch, Download, Printer, User, Building2, ExternalLink,
 } from 'lucide-react';
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Section({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium break-words">{value ?? '-'}</p>
+    <div className="border rounded-lg bg-card overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold bg-muted/30 hover:bg-muted/50 transition-colors">
+        {title}
+        {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="p-4">{children}</div>}
     </div>
   );
+}
+
+function InfoGrid({ items }: { items: { label: string; value: React.ReactNode; icon?: React.ReactNode }[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {items.map(item => (
+        <div key={item.label} className="space-y-1">
+          <p className="text-xs text-muted-foreground flex items-center gap-1">{item.icon}{item.label}</p>
+          <p className="text-sm font-medium">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatDate(value?: Date | string | null) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function formatCurrency(amount?: number) {
@@ -67,9 +79,8 @@ export default function DocumentDetailPage() {
   const { document: unified, loading } = useUnifiedDocument(id);
   const docConfig = useDocumentConfiguration();
   const { data: company } = useCompany();
-  const [activeTab, setActiveTab] = useState('overview');
   const [showPrintPreview, setShowPrintPreview] = useState(false);
-  const { data: activities } = useDocumentActivities(activeTab === 'activity' ? id : '');
+  const { data: activities } = useDocumentActivities(id);
 
   const printModel = useMemo(
     () => (unified ? buildDocumentPrintModel(unified.source) : null),
@@ -93,10 +104,6 @@ export default function DocumentDetailPage() {
   );
 
   const { previewPdf, downloadPdf, PdfPreviewDialog } = useDocumentPdfActions();
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   if (loading) {
     return (
@@ -134,19 +141,22 @@ export default function DocumentDetailPage() {
   return (
     <MainLayout>
       {printModel && (
-        <DocumentPrintView
-          model={printModel}
-          company={companyPrint}
-          authorizedBy={unified.createdBy}
-          authorizedDesignation="Sales Executive"
-          mode="print"
-        />
+        <div className="hidden print:block">
+          <DocumentPrintView
+            model={printModel}
+            company={companyPrint}
+            authorizedBy={unified.createdBy}
+            authorizedDesignation="Sales Executive"
+            mode="print"
+          />
+        </div>
       )}
 
-      <div className="print-screen-ui space-y-6">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="sm" onClick={() => router.push(ROUTES.documents)}>
+            <Button variant="ghost" size="sm" onClick={() => (typeof window !== 'undefined' && window.history.length > 1 ? router.back() : router.push(ROUTES.documents))}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Documents
             </Button>
@@ -154,8 +164,8 @@ export default function DocumentDetailPage() {
             <div className="min-w-0">
               <h1 className="text-lg font-semibold truncate">{docNumber}</h1>
               <p className="text-sm text-muted-foreground truncate">
-                {docType} · {unified.customerName}
-                {unified.projectName ? ` · ${unified.projectName}` : ''}
+                {docType} &middot; {unified.customerName}
+                {unified.projectName ? ` &middot; ${unified.projectName}` : ''}
               </p>
             </div>
           </div>
@@ -166,23 +176,24 @@ export default function DocumentDetailPage() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => downloadPdf(document)}>
               <Download className="h-4 w-4 mr-2" />
-              Download PDF
+              Download
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowPrintPreview((v) => !v)}>
-              <FileText className="h-4 w-4 mr-2" />
-              {showPrintPreview ? 'Hide' : 'Show'} PDF Layout
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Button variant="outline" size="sm" onClick={() => setShowPrintPreview(true)}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowPrintPreview((v) => !v)}>
+              <FileText className="h-4 w-4 mr-2" />
+              {showPrintPreview ? 'Hide' : 'Show'} Layout
+            </Button>
             <Button variant="outline" size="sm" onClick={() => router.push(getEditRoute(unified))}>
               <Edit className="h-4 w-4 mr-2" />
-              Edit Document
+              Edit
             </Button>
           </div>
         </div>
 
+        {/* Badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={DOCUMENT_STATUS_BADGE_VARIANTS[unified.status as keyof typeof DOCUMENT_STATUS_BADGE_VARIANTS] ?? 'secondary'}>
             {unified.status}
@@ -191,6 +202,7 @@ export default function DocumentDetailPage() {
           {'version' in document && <Badge variant="secondary">v{document.version}</Badge>}
         </div>
 
+        {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card>
             <CardContent className="pt-4 pb-3">
@@ -223,82 +235,72 @@ export default function DocumentDetailPage() {
             <CardContent className="pt-4 pb-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <IndianRupee className="h-3.5 w-3.5 text-green-600" />
-                Final Total
+                Total
               </div>
               <p className="text-lg font-semibold text-green-600">{formatCurrency(total)}</p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="items">Items</TabsTrigger>
-            <TabsTrigger value="financials">Financials</TabsTrigger>
-            <TabsTrigger value="references">References</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+        {/* Collapsible Sections */}
+        <div className="space-y-3">
+          {/* Workflow */}
+          <Section title="Workflow / Status Pipeline" defaultOpen={true}>
+            <TrackingEngine entityType="document" entityId={id} />
+          </Section>
 
-          <TabsContent value="overview" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Basic Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Field label="Document Number" value={<span className="font-mono">{docNumber}</span>} />
-                  <Field label="Document Type" value={docType} />
-                  <Field label="Customer" value={unified.customerName} />
-                  <Field label="Project" value={unified.projectName} />
-                  <Field label="Created By" value={unified.createdBy} />
-                  <Field
-                    label="Created"
-                    value={unified.createdAt ? new Date(unified.createdAt).toLocaleDateString('en-IN') : '-'}
-                  />
-                  <Field
-                    label="Updated"
-                    value={unified.updatedAt ? new Date(unified.updatedAt).toLocaleDateString('en-IN') : '-'}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          {/* Overview */}
+          <Section title="Overview" defaultOpen={false}>
+            <InfoGrid
+              items={[
+                { label: 'Document Number', value: <span className="font-mono">{docNumber}</span> },
+                { label: 'Document Type', value: docType },
+                { label: 'Status', value: <Badge variant={DOCUMENT_STATUS_BADGE_VARIANTS[unified.status as keyof typeof DOCUMENT_STATUS_BADGE_VARIANTS] ?? 'secondary'}>{unified.status}</Badge> },
+                { label: 'Date', value: formatDate(unified.createdAt) },
+                { label: 'Customer', value: unified.customerName, icon: <User className="w-3 h-3" /> },
+                { label: 'Project', value: unified.projectName || '-', icon: <Building2 className="w-3 h-3" /> },
+              ]}
+            />
+          </Section>
 
-            {docConfig.customFields.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Custom Fields</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <DocumentCustomFields
-                    mode="view"
-                    fields={docConfig.customFields}
-                    values={customFields as Record<string, string | number | boolean | undefined>}
-                  />
-                </CardContent>
-              </Card>
-            )}
+          {/* Information */}
+          <Section title="Information" defaultOpen={false}>
+            <div className="space-y-6">
+              {/* Basic */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Basic</p>
+                <InfoGrid
+                  items={[
+                    { label: 'Document Number', value: <span className="font-mono">{docNumber}</span> },
+                    { label: 'Document Type', value: docType },
+                    { label: 'Status', value: <Badge variant={DOCUMENT_STATUS_BADGE_VARIANTS[unified.status as keyof typeof DOCUMENT_STATUS_BADGE_VARIANTS] ?? 'secondary'}>{unified.status}</Badge> },
+                    { label: 'Date', value: formatDate(unified.createdAt) },
+                    { label: 'Valid Until', value: 'validUntil' in document && document.validUntil ? formatDate(document.validUntil) : '-' },
+                    { label: 'Customer', value: unified.customerName, icon: <User className="w-3 h-3" /> },
+                    { label: 'Project', value: unified.projectName || '-', icon: <Building2 className="w-3 h-3" /> },
+                    { label: 'Created By', value: unified.createdBy || '-' },
+                    { label: 'Last Updated', value: formatDate(unified.updatedAt) },
+                  ]}
+                />
+              </div>
 
-            {'notes' in document && document.notes && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm">{document.notes}</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+              {/* Financials */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Financials</p>
+                <InfoGrid
+                  items={[
+                    { label: 'Subtotal', value: formatCurrency(subtotal), icon: <IndianRupee className="w-3 h-3" /> },
+                    { label: 'Tax', value: formatCurrency(tax), icon: <Percent className="w-3 h-3" /> },
+                    { label: 'Discount', value: formatCurrency(discount), icon: <IndianRupee className="w-3 h-3" /> },
+                    { label: 'Grand Total', value: <span className="font-semibold">{formatCurrency(total)}</span> },
+                    { label: 'Payment Terms', value: 'paymentTerms' in document ? document.paymentTerms || '-' : '-' },
+                  ]}
+                />
+              </div>
 
-          <TabsContent value="items" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Line Items / Materials</CardTitle>
-              </CardHeader>
-              <CardContent>
+              {/* Line Items */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Line Items</p>
                 {lineItems.length > 0 ? (
                   <div className="border rounded-lg overflow-x-auto">
                     <table className="w-full text-sm">
@@ -312,13 +314,13 @@ export default function DocumentDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {lineItems.map((item, index) => (
-                          <tr key={item.id ?? index} className="border-t">
-                            <td className="px-3 py-2">{item.description}</td>
-                            <td className="px-3 py-2 text-right">{item.quantity}</td>
-                            <td className="px-3 py-2 text-right">{item.unit}</td>
-                            <td className="px-3 py-2 text-right">{formatCurrency(item.rate)}</td>
-                            <td className="px-3 py-2 text-right font-medium">{formatCurrency(item.amount)}</td>
+                        {lineItems.map((lineItem, index) => (
+                          <tr key={lineItem.id ?? index} className="border-t">
+                            <td className="px-3 py-2">{lineItem.description}</td>
+                            <td className="px-3 py-2 text-right">{lineItem.quantity}</td>
+                            <td className="px-3 py-2 text-right">{lineItem.unit}</td>
+                            <td className="px-3 py-2 text-right">{formatCurrency(lineItem.rate)}</td>
+                            <td className="px-3 py-2 text-right font-medium">{formatCurrency(lineItem.amount)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -327,83 +329,74 @@ export default function DocumentDetailPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground">No line items recorded.</p>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
 
-          <TabsContent value="financials" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Financial Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Subtotal" value={formatCurrency(subtotal)} />
-                  <Field label="Tax" value={formatCurrency(tax)} />
-                  <Field label="Discount" value={formatCurrency(discount)} />
-                  <Field label="Grand Total" value={formatCurrency(total)} />
-                  {'paymentTerms' in document && <Field label="Payment Terms" value={document.paymentTerms} />}
-                  {'validUntil' in document && document.validUntil && (
-                    <Field label="Valid Until" value={new Date(document.validUntil).toLocaleDateString('en-IN')} />
-                  )}
+              {/* Notes */}
+              {'notes' in document && document.notes && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Notes</p>
+                  <p className="text-sm">{document.notes}</p>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              )}
 
-          <TabsContent value="references" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Cross-Module References</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground mb-3">Read-only references. No live coupling between modules.</p>
-                <div className="flex flex-wrap gap-2">
-                  {document.customerId && (
-                    <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.customersDetail(document.customerId))}>
-                      <User className="h-3.5 w-3.5 mr-1.5" />
-                      Customer
-                      <ExternalLink className="h-3 w-3 ml-1.5" />
-                    </Button>
-                  )}
-                  {document.projectId && (
-                    <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.projectsDetail(document.projectId!))}>
-                      <Building2 className="h-3.5 w-3.5 mr-1.5" />
-                      Project
-                      <ExternalLink className="h-3 w-3 ml-1.5" />
-                    </Button>
-                  )}
-                  {'leadId' in document && document.leadId && (
-                    <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.leadsDetail(document.leadId!))}>
-                      Lead
-                      <ExternalLink className="h-3 w-3 ml-1.5" />
-                    </Button>
-                  )}
-                  <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.items)}>
-                    Items
-                    <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => router.push(ROUTES.inventory)}>
-                    Inventory
-                    <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
+              {/* Custom Fields */}
+              {docConfig.customFields.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Custom Fields</p>
+                  <InfoGrid
+                    items={docConfig.customFields.map((f) => ({
+                      label: f.label,
+                      value: (customFields as Record<string, string | number | boolean | undefined>)?.[f.key] ?? '-',
+                    }))}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              )}
+            </div>
+          </Section>
 
-          <TabsContent value="activity" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Activity Timeline</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DocumentActivityTimeline activities={(activities as DocumentActivity[] | undefined) ?? []} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          {/* Related Records */}
+          <Section title="Related Records" defaultOpen={false}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {document.customerId && (
+                <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.customersDetail(document.customerId))}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-medium">Customer</span>
+                  </div>
+                  <p className="text-sm font-semibold">{unified.customerName}</p>
+                  <Button variant="link" size="sm" className="h-auto p-0 text-xs">View Customer</Button>
+                </div>
+              )}
+              {document.projectId && (
+                <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.projectsDetail(document.projectId!))}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-medium">Project</span>
+                  </div>
+                  <p className="text-sm font-semibold">{unified.projectName || document.projectId}</p>
+                  <Button variant="link" size="sm" className="h-auto p-0 text-xs">View Project</Button>
+                </div>
+              )}
+              {'leadId' in document && document.leadId && (
+                <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.leadsDetail(document.leadId!))}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <ExternalLink className="h-4 w-4 text-amber-600" />
+                    <span className="text-xs font-medium">Lead</span>
+                  </div>
+                  <p className="text-sm font-semibold">{document.leadId}</p>
+                  <Button variant="link" size="sm" className="h-auto p-0 text-xs">View Lead</Button>
+                </div>
+              )}
+            </div>
+          </Section>
 
+          {/* Activities */}
+          <Section title="Activities & Audit Log" defaultOpen={false}>
+            <ActivityAuditLog entityType="document" entityId={id} />
+          </Section>
+        </div>
+
+        {/* Print Preview */}
         {showPrintPreview && printModel && (
           <Card>
             <CardHeader className="pb-3">

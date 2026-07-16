@@ -1,13 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { CustomerForm } from '@/features/customers/components/CustomerForm';
+import { ConversionWizard } from '@/features/conversion/components/ConversionWizard';
+import {
+  buildCustomerFromLead,
+  buildFieldGroups,
+  buildLeadGroupCounts,
+  mapCustomFields,
+} from '@/features/conversion/fieldCatalog';
+import type {
+  ConversionResultSummary,
+  CustomFieldMapping,
+  FieldGroupId,
+} from '@/features/conversion/types';
 import { Lead } from '@/types/leads';
 import { Customer } from '@/features/customers/types';
-import { useConvertLeadToCustomer } from '@/features/customers/hooks/useCustomers';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useConvertLeadToCustomer, useCustomerConfiguration } from '@/features/customers/hooks/useCustomers';
+import { useLeadConfiguration } from '@/features/leads/hooks/useLeads';
+import { useAttachments, useComments, useTimeline } from '@/features/tracking/hooks/useTracking';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/core/routes';
 
 interface LeadToCustomerConversionDialogProps {
   open: boolean;
@@ -16,211 +29,159 @@ interface LeadToCustomerConversionDialogProps {
   onCustomerCreated?: (customer: Customer) => void;
 }
 
-type ConversionStep = 'confirm' | 'form' | 'complete';
-
 export function LeadToCustomerConversionDialog({
   open,
   onOpenChange,
   lead,
   onCustomerCreated,
 }: LeadToCustomerConversionDialogProps) {
-  const [step, setStep] = useState<ConversionStep>('confirm');
-  const [createdCustomer, setCreatedCustomer] = useState<Customer | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  const router = useRouter();
   const convertLeadMutation = useConvertLeadToCustomer();
+  const leadConfig = useLeadConfiguration();
+  const customerConfig = useCustomerConfiguration();
 
-  const mapSource = (s: string) => ({ ColdCall: 'Cold Call', SocialMedia: 'Social Media', TradeShow: 'Trade Show' }[s] || s);
+  const { data: commentsData } = useComments('lead', open ? lead.id : '');
+  const { data: attachmentsData } = useAttachments('lead', open ? lead.id : '');
+  const { data: timelineData } = useTimeline('lead', open ? lead.id : '');
 
-  const handleConfirm = () => {
-    setStep('form');
+  const [mappings, setMappings] = useState<CustomFieldMapping[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<ConversionResultSummary | null>(null);
+
+  const commentCount = Array.isArray(commentsData)
+    ? commentsData.length
+    : (commentsData as any)?.data?.length || (commentsData as any)?.length || 0;
+  const attachmentCount = Array.isArray(attachmentsData)
+    ? attachmentsData.length
+    : (attachmentsData as any)?.data?.length || (attachmentsData as any)?.length || 0;
+  const activityCount = Array.isArray(timelineData)
+    ? timelineData.length
+    : (timelineData as any)?.data?.length || (timelineData as any)?.length || 0;
+
+  const groups = useMemo(() => {
+    const counts = buildLeadGroupCounts(lead, commentCount, attachmentCount, activityCount);
+    return buildFieldGroups('lead-to-customer', counts);
+  }, [lead, commentCount, attachmentCount, activityCount]);
+
+  const sourceDefs = useMemo(
+    () =>
+      (leadConfig.customFields || []).map((f) => ({
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        options: f.options,
+      })),
+    [leadConfig.customFields],
+  );
+
+  const destDefs = useMemo(
+    () =>
+      (customerConfig.customFields || []).map((f) => ({
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        options: f.options,
+      })),
+    [customerConfig.customFields],
+  );
+
+  useEffect(() => {
+    if (!open) return;
     setError(null);
-  };
+    setResult(null);
+    setMappings(
+      mapCustomFields(
+        sourceDefs,
+        (lead.customFields || {}) as Record<string, string | number | boolean>,
+        destDefs,
+      ),
+    );
+  }, [open, lead.id, lead.customFields, sourceDefs, destDefs]);
 
-  const handleCancel = () => {
-    setStep('confirm');
-    setCreatedCustomer(null);
+  const handleClose = () => {
     setError(null);
+    setResult(null);
     onOpenChange(false);
   };
 
-  const handleCustomerSubmit = async (customerData: Partial<Customer>) => {
+  const handleConvert = async (
+    selectedGroups: FieldGroupId[],
+    customMappings: CustomFieldMapping[],
+    profileId?: string,
+  ) => {
     try {
       setError(null);
+      const payload = buildCustomerFromLead(lead, selectedGroups, customMappings);
+      payload.profileId = profileId;
 
-      const customerPayload = {
-        leadId: lead.id,
-        customerName: customerData.customerName || '',
-        companyName: customerData.companyName || '',
-        mobile: customerData.mobile || '',
-        alternateMobile: customerData.alternateMobile,
-        email: customerData.email,
-        gstNumber: customerData.gstNumber,
-        panNumber: customerData.panNumber,
-        source: customerData.source || 'Website',
-        address: customerData.address,
-        city: customerData.city,
-        state: customerData.state,
-        pincode: customerData.pincode,
-        industry: customerData.industry,
-        businessType: customerData.businessType,
-        website: customerData.website,
-        assignedEmployeeId: customerData.assignedEmployeeId,
-        notes: customerData.notes,
+      const customerResult = await convertLeadMutation.mutateAsync(payload as any);
+      const resultData = (customerResult as any)?.data ?? customerResult;
+      const customer = resultData?.customer ?? resultData;
+      const summary = resultData?.summary as ConversionResultSummary | undefined;
+
+      const nextSummary: ConversionResultSummary = summary || {
+        transferred: {
+          standardFields: selectedGroups.filter((g) =>
+            ['standard', 'contact', 'company', 'address'].includes(g),
+          ).length,
+          customFields: customMappings.filter((m) => m.action !== 'ignore').length,
+          documents: 0,
+          attachments: selectedGroups.includes('attachments') ? (lead.attachments?.length || 0) : 0,
+          activities: selectedGroups.includes('activities') || selectedGroups.includes('timeline') ? 1 : 0,
+          comments: selectedGroups.includes('comments') ? commentCount : 0,
+          notes: selectedGroups.includes('notes'),
+          tags: selectedGroups.includes('tags') ? (lead.tags?.length || 0) : 0,
+        },
+        destinationId: customer?.id,
+        destinationCode: customer?.customerId
+          ? `CUS-${String(customer.customerId).padStart(6, '0')}`
+          : null,
+        destinationName: customer?.customerName,
+        sourceId: lead.id,
       };
 
-      const customerResult = await convertLeadMutation.mutateAsync(customerPayload as any);
-      const resultData = (customerResult as any)?.data;
-      const customer = resultData?.customer ?? resultData ?? customerResult;
-
-      setCreatedCustomer(customer as Customer);
-      setStep('complete');
+      setResult(nextSummary);
       onCustomerCreated?.(customer as Customer);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to convert lead to customer. Please try again.');
+      const message =
+        (err as any)?.response?.data?.message ||
+        (err instanceof Error ? err.message : 'Failed to convert lead to customer.');
+      setError(typeof message === 'string' ? message : JSON.stringify(message));
     }
   };
 
-  const handleClose = () => {
-    setStep('confirm');
-    setCreatedCustomer(null);
-    setError(null);
-    onOpenChange(false);
-  };
+  const leadCode = lead.leadNumber
+    ? `LD-${String(lead.leadNumber).padStart(6, '0')}`
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl sm:text-2xl font-bold">
-            Convert Lead to Customer
-          </DialogTitle>
+          <DialogTitle className="text-xl font-bold">Convert Lead to Customer</DialogTitle>
         </DialogHeader>
 
-        {step === 'confirm' && (
-          <div className="py-6 space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Lead Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Customer Name:</span>
-                  <p className="font-medium">{lead.customerName}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Company:</span>
-                  <p className="font-medium">{lead.companyName}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Mobile:</span>
-                  <p className="font-medium">{lead.mobile}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Email:</span>
-                  <p className="font-medium">{lead.email}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">City:</span>
-                  <p className="font-medium">{lead.city}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">State:</span>
-                  <p className="font-medium">{lead.state}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-amber-900">
-                  <p className="font-semibold mb-1">Conversion Details</p>
-                  <ul className="list-disc list-inside space-y-1 text-amber-800">
-                    <li>Customer details will be pre-filled from this lead</li>
-                    <li>You can edit any field before saving</li>
-                    <li>Lead status will be updated to "Converted"</li>
-                    <li>Lead will be linked to the new customer</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button onClick={handleConfirm}>
-                Continue to Customer Form
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {step === 'form' && (
-          <div className="py-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2 mb-4">
-                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-
-            <CustomerForm
-              initialData={{
-                customerName: lead.customerName,
-                companyName: lead.companyName,
-                mobile: lead.mobile,
-                alternateMobile: lead.alternateMobile,
-                email: lead.email,
-                gstNumber: lead.gstNumber,
-                panNumber: lead.panNumber,
-                website: lead.website,
-                industry: lead.industry as any,
-                businessType: lead.businessType as any,
-                address: [lead.addressLine1, lead.addressLine2, lead.area].filter(Boolean).join(', '),
-                city: lead.city,
-                state: lead.state,
-                pincode: lead.pincode,
-                source: mapSource(lead.source) as any,
-                assignedEmployee: lead.assignedTo,
-                assignedEmployeeId: lead.assignedToId,
-                notes: lead.remarks,
-                leadId: lead.id,
-              }}
-              onSubmit={handleCustomerSubmit}
-              onCancel={handleCancel}
-              isLoading={convertLeadMutation.isPending}
-              error={error}
-              isEditMode={false}
-            />
-          </div>
-        )}
-
-        {step === 'complete' && createdCustomer && (
-          <div className="py-8 text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">Customer Created Successfully</h3>
-              <p className="text-muted-foreground">
-                {createdCustomer.customerName} - {createdCustomer.companyName}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Customer ID: {createdCustomer.customerId}
-              </p>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-md p-3 text-left">
-              <p className="text-sm text-green-700">
-                ✓ Lead status updated to "Converted"<br />
-                ✓ Lead linked to customer<br />
-                ✓ Customer ready for project creation
-              </p>
-            </div>
-            <Button onClick={handleClose} className="mt-4">
-              Done
-            </Button>
-          </div>
-        )}
+        <ConversionWizard
+          pairId="lead-to-customer"
+          title="Select what to transfer"
+          sourceLabel={lead.customerName || lead.companyName || 'Lead'}
+          sourceCode={leadCode}
+          groups={groups}
+          customFieldMappings={mappings}
+          isSubmitting={convertLeadMutation.isPending}
+          error={error}
+          result={result}
+          onCustomMappingsChange={setMappings}
+          onConvert={handleConvert}
+          onCancel={handleClose}
+          onDone={() => {
+            handleClose();
+            if (result?.destinationId) {
+              router.push(ROUTES.customersDetail(result.destinationId));
+            }
+          }}
+          destinationFieldOptions={destDefs.map((d) => ({ key: d.key, label: d.label }))}
+        />
       </DialogContent>
     </Dialog>
   );

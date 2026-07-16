@@ -11,7 +11,7 @@ if (!backendUrl) {
   throw new Error('Missing required environment variable: BACKEND_URL');
 }
 
-const imageHostname = process.env.NEXT_PUBLIC_IMAGE_HOSTNAME || 'localhost';
+const imageHostname = process.env.IMAGE_HOSTNAME || 'localhost';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
