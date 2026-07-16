@@ -24,6 +24,15 @@ export interface ForgotPasswordInput {
   email: string;
 }
 
+export interface OtpDeliveryResponse {
+  message: string;
+  email: string;
+  expiresAt: string;
+  expiresInMinutes: number;
+  resendAvailableInSeconds: number;
+  resendCount: number;
+}
+
 export interface ResetPasswordInput {
   email: string;
   otp: string;
@@ -53,7 +62,7 @@ export interface AuthResponse {
 
 export const authService = {
   register: (data: RegisterInput) =>
-    api.post<{ message: string; email: string }>('/auth/register', data),
+    api.post<OtpDeliveryResponse>('/auth/register', data),
 
   verifyOtp: (data: VerifyOtpInput) =>
     api.post<AuthResponse & { message: string }>('/auth/verify-otp', data),
@@ -65,13 +74,13 @@ export const authService = {
     api.post<{ message: string }>('/auth/logout', { sessionId }),
 
   forgotPassword: (data: ForgotPasswordInput) =>
-    api.post<{ message: string; email?: string }>('/auth/forgot-password', data),
+    api.post<OtpDeliveryResponse>('/auth/forgot-password', data),
 
   resetPassword: (data: ResetPasswordInput) =>
     api.post<{ message: string }>('/auth/reset-password', data),
 
-  resendOtp: (email: string) =>
-    api.post<{ message: string }>('/auth/resend-otp', { email }),
+  resendOtp: (email: string, purpose: 'REGISTRATION' | 'FORGOT_PASSWORD' = 'REGISTRATION') =>
+    api.post<OtpDeliveryResponse>('/auth/resend-otp', { email, purpose }),
 
   getProfile: () =>
     api.get<AuthUser>('/auth/me'),

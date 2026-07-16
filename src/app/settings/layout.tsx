@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { MainLayout } from '@/layouts/MainLayout';
+import { AuthGate } from '@/features/auth/AuthGate';
 
 interface SettingsLayoutProps {
   children: ReactNode;
@@ -9,8 +10,10 @@ interface SettingsLayoutProps {
 
 export default function SettingsLayoutWrapper({ children }: SettingsLayoutProps) {
   return (
-    <MainLayout currentPath="/settings" showTopbar={false}>
-      {children}
-    </MainLayout>
+    <AuthGate>
+      <MainLayout currentPath="/settings" showTopbar={false}>
+        {children}
+      </MainLayout>
+    </AuthGate>
   );
 }

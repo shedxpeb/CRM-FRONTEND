@@ -1,34 +1,41 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = [
-  '/dashboard', '/leads', '/customers', '/projects', '/inventory',
-  '/finance', '/design', '/documents', '/automation', '/settings',
-];
+/**
+ * Soft route hints only — real auth is JWT + HttpOnly refresh cookie validated by the API.
+ * The sessionId cookie is a UX hint for redirects; AuthGate enforces real session state.
+ */
+const protectedPrefixes = ['/dashboard', '/settings'];
+const publicAuthRoutes = ['/login', '/register', '/forgot-password', '/reset-password'];
 
-const publicRoutes = [
-  '/login', '/register', '/forgot-password', '/reset-password',
-];
+function isSafeRedirect(path: string | null): path is string {
+  return !!path && path.startsWith('/') && !path.startsWith('//') && !path.includes('\\');
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionId = request.cookies.get('sessionId')?.value;
+  const hasRefreshHint =
+    !!request.cookies.get('refreshToken')?.value ||
+    !!request.cookies.get('sessionId')?.value;
 
-  const isProtected = protectedRoutes.some(r => pathname.startsWith(r));
-  const isPublic = publicRoutes.some(r => pathname.startsWith(r));
+  const isProtected = protectedPrefixes.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+  const isPublicAuth = publicAuthRoutes.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 
   if (pathname === '/') {
-    return NextResponse.redirect(new URL(sessionId ? '/dashboard' : '/login', request.url));
+    return NextResponse.redirect(new URL(hasRefreshHint ? '/dashboard' : '/login', request.url));
   }
 
-  if (isProtected && !sessionId) {
+  if (isProtected && !hasRefreshHint) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isPublic && sessionId && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Do not bounce auth pages solely on sessionId — AuthContext clears stale markers via silentRefresh
+  if (isPublicAuth && hasRefreshHint && pathname === '/login') {
+    const redirect = request.nextUrl.searchParams.get('redirect');
+    const target = isSafeRedirect(redirect) ? redirect : '/dashboard';
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   return NextResponse.next();

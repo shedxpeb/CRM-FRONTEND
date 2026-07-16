@@ -9,12 +9,14 @@ import { ROUTES } from '@/core/routes';
 import { useAuth } from '@/features/auth/AuthContext';
 import { forgotPasswordSchema, ForgotPasswordInput } from '@/features/auth/validations';
 import { FormInput } from '@/components/form/FormInput';
+import { useOtpRecovery } from '@/features/auth/useOtpRecovery';
 
 export default function ForgotPasswordPage() {
   const { forgotPassword } = useAuth();
   const router = useRouter();
   const [apiError, setApiError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { persist } = useOtpRecovery();
 
   const form = useForm<ForgotPasswordInput>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -27,9 +29,10 @@ export default function ForgotPasswordPage() {
     const result = await forgotPassword(data);
     setSubmitting(false);
     if (!result.success) {
-      setApiError(result.error || 'Failed to send OTP');
+      setApiError(result.error || "We couldn't send the verification code. Please try again.");
       return;
     }
+    if (result.otpDelivery) persist(result.otpDelivery, 'FORGOT_PASSWORD');
     router.push(`${ROUTES.resetPassword}?email=${encodeURIComponent(data.email)}`);
   };
 

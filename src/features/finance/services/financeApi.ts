@@ -6,6 +6,7 @@
  * Remove mock fallbacks once backend is connected.
  */
 import { apiClient } from '@/core/api';
+import { guardModuleApi } from '@/core/api/capabilities';
 import {
   Income,
   Expense,
@@ -477,26 +478,26 @@ const MOCK_STATS: FinanceStats = {
   availableCashChange: 8.9,
 };
 
-/** Check if error is a connection failure (no backend) or 404 (endpoint not implemented) */
+/** Check if error is a connection failure — mocks are NEVER used in production */
 function isConnectionError(error: unknown): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (process.env.NEXT_PUBLIC_ALLOW_MOCK_FALLBACK !== 'true') return false;
   if (error && typeof error === 'object') {
     const err = error as any;
     if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED' || err.code === 'ERR_CONNECTION_REFUSED') return true;
     if (!err.response && err.message && err.message.toLowerCase().includes('network')) return true;
-    // Also treat 404 errors as connection errors to trigger mock fallback
-    if (err.response && err.response.status === 404) return true;
   }
   return false;
 }
 
 // ─── API Service ──────────────────────────────────────────────────────────────
 
-export const financeApi = {
+export const financeApi = guardModuleApi('finance', {
   // ─── Income ───────────────────────────────────────────────────────────────
 
   getAllIncome: async (params?: PaginationParams & FinanceFilters): Promise<PaginatedData<Income>> => {
     try {
-      const response = await apiClient.get<PaginatedData<Income>>('/api/finance/income', { params });
+      const response = await apiClient.get<PaginatedData<Income>>('/finance/income', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -513,7 +514,7 @@ export const financeApi = {
 
   getIncomeById: async (id: string): Promise<Income> => {
     try {
-      const response = await apiClient.get<Income>(`/api/finance/income/${id}`);
+      const response = await apiClient.get<Income>(`/finance/income/${id}`);
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -525,15 +526,15 @@ export const financeApi = {
     }
   },
 
-  createIncome: (data: CreateIncomeDto) => apiClient.post<Income>('/api/finance/income', data).then(r => r.data),
-  updateIncome: (id: string, data: any) => apiClient.patch<Income>(`/api/finance/income/${id}`, data).then(r => r.data),
-  deleteIncome: (id: string) => apiClient.delete(`/api/finance/income/${id}`),
+  createIncome: (data: CreateIncomeDto) => apiClient.post<Income>('/finance/income', data).then(r => r.data),
+  updateIncome: (id: string, data: any) => apiClient.patch<Income>(`/finance/income/${id}`, data).then(r => r.data),
+  deleteIncome: (id: string) => apiClient.delete(`/finance/income/${id}`),
 
   // ─── Expenses ─────────────────────────────────────────────────────────────
 
   getAllExpenses: async (params?: PaginationParams & FinanceFilters): Promise<PaginatedData<Expense>> => {
     try {
-      const response = await apiClient.get<PaginatedData<Expense>>('/api/finance/expenses', { params });
+      const response = await apiClient.get<PaginatedData<Expense>>('/finance/expenses', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -550,7 +551,7 @@ export const financeApi = {
 
   getExpenseById: async (id: string): Promise<Expense> => {
     try {
-      const response = await apiClient.get<Expense>(`/api/finance/expenses/${id}`);
+      const response = await apiClient.get<Expense>(`/finance/expenses/${id}`);
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -562,17 +563,17 @@ export const financeApi = {
     }
   },
 
-  createExpense: (data: CreateExpenseDto) => apiClient.post<Expense>('/api/finance/expenses', data).then(r => r.data),
-  updateExpense: (id: string, data: any) => apiClient.patch<Expense>(`/api/finance/expenses/${id}`, data).then(r => r.data),
-  deleteExpense: (id: string) => apiClient.delete(`/api/finance/expenses/${id}`),
-  approveExpense: (id: string) => apiClient.post<Expense>(`/api/finance/expenses/${id}/approve`).then(r => r.data),
-  rejectExpense: (id: string, reason: string) => apiClient.post<Expense>(`/api/finance/expenses/${id}/reject`, { reason }).then(r => r.data),
+  createExpense: (data: CreateExpenseDto) => apiClient.post<Expense>('/finance/expenses', data).then(r => r.data),
+  updateExpense: (id: string, data: any) => apiClient.patch<Expense>(`/finance/expenses/${id}`, data).then(r => r.data),
+  deleteExpense: (id: string) => apiClient.delete(`/finance/expenses/${id}`),
+  approveExpense: (id: string) => apiClient.post<Expense>(`/finance/expenses/${id}/approve`).then(r => r.data),
+  rejectExpense: (id: string, reason: string) => apiClient.post<Expense>(`/finance/expenses/${id}/reject`, { reason }).then(r => r.data),
 
   // ─── Invoices ─────────────────────────────────────────────────────────────
 
   getAllInvoices: async (params?: PaginationParams & FinanceFilters): Promise<PaginatedData<Invoice>> => {
     try {
-      const response = await apiClient.get<PaginatedData<Invoice>>('/api/finance/invoices', { params });
+      const response = await apiClient.get<PaginatedData<Invoice>>('/finance/invoices', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -589,7 +590,7 @@ export const financeApi = {
 
   getInvoiceById: async (id: string): Promise<Invoice> => {
     try {
-      const response = await apiClient.get<Invoice>(`/api/finance/invoices/${id}`);
+      const response = await apiClient.get<Invoice>(`/finance/invoices/${id}`);
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -601,17 +602,17 @@ export const financeApi = {
     }
   },
 
-  createInvoice: (data: CreateInvoiceDto) => apiClient.post<Invoice>('/api/finance/invoices', data).then(r => r.data),
-  updateInvoice: (id: string, data: any) => apiClient.patch<Invoice>(`/api/finance/invoices/${id}`, data).then(r => r.data),
-  deleteInvoice: (id: string) => apiClient.delete(`/api/finance/invoices/${id}`),
-  sendInvoice: (id: string) => apiClient.post<Invoice>(`/api/finance/invoices/${id}/send`).then(r => r.data),
-  markInvoicePaid: (id: string) => apiClient.post<Invoice>(`/api/finance/invoices/${id}/mark-paid`).then(r => r.data),
+  createInvoice: (data: CreateInvoiceDto) => apiClient.post<Invoice>('/finance/invoices', data).then(r => r.data),
+  updateInvoice: (id: string, data: any) => apiClient.patch<Invoice>(`/finance/invoices/${id}`, data).then(r => r.data),
+  deleteInvoice: (id: string) => apiClient.delete(`/finance/invoices/${id}`),
+  sendInvoice: (id: string) => apiClient.post<Invoice>(`/finance/invoices/${id}/send`).then(r => r.data),
+  markInvoicePaid: (id: string) => apiClient.post<Invoice>(`/finance/invoices/${id}/mark-paid`).then(r => r.data),
 
   // ─── Payments ─────────────────────────────────────────────────────────────
 
   getAllPayments: async (params?: PaginationParams & FinanceFilters): Promise<PaginatedData<Payment>> => {
     try {
-      const response = await apiClient.get<PaginatedData<Payment>>('/api/finance/payments', { params });
+      const response = await apiClient.get<PaginatedData<Payment>>('/finance/payments', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -628,7 +629,7 @@ export const financeApi = {
 
   getPaymentById: async (id: string): Promise<Payment> => {
     try {
-      const response = await apiClient.get<Payment>(`/api/finance/payments/${id}`);
+      const response = await apiClient.get<Payment>(`/finance/payments/${id}`);
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -640,15 +641,15 @@ export const financeApi = {
     }
   },
 
-  createPayment: (data: CreatePaymentDto) => apiClient.post<Payment>('/api/finance/payments', data).then(r => r.data),
-  updatePayment: (id: string, data: any) => apiClient.patch<Payment>(`/api/finance/payments/${id}`, data).then(r => r.data),
-  deletePayment: (id: string) => apiClient.delete(`/api/finance/payments/${id}`),
+  createPayment: (data: CreatePaymentDto) => apiClient.post<Payment>('/finance/payments', data).then(r => r.data),
+  updatePayment: (id: string, data: any) => apiClient.patch<Payment>(`/finance/payments/${id}`, data).then(r => r.data),
+  deletePayment: (id: string) => apiClient.delete(`/finance/payments/${id}`),
 
   // ─── Vendors ───────────────────────────────────────────────────────────────
 
   getAllVendors: async (): Promise<Vendor[]> => {
     try {
-      const response = await apiClient.get<Vendor[]>('/api/finance/vendors');
+      const response = await apiClient.get<Vendor[]>('/finance/vendors');
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) return MOCK_VENDORS;
@@ -658,7 +659,7 @@ export const financeApi = {
 
   getVendorById: async (id: string): Promise<Vendor> => {
     try {
-      const response = await apiClient.get<Vendor>(`/api/finance/vendors/${id}`);
+      const response = await apiClient.get<Vendor>(`/finance/vendors/${id}`);
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -670,15 +671,15 @@ export const financeApi = {
     }
   },
 
-  createVendor: (data: CreateVendorDto) => apiClient.post<Vendor>('/api/finance/vendors', data).then(r => r.data),
-  updateVendor: (id: string, data: any) => apiClient.patch<Vendor>(`/api/finance/vendors/${id}`, data).then(r => r.data),
-  deleteVendor: (id: string) => apiClient.delete(`/api/finance/vendors/${id}`),
+  createVendor: (data: CreateVendorDto) => apiClient.post<Vendor>('/finance/vendors', data).then(r => r.data),
+  updateVendor: (id: string, data: any) => apiClient.patch<Vendor>(`/finance/vendors/${id}`, data).then(r => r.data),
+  deleteVendor: (id: string) => apiClient.delete(`/finance/vendors/${id}`),
 
   // ─── Bank Accounts ─────────────────────────────────────────────────────────
 
   getAllBankAccounts: async (): Promise<BankAccount[]> => {
     try {
-      const response = await apiClient.get<BankAccount[]>('/api/finance/bank-accounts');
+      const response = await apiClient.get<BankAccount[]>('/finance/bank-accounts');
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) return MOCK_BANK_ACCOUNTS;
@@ -688,7 +689,7 @@ export const financeApi = {
 
   getBankAccountById: async (id: string): Promise<BankAccount> => {
     try {
-      const response = await apiClient.get<BankAccount>(`/api/finance/bank-accounts/${id}`);
+      const response = await apiClient.get<BankAccount>(`/finance/bank-accounts/${id}`);
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -700,15 +701,15 @@ export const financeApi = {
     }
   },
 
-  createBankAccount: (data: CreateBankAccountDto) => apiClient.post<BankAccount>('/api/finance/bank-accounts', data).then(r => r.data),
-  updateBankAccount: (id: string, data: any) => apiClient.patch<BankAccount>(`/api/finance/bank-accounts/${id}`, data).then(r => r.data),
-  deleteBankAccount: (id: string) => apiClient.delete(`/api/finance/bank-accounts/${id}`),
+  createBankAccount: (data: CreateBankAccountDto) => apiClient.post<BankAccount>('/finance/bank-accounts', data).then(r => r.data),
+  updateBankAccount: (id: string, data: any) => apiClient.patch<BankAccount>(`/finance/bank-accounts/${id}`, data).then(r => r.data),
+  deleteBankAccount: (id: string) => apiClient.delete(`/finance/bank-accounts/${id}`),
 
   // ─── Transactions ─────────────────────────────────────────────────────────
 
   getAllTransactions: async (params?: PaginationParams & FinanceFilters): Promise<PaginatedData<Transaction>> => {
     try {
-      const response = await apiClient.get<PaginatedData<Transaction>>('/api/finance/transactions', { params });
+      const response = await apiClient.get<PaginatedData<Transaction>>('/finance/transactions', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -727,7 +728,7 @@ export const financeApi = {
 
   getAllReceivables: async (params?: PaginationParams & FinanceFilters): Promise<PaginatedData<Receivable>> => {
     try {
-      const response = await apiClient.get<PaginatedData<Receivable>>('/api/finance/receivables', { params });
+      const response = await apiClient.get<PaginatedData<Receivable>>('/finance/receivables', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -746,7 +747,7 @@ export const financeApi = {
 
   getAllPayables: async (params?: PaginationParams & FinanceFilters): Promise<PaginatedData<Payable>> => {
     try {
-      const response = await apiClient.get<PaginatedData<Payable>>('/api/finance/payables', { params });
+      const response = await apiClient.get<PaginatedData<Payable>>('/finance/payables', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -765,7 +766,7 @@ export const financeApi = {
 
   getProjectFinance: async (projectId: string): Promise<ProjectFinance> => {
     try {
-      const response = await apiClient.get<ProjectFinance>(`/api/finance/projects/${projectId}`);
+      const response = await apiClient.get<ProjectFinance>(`/finance/projects/${projectId}`);
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) {
@@ -781,7 +782,7 @@ export const financeApi = {
 
   getStats: async (): Promise<FinanceStats> => {
     try {
-      const response = await apiClient.get<FinanceStats>('/api/finance/stats');
+      const response = await apiClient.get<FinanceStats>('/finance/stats');
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) return MOCK_STATS;
@@ -793,11 +794,11 @@ export const financeApi = {
 
   getActivities: async (params?: PaginationParams): Promise<FinanceActivity[]> => {
     try {
-      const response = await apiClient.get<FinanceActivity[]>('/api/finance/activities', { params });
+      const response = await apiClient.get<FinanceActivity[]>('/finance/activities', { params });
       return response.data;
     } catch (error) {
       if (isConnectionError(error)) return MOCK_ACTIVITIES;
       throw error;
     }
   },
-};
+});

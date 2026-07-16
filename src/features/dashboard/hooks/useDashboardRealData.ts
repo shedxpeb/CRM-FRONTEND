@@ -13,6 +13,7 @@ import { useInventoryStats } from '@/features/inventory/hooks/useInventory';
 import { useFinanceStats } from '@/features/finance/hooks/useFinance';
 import { useQuotationStats } from '@/features/documents/hooks/useQuotation';
 import { useQueryClient } from '@tanstack/react-query';
+import { BackendPendingError } from '@/core/api/capabilities';
 
 // Fallback data for optimistic UI when cache is empty
 const FALLBACK_DATA = {
@@ -25,6 +26,11 @@ const FALLBACK_DATA = {
 };
 
 export interface DashboardRealData {
+  availability: {
+    inventory: 'available' | 'backend_pending';
+    finance: 'available' | 'backend_pending';
+    quotations: 'available' | 'backend_pending';
+  };
   leads: {
     total: number;
     monthly: number;
@@ -63,6 +69,10 @@ export interface DashboardRealData {
     yearly: number;
     change: number;
   };
+}
+
+function availabilityFor(error: unknown): 'available' | 'backend_pending' {
+  return error instanceof BackendPendingError ? 'backend_pending' : 'available';
 }
 
 /**
@@ -111,6 +121,11 @@ export function useDashboardRealData(enabled: boolean = true) {
     // If we have cached data, use it immediately
     if (cachedLeads || cachedProjects || cachedCustomers || cachedInventory || cachedFinance || cachedQuotations) {
       return {
+        availability: {
+          inventory: availabilityFor(inventoryStats.error),
+          finance: availabilityFor(financeStats.error),
+          quotations: availabilityFor(quotationStats.error),
+        },
         leads: {
           total: (cachedLeads as any)?.total || 0,
           monthly: (cachedLeads as any)?.new || 0,
@@ -152,12 +167,24 @@ export function useDashboardRealData(enabled: boolean = true) {
       };
     }
 
-    return FALLBACK_DATA;
+    return {
+      availability: {
+        inventory: availabilityFor(inventoryStats.error),
+        finance: availabilityFor(financeStats.error),
+        quotations: availabilityFor(quotationStats.error),
+      },
+      ...FALLBACK_DATA,
+    };
   };
 
   // Aggregate data with flexible property access and fallback values
   // Use optimistic UI: show cached data immediately while loading fresh data
   const data: DashboardRealData = isLoading ? getCachedData() : {
+    availability: {
+      inventory: availabilityFor(inventoryStats.error),
+      finance: availabilityFor(financeStats.error),
+      quotations: availabilityFor(quotationStats.error),
+    },
     leads: {
       total: (leadsStats.data as any)?.total || 0,
       monthly: (leadsStats.data as any)?.new || 0,

@@ -17,6 +17,7 @@ import {
   ItemMasterStats,
 } from '../types';
 import { getCategoryById } from '../data/categoryMasterData';
+import { guardModuleApi } from '@/core/api/capabilities';
 
 // Mock data for development (replace with actual API calls)
 const mockItemMasters: ItemMaster[] = [
@@ -213,7 +214,7 @@ const mockItemMasterStats: ItemMasterStats = {
   recentlyUpdated: 0,
 };
 
-export const itemMasterApi = {
+export const itemMasterApi = guardModuleApi('item-master', {
   // Item Master CRUD
   async getAll(query?: ItemMasterQuery): Promise<ItemMaster[]> {
     // Simulate API delay
@@ -383,4 +384,4 @@ export const itemMasterApi = {
     await new Promise(resolve => setTimeout(resolve, 200));
     // TODO: Implement bundle deletion
   },
-};
+});

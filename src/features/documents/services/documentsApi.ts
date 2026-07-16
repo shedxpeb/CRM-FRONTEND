@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/core/api';
+import { guardModuleApi } from '@/core/api/capabilities';
 import type {
   Document,
   DocumentTemplate,
@@ -301,7 +302,7 @@ const MOCK_ACTIVITIES: DocumentActivity[] = [
 
 // ─── Documents API ──────────────────────────────────────────────────────────────
 
-export const documentsApi = {
+export const documentsApi = guardModuleApi('documents', {
   // Get all documents with pagination and filters
   getAllDocuments: async (params: PaginationParams & DocumentFilters): Promise<PaginatedData<Document>> => {
     try {
@@ -519,7 +520,7 @@ export const documentsApi = {
       throw new Error('Export failed');
     }
   },
-};
+});
 
 // ─── Templates API ─────────────────────────────────────────────────────────────
 
