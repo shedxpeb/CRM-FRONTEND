@@ -14,6 +14,7 @@ export interface FormInputProps {
   type?: string;
   disabled?: boolean;
   autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   maxLength?: number;
   registration: UseFormRegisterReturn;
 }
@@ -26,6 +27,7 @@ export function FormInput({
   type = 'text',
   disabled,
   autoComplete,
+  inputMode,
   maxLength,
   registration,
 }: FormInputProps) {
@@ -40,6 +42,7 @@ export function FormInput({
           placeholder={placeholder}
           disabled={disabled}
           autoComplete={autoComplete}
+          inputMode={inputMode}
           maxLength={maxLength}
           aria-invalid={Boolean(error)}
           className={isPassword ? 'pr-10' : undefined}
