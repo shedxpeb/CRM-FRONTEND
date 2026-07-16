@@ -7,7 +7,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { DocumentViewDrawer } from '@/features/documents/components/DocumentViewDrawer';
 import { EstimateBuilder } from '@/features/documents/components/EstimateBuilder';
 import { DocumentRowActions } from '@/features/documents/components/DocumentRowActions';
 import { useEstimates } from '@/features/documents/hooks';
@@ -44,8 +43,6 @@ export function EstimatesPage() {
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [createdByFilter, setCreatedByFilter] = useState<string>('all');
 
-  const [selectedEstimateId, setSelectedEstimateId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [isBuilderDialogOpen, setIsBuilderDialogOpen] = useState(false);
   const [editingEstimate, setEditingEstimate] = useState<Estimate | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
@@ -88,11 +85,6 @@ export function EstimatesPage() {
       return matchesStatus && matchesCustomer && matchesProject && matchesCreator && matchesSearch;
     });
   }, [estimates, debouncedSearch, statusFilter, customerFilter, projectFilter, createdByFilter]);
-
-  const selectedEstimate = useMemo(
-    () => (selectedEstimateId ? estimates.find((e) => e.id === selectedEstimateId) ?? null : null),
-    [estimates, selectedEstimateId]
-  );
 
   const filteredStats = useMemo(() => {
     let draft = 0;
@@ -156,9 +148,8 @@ export function EstimatesPage() {
   );
 
   const handleRowClick = useCallback((est: Estimate) => {
-    setSelectedEstimateId(est.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(getDetailRoute(normalizeEstimate(est)));
+  }, [router]);
 
   const handleViewDetails = useCallback((est: Estimate) => {
     router.push(getDetailRoute(normalizeEstimate(est)));
@@ -286,14 +277,6 @@ export function EstimatesPage() {
         </DialogContent>
       </Dialog>
 
-      <DocumentViewDrawer
-        document={selectedEstimate}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onPreviewPdf={previewPdf}
-        onDownloadPdf={downloadPdf}
-        onEdit={(doc) => { setIsViewDrawerOpen(false); handleEditEstimate(doc as Estimate); }}
-      />
       {PdfPreviewDialog}
     </MainLayout>
   );

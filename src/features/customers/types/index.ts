@@ -219,9 +219,12 @@ export interface ConvertLeadToCustomerDto {
   mobile: string;
   alternateMobile?: string;
   email?: string;
+  gstNumber?: string;
+  panNumber?: string;
   address?: string;
   city?: string;
   state?: string;
+  country?: string;
   pincode?: string;
   industry?: Industry;
   businessType?: BusinessType;
@@ -229,4 +232,25 @@ export interface ConvertLeadToCustomerDto {
   source: CustomerSource;
   assignedEmployeeId?: string;
   notes?: string;
+  status?: string;
+  customFields?: Record<string, string | number | boolean>;
+  attachments?: string[];
+  tags?: string[];
+  conversionContext?: Record<string, unknown>;
+  transferOptions?: {
+    standard?: boolean;
+    contact?: boolean;
+    company?: boolean;
+    address?: boolean;
+    notes?: boolean;
+    comments?: boolean;
+    activities?: boolean;
+    timeline?: boolean;
+    attachments?: boolean;
+    documents?: boolean;
+    followups?: boolean;
+    customFields?: boolean;
+    tags?: boolean;
+  };
+  profileId?: string;
 }

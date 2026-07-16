@@ -2,7 +2,7 @@
  * Leads API Service
  * All API calls for leads module
  */
-import { api } from '@/core/api';
+import { api, apiClient } from '@/core/api';
 import { Lead } from '@/types/leads';
 
 export interface LeadsFilters {
@@ -27,6 +27,9 @@ export interface PaginationParams {
 }
 
 export interface BackendResponse<T> {
+  success: boolean;
+  requestId: string;
+  timestamp: string;
   message: string;
   data: T;
 }
@@ -66,14 +69,7 @@ export const leadsApi = {
     api.patch<BackendResponse<Lead>>(`/lead/${id}`, data),
 
   delete: (id: string) => {
-    return api.delete<BackendResponse<void>>(`/lead/${id}`)
-      .then(response => {
-        return response;
-      })
-      .catch(error => {
-        console.error('[leadsApi.delete] Delete failed:', error);
-        throw error;
-      });
+    return api.delete<BackendResponse<void>>(`/lead/${id}`);
   },
 
   getKanban: async (params?: Partial<LeadsFilters>) => {
@@ -95,4 +91,29 @@ export const leadsApi = {
 
   updateWorkflow: (id: string, stage: string, notes?: string) =>
     api.post<BackendResponse<Lead>>(`/lead/${id}/workflow`, { stage, notes }),
+
+  importLeads: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post<BackendResponse<ImportResult>>('/lead/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    }).then(res => res.data);
+  },
 };
+
+export interface ImportRowError {
+  rowNumber: number;
+  status: 'imported' | 'skipped' | 'duplicate' | 'invalid';
+  errors: string[];
+  data?: Record<string, any>;
+}
+
+export interface ImportResult {
+  total: number;
+  imported: number;
+  skipped: number;
+  duplicates: number;
+  invalid: number;
+  rows: ImportRowError[];
+}

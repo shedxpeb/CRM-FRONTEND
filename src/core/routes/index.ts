@@ -29,7 +29,20 @@ export const ROUTES = {
   inventoryDetail: (id: string) => `/dashboard/inventory/${id}`,
   
   finance: '/dashboard/finance',
+  financeInvoices: '/dashboard/finance/invoices',
   financeInvoice: (id: string) => `/dashboard/finance/invoices/${id}`,
+  financePayments: '/dashboard/finance/payments',
+  financePayment: (id: string) => `/dashboard/finance/payments/${id}`,
+  financeExpenses: '/dashboard/finance/expenses',
+  financeExpense: (id: string) => `/dashboard/finance/expenses/${id}`,
+  financeReceivables: '/dashboard/finance/receivables',
+  financeReceivable: (id: string) => `/dashboard/finance/receivables/${id}`,
+  financePayables: '/dashboard/finance/payables',
+  financePayable: (id: string) => `/dashboard/finance/payables/${id}`,
+  financeVendors: '/dashboard/finance/vendors',
+  financeVendor: (id: string) => `/dashboard/finance/vendors/${id}`,
+  financeBankAccounts: '/dashboard/finance/bank-accounts',
+  financeBankAccount: (id: string) => `/dashboard/finance/bank-accounts/${id}`,
 
   documents: '/dashboard/documents',
   documentsDetail: (id: string) => `/dashboard/documents/${id}`,
@@ -38,6 +51,9 @@ export const ROUTES = {
   documentsQuotations: '/dashboard/documents/quotations',
   documentsTemplates: '/dashboard/documents/templates',
   documentsApprovals: '/dashboard/documents/approvals',
+
+  tasks: '/dashboard/task-management',
+  tasksDetail: (id: string) => `/dashboard/task-management/${id}`,
 
   // Admin / Settings - Master Control Center
   settings: '/settings',

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { MainLayout } from '@/layouts/MainLayout';
 import { DataTable } from '@/components/data-table/DataTable';
@@ -15,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LeadViewDrawer } from '@/features/leads/components/LeadViewDrawer';
+import { ROUTES } from '@/core/routes';
 
 // Lazy load heavy components to reduce initial bundle size
 const LeadForm = dynamic(() => import('@/features/leads/components/LeadForm').then(mod => ({ default: mod.LeadForm })), {
@@ -30,6 +31,10 @@ const LeadToCustomerConversionDialog = dynamic(() => import('@/features/leads/co
   loading: () => <div className="p-8 text-center">Loading...</div>,
   ssr: false
 });
+const LeadToProjectConversionDialog = dynamic(() => import('@/features/leads/components/LeadToProjectConversionDialog').then(mod => ({ default: mod.LeadToProjectConversionDialog })), {
+  loading: () => <div className="p-8 text-center">Loading...</div>,
+  ssr: false
+});
 const KanbanBoard = dynamic(() => import('@/features/leads/components/KanbanBoard').then(mod => ({ default: mod.KanbanBoard })), {
   loading: () => <div className="p-8 text-center">Loading kanban...</div>,
   ssr: false
@@ -39,10 +44,9 @@ const LeadCalendarView = dynamic(() => import('@/features/leads/components/LeadC
   ssr: false
 });
 import { Lead, LeadStatus, LeadPriority } from '@/types/leads';
-import { getLeadActivities } from '@/features/leads/utils/leadActivities';
 import { useLeadConfiguration, useLeads, useKanbanLeads, useCalendarLeads, useDeleteLead, useCreateLead, useUpdateLead, useBulkStatusUpdate, useBulkDelete } from '@/features/leads/hooks/useLeads';
 import { getLeadCustomFieldValue } from '@/features/leads/components/LeadCustomFields';
-import { leadsApi } from '@/features/leads/services/leadsApi';
+import { leadsApi, ImportResult } from '@/features/leads/services/leadsApi';
 import { toast } from '@/components/ui/toast';
 import {
   Plus,
@@ -235,6 +239,7 @@ const baseColumns = [
 ];
 
 export default function LeadsPage() {
+  const router = useRouter();
   const leadConfig = useLeadConfiguration();
   const deleteLeadMutation = useDeleteLead();
   const createLeadMutation = useCreateLead();
@@ -255,8 +260,8 @@ export default function LeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedLeadData, setSelectedLeadData] = useState<Lead | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [isConvertToCustomerDialogOpen, setIsConvertToCustomerDialogOpen] = useState(false);
+  const [isConvertToProjectDialogOpen, setIsConvertToProjectDialogOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'calendar'>('table');
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
@@ -267,6 +272,9 @@ export default function LeadsPage() {
   const [customColumns, setCustomColumns] = useState<Array<{key: string, label: string}>>([]);
   const [isCustomColumnDialogOpen, setIsCustomColumnDialogOpen] = useState(false);
   const [quickDateFilter, setQuickDateFilter] = useState<string>('all');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [isImportResultOpen, setIsImportResultOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState<string>('createdAt');
@@ -317,7 +325,6 @@ export default function LeadsPage() {
     } : undefined
   );
 
-  // Data transformation is now handled in the API service layer
   const leads = leadsResponse?.data?.rows || [];
   const pagination = leadsResponse?.data?.pagination;
   const summary = leadsResponse?.data?.summary;
@@ -391,14 +398,6 @@ export default function LeadsPage() {
     };
   }, [leads, leadConfig]);
 
-  // Phase 1: View drawer and activities disabled - backend handles data
-  const viewedLead = selectedLeadData;
-
-  const viewedLeadActivities = useMemo(() => {
-    if (!viewedLead) return [];
-    return getLeadActivities(viewedLead.id, viewedLead);
-  }, [viewedLead]);
-
   const customColumnDefs = useMemo(() => customColumns.map(col => ({
     key: col.key as any,
     label: col.label,
@@ -429,21 +428,9 @@ export default function LeadsPage() {
     [settingsCustomColumnDefs, customColumnDefs]
   );
 
-  const handleRowClick = useCallback(async (lead: Lead) => {
-    setSelectedLeadId(lead.id);
-    
-    // Fetch full lead data from backend to ensure allfields are populated
-    try {
-      const response = await leadsApi.getById(lead.id);
-      setSelectedLeadData(response.data);
-    } catch (error) {
-      console.error('Failed to fetch lead details:', error);
-      // Fallback to table data if fetch fails
-      setSelectedLeadData(lead);
-    }
-    
-    setIsViewDrawerOpen(true);
-  }, []);
+  const handleRowClick = useCallback((lead: Lead) => {
+    router.push(ROUTES.leadsDetail(lead.id));
+  }, [router]);
 
   const handleKpiCardClick = useCallback((filter: string) => {
     if (filter === 'all') {
@@ -668,103 +655,30 @@ export default function LeadsPage() {
   const handleImport = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = (e) => {
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const text = event.target?.result as string;
-          const lines = text.split('\n').filter((line) => line.trim());
-          if (lines.length < 2) {
-            alert('Import failed: CSV file is empty or has no data rows.');
-            return;
-          }
-          const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
-          const newLeads: Lead[] = [];
-          let skipped = 0;
+      if (!file) return;
 
-          for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
-            const lead: Partial<Lead> = {};
-            headers.forEach((header, index) => {
-              const key = header.trim();
-              const value = values[index]?.trim();
-              if (!value) return;
+      setIsImporting(true);
+      try {
+        const result = await leadsApi.importLeads(file);
+        const data = result.data;
+        setImportResult(data);
+        setIsImportResultOpen(true);
 
-              if (key === 'Lead ID') lead.leadNumber = parseInt(value);
-              else if (key === 'Customer Name') lead.customerName = value;
-              else if (key === 'Company') lead.companyName = value;
-              else if (key === 'Mobile') lead.mobile = value;
-              else if (key === 'Alternate Mobile') lead.alternateMobile = value;
-              else if (key === 'Email') lead.email = value;
-              else if (key === 'GST Number') lead.gstNumber = value;
-              else if (key === 'Address') lead.addressLine1 = value;
-              else if (key === 'City') lead.city = value;
-              else if (key === 'State') lead.state = value;
-              else if (key === 'Pincode') lead.pincode = value;
-              else if (key === 'Project Title') lead.projectTitle = value;
-              else if (key === 'Project Type') lead.projectType = value as any;
-              else if (key === 'Structure Type') lead.structureType = value as any;
-              else if (key === 'Status') lead.status = value as LeadStatus;
-              else if (key === 'Priority') lead.priority = value as LeadPriority;
-              else if (key === 'Score') lead.score = parseInt(value);
-              else if (key === 'Assigned To') lead.assignedTo = value;
-              else if (key === 'Source') lead.source = value as any;
-              else if (key === 'Width') lead.width = parseFloat(value);
-              else if (key === 'Length') lead.length = parseFloat(value);
-              else if (key === 'Height') lead.height = parseFloat(value);
-              // Phase 1: These fields not in current Lead type - skip
-              // else if (key === 'Bay Spacing') lead.baySpacing = parseFloat(value);
-              // else if (key === 'Roof Type') lead.roofType = value as any;
-              else if (key === 'Wall Type') lead.wallType = value as any;
-              else if (key === 'Material Preference') lead.materialPreference = value as any;
-              // else if (key === 'Site Location') lead.siteLocation = value;
-              // else if (key === 'Site Address') lead.siteAddress = value;
-              // else if (key === 'Map Coordinates') lead.mapCoordinates = value;
-              // else if (key === 'Soil Notes') lead.soilNotes = value;
-              // else if (key === 'Customer Notes') lead.customerNotes = value;
-              // else if (key === 'Special Requirement') lead.specialRequirement = value;
-              else if (key === 'Remarks') lead.remarks = value;
-              else (lead as any)[key] = value;
-            });
-
-            if (!lead.customerName || !lead.mobile || !lead.email) {
-              skipped++;
-              continue;
-            }
-
-            const uniqueId = `import-${Date.now()}-${newLeads.length}`;
-            newLeads.push({
-              ...lead,
-              id: uniqueId,
-              leadNumber: lead.leadNumber || Date.now() + newLeads.length,
-              createdDate: new Date(),
-              status: lead.status || 'New',
-              priority: lead.priority || 'Medium',
-              source: lead.source || 'Other',
-              projectType: lead.projectType || 'Factory',
-              structureType: lead.structureType || 'PEB',
-              city: lead.city || '',
-              state: lead.state || '',
-              companyName: lead.companyName || lead.customerName,
-              email: lead.email || '',
-            } as Lead);
-          }
-
-          if (newLeads.length === 0) {
-            alert(`Import failed: No valid rows. ${skipped} row(s) skipped (missing customer name, mobile, or email).`);
-            return;
-          }
-
-          // Phase 1: Import disabled - backend handles data
-          alert('Import not implemented in Phase 1 - backend handles data');
-        };
-        reader.readAsText(file);
+        if (data.imported > 0) {
+          refetchLeads();
+        }
+      } catch (error: any) {
+        const message = error?.response?.data?.message || error?.message || 'Import failed';
+        toast.error(typeof message === 'string' ? message : 'Import failed');
+      } finally {
+        setIsImporting(false);
       }
     };
     input.click();
-  }, []);
+  }, [refetchLeads]);
 
   const handleAddCustomColumn = useCallback((key: string, label: string) => {
     setCustomColumns(prevColumns => [...prevColumns, { key, label }]);
@@ -912,7 +826,7 @@ export default function LeadsPage() {
 
   const handleConvertLead = useCallback((lead: Lead) => {
     setSelectedLeadData(lead);
-    setIsConvertToCustomerDialogOpen(true);
+    setIsConvertToProjectDialogOpen(true);
   }, []);
 
   const handleConvertToCustomer = useCallback((lead: Lead) => {
@@ -925,25 +839,16 @@ export default function LeadsPage() {
     toast.success(`Customer "${customer?.customerName}" created successfully`);
   }, [refetchLeads]);
 
-  const handleEditFromDrawer = useCallback((lead: Lead) => {
-    setSelectedLeadId(lead.id);
-    setIsViewDrawerOpen(false);
-    setIsEditDialogOpen(true);
-  }, []);
-
   // Phase 1: Score/Status/Bulk handlers disabled - using backend data only
   const handleAddScore = useCallback(async (lead: Lead, score: number) => {
     try {
-      console.log(`[handleAddScore] Updating lead ${lead.id} score to ${score}`);
-      
       // Auto-update priority based on score
       let priority: LeadPriority = 'Low';
       if (score >= 90) priority = 'Urgent';
       else if (score >= 70) priority = 'High';
       else if (score >= 50) priority = 'Medium';
       
-      const response = await leadsApi.update(lead.id, { score, priority });
-      console.log(`[handleAddScore] API response:`, response);
+      await leadsApi.update(lead.id, { score, priority });
       toast.success(`Score updated to ${score}, Priority updated to ${priority}`);
       refetchLeads();
     } catch (error: any) {
@@ -1097,9 +1002,9 @@ export default function LeadsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="sm" onClick={handleImport} className="h-9 gap-1.5 text-xs">
-              <Upload className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Import</span>
+            <Button variant="outline" size="sm" onClick={handleImport} disabled={isImporting} className="h-9 gap-1.5 text-xs">
+              <Upload className={`h-3.5 w-3.5 ${isImporting ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isImporting ? 'Importing...' : 'Import'}</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setIsCustomColumnDialogOpen(true)} className="h-9 gap-1.5 text-xs">
               <FileText className="h-3.5 w-3.5" />
@@ -1224,7 +1129,16 @@ export default function LeadsPage() {
                 <KanbanBoard
                   leads={kanbanLeads}
                   pipelineStages={leadConfig.statuses as LeadStatus[]}
-                  onLeadUpdate={(lead) => {/* Kanban lead update not implemented in Phase 1 */}}
+                  onLeadUpdate={async (lead) => {
+                    try {
+                      const { id, status } = lead;
+                      await updateLeadMutation.mutateAsync({ id, data: { status } });
+                      refetchLeads();
+                    } catch (error: any) {
+                      const msg = error?.response?.data?.message || error?.message || 'Failed to update lead status';
+                      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+                    }
+                  }}
                 />
               )}
               {!isLoadingKanban && kanbanLeads.length === 0 && (
@@ -1346,18 +1260,6 @@ export default function LeadsPage() {
         </Dialog>
       )}
 
-      {/* View Lead Drawer - Phase 1: Enabled for viewing only */}
-      <LeadViewDrawer
-        lead={viewedLead}
-        open={isViewDrawerOpen}
-        onOpenChange={(open) => {
-          setIsViewDrawerOpen(open);
-        }}
-        onEdit={handleEditFromDrawer}
-        onConvertToCustomer={handleConvertToCustomer}
-        activities={viewedLeadActivities}
-      />
-
       {/* Custom Columns Dialog */}
       <Dialog open={isCustomColumnDialogOpen} onOpenChange={setIsCustomColumnDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -1420,7 +1322,6 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Lead to Customer Conversion Dialog - Phase 1: Enabled for viewing only */}
       {selectedLeadData ? (
         <LeadToCustomerConversionDialog
           open={isConvertToCustomerDialogOpen}
@@ -1429,6 +1330,78 @@ export default function LeadsPage() {
           onCustomerCreated={handleCustomerCreated}
         />
       ) : null}
+
+      {selectedLeadData ? (
+        <LeadToProjectConversionDialog
+          open={isConvertToProjectDialogOpen}
+          onOpenChange={setIsConvertToProjectDialogOpen}
+          lead={selectedLeadData}
+        />
+      ) : null}
+
+      {/* Import Result Dialog */}
+      <Dialog open={isImportResultOpen} onOpenChange={setIsImportResultOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import Results</DialogTitle>
+          </DialogHeader>
+          {importResult && (
+            <div className="space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-5 gap-3">
+                {[
+                  { label: 'Total', value: importResult.total, color: 'text-muted-foreground' },
+                  { label: 'Imported', value: importResult.imported, color: 'text-green-600' },
+                  { label: 'Skipped', value: importResult.skipped, color: 'text-yellow-600' },
+                  { label: 'Duplicates', value: importResult.duplicates, color: 'text-orange-600' },
+                  { label: 'Invalid', value: importResult.invalid, color: 'text-red-600' },
+                ].map(item => (
+                  <div key={item.label} className="text-center p-3 rounded-lg border">
+                    <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {importResult.rows.filter(r => r.status !== 'imported').length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="bg-muted px-4 py-2 font-medium text-sm">
+                    Failed Rows ({importResult.rows.filter(r => r.status !== 'imported').length})
+                  </div>
+                  <div className="max-h-60 overflow-y-auto divide-y">
+                    {importResult.rows
+                      .filter(r => r.status !== 'imported')
+                      .map((row, idx) => (
+                        <div key={idx} className="px-4 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-muted-foreground">Row {row.rowNumber}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              row.status === 'duplicate' ? 'bg-orange-100 text-orange-700' :
+                              row.status === 'invalid' ? 'bg-red-100 text-red-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {row.status}
+                            </span>
+                          </div>
+                          <ul className="mt-1 space-y-0.5">
+                            {row.errors.map((err, ei) => (
+                              <li key={ei} className="text-xs text-red-600">{err}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button variant="outline" onClick={() => setIsImportResultOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

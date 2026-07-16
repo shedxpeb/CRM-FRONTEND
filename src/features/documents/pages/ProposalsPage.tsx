@@ -7,7 +7,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { DocumentViewDrawer } from '@/features/documents/components/DocumentViewDrawer';
 import { ProposalBuilder } from '@/features/documents/components/ProposalBuilder';
 import { DocumentRowActions } from '@/features/documents/components/DocumentRowActions';
 import { useProposals } from '@/features/documents/hooks';
@@ -42,8 +41,6 @@ export function ProposalsPage() {
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [createdByFilter, setCreatedByFilter] = useState<string>('all');
 
-  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [isBuilderDialogOpen, setIsBuilderDialogOpen] = useState(false);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [selectedEstimate, setSelectedEstimate] = useState<Estimate | null>(null);
@@ -90,11 +87,6 @@ export function ProposalsPage() {
       return matchesStatus && matchesCustomer && matchesProject && matchesCreator && matchesSearch;
     });
   }, [proposals, debouncedSearch, statusFilter, customerFilter, projectFilter, createdByFilter]);
-
-  const selectedProposal = useMemo(
-    () => (selectedProposalId ? proposals.find((p) => p.id === selectedProposalId) ?? null : null),
-    [proposals, selectedProposalId]
-  );
 
   const filteredStats = useMemo(() => {
     let draft = 0;
@@ -158,9 +150,8 @@ export function ProposalsPage() {
   );
 
   const handleRowClick = useCallback((prop: Proposal) => {
-    setSelectedProposalId(prop.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(getDetailRoute(normalizeProposal(prop)));
+  }, [router]);
 
   const handleViewDetails = useCallback((prop: Proposal) => {
     router.push(getDetailRoute(normalizeProposal(prop)));
@@ -287,14 +278,6 @@ export function ProposalsPage() {
         </DialogContent>
       </Dialog>
 
-      <DocumentViewDrawer
-        document={selectedProposal}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onPreviewPdf={previewPdf}
-        onDownloadPdf={downloadPdf}
-        onEdit={(doc) => { setIsViewDrawerOpen(false); handleEditProposal(doc as Proposal); }}
-      />
       {PdfPreviewDialog}
     </MainLayout>
   );

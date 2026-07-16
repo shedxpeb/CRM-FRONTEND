@@ -7,7 +7,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { ItemViewDrawer } from '@/features/item-master/components/ItemViewDrawer';
 import { ItemRowActions } from '@/features/item-master/components/ItemRowActions';
 import { ItemForm } from '@/features/item-master/components/ItemForm';
 import { getItemCustomFieldValue } from '@/features/item-master/components/ItemCustomFields';
@@ -60,7 +59,6 @@ export default function ItemPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
 
   const filterOptions = useMemo(() => {
@@ -244,21 +242,14 @@ export default function ItemPage() {
   const columns = useMemo(() => [...baseColumns, ...settingsCustomColumnDefs], [baseColumns, settingsCustomColumnDefs]);
 
   const handleRowClick = useCallback((item: ItemMaster) => {
-    setSelectedItemId(item.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(ROUTES.itemsDetail(item.id));
+  }, [router]);
 
   const handleViewDetails = useCallback((item: ItemMaster) => {
     router.push(ROUTES.itemsDetail(item.id));
   }, [router]);
 
   const handleEditFromRow = useCallback((item: ItemMaster) => {
-    setSelectedItemId(item.id);
-    setIsEditDialogOpen(true);
-  }, []);
-
-  const handleEditFromDrawer = useCallback((item: ItemMaster) => {
-    setIsViewDrawerOpen(false);
     setSelectedItemId(item.id);
     setIsEditDialogOpen(true);
   }, []);
@@ -353,13 +344,6 @@ export default function ItemPage() {
           />
         </div>
       </StandardPageLayout>
-
-      <ItemViewDrawer
-        item={selectedItem}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onEdit={handleEditFromDrawer}
-      />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

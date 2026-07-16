@@ -173,10 +173,17 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
       return true;
     } catch (error: any) {
       const fieldErrors: Record<string, string> = {};
-      if (error.errors) {
-        error.errors.forEach((err: any) => {
-          fieldErrors[err.path[0]] = err.message;
+      const issues = error?.issues ?? error?.errors ?? [];
+      if (Array.isArray(issues)) {
+        issues.forEach((err: any) => {
+          const key = err?.path?.[0];
+          if (key && !fieldErrors[key]) {
+            fieldErrors[String(key)] = err.message || 'Invalid value';
+          }
         });
+      }
+      if (!Object.keys(fieldErrors).length) {
+        fieldErrors._form = error?.message || 'Please fix the highlighted fields and try again.';
       }
       setErrors(fieldErrors);
       return false;
@@ -186,6 +193,13 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
+      // Scroll to first field error so users see why create is blocked
+      requestAnimationFrame(() => {
+        const firstError = document.querySelector('.border-red-500, .text-red-500, .bg-red-50');
+        if (firstError instanceof HTMLElement) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
       return;
     }
     const {
@@ -194,18 +208,31 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
       totalRevenue: _tr, pendingQuotations: _pq, pendingFollowups: _pf,
       projectIds: _pi, estimateIds: _ei, proposalIds: _proi, quotationIds: _qi,
       attachments: _att, assignedEmployee: _ae, createdAt: _ca, updatedAt: _ua,
-      ...submitData
+      ...rawSubmitData
     } = formData;
+
+    const submitData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(rawSubmitData)) {
+      if (value === '' || value === undefined) {
+        if (['email', 'alternateMobile', 'gstNumber', 'panNumber', 'website', 'notes', 'pincode', 'country'].includes(key)) {
+          continue;
+        }
+      }
+      if (value !== undefined) {
+        submitData[key] = value;
+      }
+    }
+
     onSubmit(submitData);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* API Error Display */}
-      {error && (
+      {(error || errors._form) && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-red-700">{error || errors._form}</p>
         </div>
       )}
 

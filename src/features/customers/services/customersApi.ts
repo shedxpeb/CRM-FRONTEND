@@ -63,5 +63,5 @@ export const customersApi = {
     }),
 
   convertLeadToCustomer: (data: ConvertLeadToCustomerDto) =>
-    api.post<BackendResponse<{ customer: Customer; lead: unknown }>>('/customer/convert-lead', data),
+    api.post<BackendResponse<{ customer: Customer; lead: unknown; summary?: unknown }>>('/customer/convert-lead', data),
 };

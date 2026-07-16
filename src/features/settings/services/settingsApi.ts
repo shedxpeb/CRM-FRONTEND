@@ -123,8 +123,7 @@ export const settingsApi = {
   // Company
   async getCompany(): Promise<Company> {
     try {
-      // const response = await api.get('/settings/company');
-      // return response.data;
+      // TODO: Replace with real API call when settings backend is implemented
       return mockCompany;
     } catch (error) {
       return mockCompany;
@@ -133,8 +132,7 @@ export const settingsApi = {
 
   async updateCompany(data: Partial<Company>): Promise<Company> {
     try {
-      // const response = await api.put('/settings/company', data);
-      // return response.data;
+      // TODO: Replace with real API call when settings backend is implemented
       return { ...mockCompany, ...data };
     } catch (error) {
       return { ...mockCompany, ...data };
@@ -144,8 +142,7 @@ export const settingsApi = {
   // Branches
   async getBranches(): Promise<Branch[]> {
     try {
-      // const response = await api.get('/settings/branches');
-      // return response.data;
+      // TODO: Replace with real API call when settings backend is implemented
       return mockBranches;
     } catch (error) {
       return mockBranches;
@@ -154,8 +151,7 @@ export const settingsApi = {
 
   async createBranch(data: Omit<Branch, 'id' | 'createdAt' | 'updatedAt'>): Promise<Branch> {
     try {
-      // const response = await api.post('/settings/branches', data);
-      // return response.data;
+      // TODO: Replace with real API call when settings backend is implemented
       return { ...data, id: Date.now().toString(), createdAt: new Date(), updatedAt: new Date() };
     } catch (error) {
       return { ...data, id: Date.now().toString(), createdAt: new Date(), updatedAt: new Date() };
@@ -164,8 +160,6 @@ export const settingsApi = {
 
   async updateBranch(id: string, data: Partial<Branch>): Promise<Branch> {
     try {
-      // const response = await api.put(`/settings/branches/${id}`, data);
-      // return response.data;
       return { ...mockBranches[0], ...data, id, updatedAt: new Date() };
     } catch (error) {
       return { ...mockBranches[0], ...data, id, updatedAt: new Date() };
@@ -174,7 +168,6 @@ export const settingsApi = {
 
   async deleteBranch(id: string): Promise<void> {
     try {
-      // await api.delete(`/settings/branches/${id}`);
     } catch (error) {
       // Mock delete
     }
@@ -260,8 +253,6 @@ export const settingsApi = {
   // Modules
   async getModules(): Promise<Module[]> {
     try {
-      // const response = await api.get('/settings/modules');
-      // return response.data;
       return moduleStore;
     } catch (error) {
       return moduleStore;
@@ -270,8 +261,6 @@ export const settingsApi = {
 
   async updateModule(id: string, data: Partial<Module>): Promise<Module> {
     try {
-      // const response = await api.put(`/settings/modules/${id}`, data);
-      // return response.data;
       moduleStore = moduleStore.map((module) =>
         module.id === id ? { ...module, ...data, id, updatedAt: new Date() } : module
       );
@@ -292,8 +281,6 @@ export const settingsApi = {
   // System Preferences
   async getSystemPreferences(): Promise<SystemPreferences> {
     try {
-      // const response = await api.get('/settings/preferences');
-      // return response.data;
       return {
         timezone: 'Asia/Kolkata',
         language: 'en',
@@ -320,8 +307,6 @@ export const settingsApi = {
 
   async updateSystemPreferences(data: Partial<SystemPreferences>): Promise<SystemPreferences> {
     try {
-      // const response = await api.put('/settings/preferences', data);
-      // return response.data;
       return {
         timezone: 'Asia/Kolkata',
         language: 'en',
@@ -351,8 +336,6 @@ export const settingsApi = {
   // Module Configuration
   async getModuleConfiguration(moduleId: string): Promise<ModuleConfiguration> {
     try {
-      // const response = await api.get(`/settings/modules/${moduleId}/config`);
-      // return response.data;
       if (moduleId === 'leads') {
         return { id: 'leads', name: 'Leads', settings: mockLeadModuleSettings };
       }
@@ -410,8 +393,6 @@ export const settingsApi = {
   // Stats
   async getSettingsStats(): Promise<SettingsStats> {
     try {
-      // const response = await api.get('/settings/stats');
-      // return response.data;
       return mockSettingsStats;
     } catch (error) {
       return mockSettingsStats;
@@ -421,8 +402,6 @@ export const settingsApi = {
   // Document Settings
   async getDocumentSettings(): Promise<any> {
     try {
-      // const response = await api.get('/settings/document-settings');
-      // return response.data;
       return {
         estimateNumbering: {
           prefix: 'EST',
@@ -509,8 +488,6 @@ export const settingsApi = {
 
   async updateDocumentSettings(data: Record<string, unknown>): Promise<Record<string, unknown>> {
     try {
-      // const response = await api.put('/settings/document-settings', data);
-      // return response.data;
       return data;
     } catch (error) {
       return data;
@@ -520,8 +497,6 @@ export const settingsApi = {
   // Finance Configuration
   async getFinanceConfiguration(): Promise<any> {
     try {
-      // const response = await api.get('/settings/finance-config');
-      // return response.data;
       return {
         currency: 'INR',
         taxRate: 18,
@@ -546,8 +521,6 @@ export const settingsApi = {
 
   async updateFinanceConfiguration(data: Record<string, unknown>): Promise<Record<string, unknown>> {
     try {
-      // const response = await api.put('/settings/finance-config', data);
-      // return response.data;
       return data;
     } catch (error) {
       return data;
@@ -557,8 +530,6 @@ export const settingsApi = {
   // Project Configuration
   async getProjectConfiguration(): Promise<any> {
     try {
-      // const response = await api.get('/settings/project-config');
-      // return response.data;
       return {
         defaultProjectType: 'Industrial Shed',
         defaultPriority: 'Medium',
@@ -579,8 +550,6 @@ export const settingsApi = {
 
   async updateProjectConfiguration(data: Record<string, unknown>): Promise<Record<string, unknown>> {
     try {
-      // const response = await api.put('/settings/project-config', data);
-      // return response.data;
       return data;
     } catch (error) {
       return data;
@@ -590,8 +559,6 @@ export const settingsApi = {
   // Security Settings
   async getSecuritySettings(): Promise<SecuritySettings> {
     try {
-      // const response = await api.get('/settings/security-config');
-      // return response.data;
       return {
         passwordPolicy: {
           minLength: 8,
@@ -628,8 +595,6 @@ export const settingsApi = {
 
   async updateSecuritySettings(data: Partial<SecuritySettings>): Promise<SecuritySettings> {
     try {
-      // const response = await api.put('/settings/security-config', data);
-      // return response.data;
       return {
         passwordPolicy: {
           minLength: 8,

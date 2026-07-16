@@ -7,7 +7,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { CustomerViewDrawer } from '@/features/customers/components/CustomerViewDrawer';
 import { getCustomerCustomFieldValue } from '@/features/customers/components/CustomerCustomFields';
 const CustomerForm = lazy(() => import('@/features/customers/components/CustomerForm').then(m => ({ default: m.CustomerForm })));
 const CustomerRowActions = lazy(() => import('@/features/customers/components/CustomerRowActions').then(m => ({ default: m.CustomerRowActions })));
@@ -21,7 +20,6 @@ import {
   useCreateCustomer,
   useUpdateCustomer,
   useDeleteCustomer,
-  useCustomerActivities,
   useCustomerConfiguration,
 } from '@/features/customers/hooks/useCustomers';
 import { customersApi } from '@/features/customers';
@@ -92,7 +90,6 @@ export default function CustomersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -102,8 +99,6 @@ export default function CustomersPage() {
     () => (selectedCustomerId ? allCustomersResponse?.data?.rows?.find((c) => c.id === selectedCustomerId) ?? null : null),
     [allCustomersResponse?.data?.rows, selectedCustomerId]
   );
-
-  const { data: viewedActivities } = useCustomerActivities(selectedCustomerId ?? '');
 
   // Combine stats and KPI data computation to reduce re-renders
   const { filteredStats, kpiData } = useMemo(() => {
@@ -301,7 +296,11 @@ export default function CustomersPage() {
         setFormError(null);
       },
       onError: (error: any) => {
-        setFormError(error.message || 'Failed to create customer. Please try again.');
+        const msg = error?.response?.data?.message
+          || error?.response?.data?.errors?.join(', ')
+          || error.message
+          || 'Failed to create customer. Please try again.';
+        setFormError(typeof msg === 'string' ? msg : 'Failed to create customer.');
       },
     });
   }, [createMutation]);
@@ -318,7 +317,11 @@ export default function CustomersPage() {
           setFormError(null);
         },
         onError: (error: any) => {
-          setFormError(error.message || 'Failed to update customer. Please try again.');
+          const msg = error?.response?.data?.message
+            || error?.response?.data?.errors?.join(', ')
+            || error.message
+            || 'Failed to update customer. Please try again.';
+          setFormError(typeof msg === 'string' ? msg : 'Failed to update customer.');
         },
       }
     );
@@ -331,21 +334,14 @@ export default function CustomersPage() {
   }, [deleteMutation]);
 
   const handleRowClick = useCallback((row: Customer) => {
-    setSelectedCustomerId(row.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(ROUTES.customersDetail(row.id));
+  }, [router]);
 
   const handleViewDetails = useCallback((customer: Customer) => {
     router.push(ROUTES.customersDetail(customer.id));
   }, [router]);
 
   const handleEditFromRow = useCallback((customer: Customer) => {
-    setSelectedCustomerId(customer.id);
-    setIsEditDialogOpen(true);
-  }, []);
-
-  const handleEditFromDrawer = useCallback((customer: Customer) => {
-    setIsViewDrawerOpen(false);
     setSelectedCustomerId(customer.id);
     setIsEditDialogOpen(true);
   }, []);
@@ -472,14 +468,6 @@ export default function CustomersPage() {
         />
         </div>
       </StandardPageLayout>
-
-      <CustomerViewDrawer
-        customer={selectedCustomer}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onEdit={handleEditFromDrawer}
-        activities={viewedActivities?.data ?? []}
-      />
 
       {/* Create Customer Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

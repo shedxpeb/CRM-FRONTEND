@@ -39,7 +39,7 @@ const CURRENT_USER = { id: 'admin-1', name: 'Admin User' } as const;
 
 /** Frozen workspace routes (built in later phases). */
 const ROUTES = {
-  taskDetail: (id: string) => `/dashboard/tasks/${id}`,
+  taskDetail: (id: string) => `/dashboard/task-management/${id}`,
   createTask: '/dashboard/tasks/create',
   myTasks: '/dashboard/tasks/my-tasks',
   verificationQueue: '/dashboard/tasks/verification',

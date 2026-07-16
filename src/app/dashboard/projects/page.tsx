@@ -9,7 +9,6 @@ import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
-import { ProjectViewDrawer } from '@/features/projects/components/ProjectViewDrawer';
 import { getProjectCustomFieldValue } from '@/features/projects/components/ProjectCustomFields';
 
 // Lazy load row actions to reduce initial bundle size
@@ -27,7 +26,6 @@ import {
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
-  useProjectActivities,
   useProjectConfiguration,
 } from '@/features/projects/hooks/useProjects';
 import {
@@ -104,7 +102,6 @@ export default function ProjectsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
   const [createInitialData, setCreateInitialData] = useState<any>(undefined);
 
@@ -122,7 +119,7 @@ export default function ProjectsPage() {
         const initial = {
           leadId: lead.id,
           customerId: lead.customerId,
-          projectName: lead.projectTitle || '',
+          projectName: lead.projectName || lead.projectTitle || '',
           projectType: lead.projectType || 'Industrial Shed',
           structureType: lead.structureType || 'PEB Building',
           width: lead.width,
@@ -130,14 +127,16 @@ export default function ProjectsPage() {
           height: lead.height,
           baySpacing: lead.baySpacing,
           roofType: lead.roofType || 'Standing Seam',
-          craneSystem: lead.craneRequired ? (lead.craneCapacity ? `${lead.craneCapacity} tons` : 'Single Girder') : 'None',
+          craneSystem: lead.craneSystem || (lead.craneRequired ? (lead.craneCapacity ? `${lead.craneCapacity} tons` : 'Single Girder') : 'None'),
           mezzanine: lead.mezzanine || false,
           wallType: lead.wallType || 'Single Skin',
-          insulation: lead.insulationRequired || false,
-          location: lead.siteAddress || lead.addressLine1 || lead.addressLine2 || '',
+          insulation: lead.insulation ?? lead.insulationRequired ?? false,
+          location: lead.location || lead.siteAddress || lead.addressLine1 || lead.addressLine2 || '',
           city: lead.city || '',
           state: lead.state || '',
           pincode: lead.pincode || '',
+          notes: lead.notes,
+          customFields: lead.customFields,
         };
         setCreateInitialData(initial);
         setIsCreateDialogOpen(true);
@@ -207,8 +206,6 @@ export default function ProjectsPage() {
         : null,
     [allProjectsResponse?.data?.rows, selectedProjectId]
   );
-
-  const { data: viewedActivities } = useProjectActivities(selectedProjectId ?? '');
 
   // Move activeStatuses outside to prevent recreation on every render
   const ACTIVE_STATUSES = new Set([
@@ -504,9 +501,8 @@ export default function ProjectsPage() {
   );
 
   const handleRowClick = useCallback((project: Project) => {
-    setSelectedProjectId(project.id);
-    setIsViewDrawerOpen(true);
-  }, []);
+    router.push(ROUTES.projectsDetail(project.id));
+  }, [router]);
 
   const handleViewDetails = useCallback(
     (project: Project) => {
@@ -516,12 +512,6 @@ export default function ProjectsPage() {
   );
 
   const handleEditFromRow = useCallback((project: Project) => {
-    setSelectedProjectId(project.id);
-    setIsEditDialogOpen(true);
-  }, []);
-
-  const handleEditFromDrawer = useCallback((project: Project) => {
-    setIsViewDrawerOpen(false);
     setSelectedProjectId(project.id);
     setIsEditDialogOpen(true);
   }, []);
@@ -652,14 +642,6 @@ export default function ProjectsPage() {
           />
         </div>
       </StandardPageLayout>
-
-      <ProjectViewDrawer
-        project={selectedProject}
-        open={isViewDrawerOpen}
-        onOpenChange={setIsViewDrawerOpen}
-        onEdit={handleEditFromDrawer}
-        activities={viewedActivities?.data ?? []}
-      />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
         setIsCreateDialogOpen(open);
