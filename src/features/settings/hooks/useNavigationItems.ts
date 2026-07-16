@@ -20,8 +20,8 @@ import {
   Settings,
   type LucideIcon,
 } from 'lucide-react';
-import { useModules } from '@/features/settings/hooks/useSettings';
 import type { ModuleName } from '@/features/settings/types';
+import { MODULES } from '@/features/settings/constants/settingsConstants';
 
 export type NavigationRole = 'owner' | 'admin' | 'employee';
 
@@ -92,23 +92,18 @@ const unionRoles = (items: NavigationItem[]): NavigationRole[] => {
 };
 
 export function useNavigationItems(userRole: NavigationRole = 'owner') {
-  const { data: modules, isLoading } = useModules();
-
   return useMemo(() => {
-    // Build a lookup of role-allowed, enabled, visible module nav entries.
     const moduleItems = new Map<ModuleName, NavigationItem>();
-    (modules ?? [])
-      .filter((module) => module.isEnabled && module.isVisible)
-      .forEach((module) => {
-        const nav = MODULE_NAV_MAP[module.name];
-        if (!nav) return;
+    (Object.entries(MODULE_NAV_MAP) as [ModuleName, NonNullable<typeof MODULE_NAV_MAP[ModuleName]>][])
+      .forEach(([name, nav]) => {
         if (!nav.roles.includes(userRole)) return;
-        moduleItems.set(module.name, {
-          title: nav.title ?? module.displayName,
+        const configuredModule = MODULES.find((module) => module.name === name);
+        moduleItems.set(name, {
+          title: nav.title ?? configuredModule?.displayName ?? name,
           href: nav.href,
           icon: nav.icon,
           roles: nav.roles,
-          moduleId: module.name,
+          moduleId: name,
         });
       });
 
@@ -158,6 +153,6 @@ export function useNavigationItems(userRole: NavigationRole = 'owner') {
     if (TASK_MANAGEMENT_ITEM.roles.includes(userRole)) tree.push(TASK_MANAGEMENT_ITEM);
     if (SETTINGS_ITEM.roles.includes(userRole)) tree.push(SETTINGS_ITEM);
 
-    return { items: tree, isLoading };
-  }, [modules, userRole, isLoading]);
+    return { items: tree, isLoading: false };
+  }, [userRole]);
 }

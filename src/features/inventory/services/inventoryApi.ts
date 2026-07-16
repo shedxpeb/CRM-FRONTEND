@@ -6,6 +6,7 @@
  * Remove mock fallbacks once backend is connected.
  */
 import { api } from '@/core/api';
+import { guardModuleApi } from '@/core/api/capabilities';
 import {
   InventoryItem, Warehouse, Supplier, Category, StockMovement,
   InventoryActivity, InventoryAlert, InventoryStats, InventoryFilters,
@@ -22,26 +23,26 @@ import {
   MOCK_ALERTS,
 } from '../data/mockInventoryData';
 
-/** Check if error is a connection failure (no backend) or 404 (endpoint not implemented) */
+/** Check if error is a connection failure — mocks are NEVER used in production */
 function isConnectionError(error: unknown): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (process.env.NEXT_PUBLIC_ALLOW_MOCK_FALLBACK !== 'true') return false;
   if (error && typeof error === 'object') {
     const err = error as any;
     if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED' || err.code === 'ERR_CONNECTION_REFUSED') return true;
     if (!err.response && err.message && err.message.toLowerCase().includes('network')) return true;
-    // Also treat 404 errors as connection errors to trigger mock fallback
-    if (err.response && err.response.status === 404) return true;
   }
   return false;
 }
 
 // ─── API Service ──────────────────────────────────────────────────────────────
 
-export const inventoryApi = {
+export const inventoryApi = guardModuleApi('inventory', {
   // ─── Items ───────────────────────────────────────────────────────────────
 
   getAll: async (params?: PaginationParams & InventoryFilters): Promise<PaginatedData<InventoryItem>> => {
     try {
-      return await api.get<PaginatedData<InventoryItem>>('/api/inventory', { params });
+      return await api.get<PaginatedData<InventoryItem>>('/inventory', { params });
     } catch (error) {
       if (isConnectionError(error)) {
         const page = params?.page ?? 1;
@@ -57,7 +58,7 @@ export const inventoryApi = {
 
   getById: async (id: string): Promise<InventoryItem> => {
     try {
-      return await api.get<InventoryItem>(`/api/inventory/${id}`);
+      return await api.get<InventoryItem>(`/inventory/${id}`);
     } catch (error) {
       if (isConnectionError(error)) {
         const item = MOCK_ITEMS.find((i) => i.id === id);
@@ -70,7 +71,7 @@ export const inventoryApi = {
 
   create: async (data: CreateInventoryItemDto): Promise<InventoryItem> => {
     try {
-      return await api.post<InventoryItem>('/api/inventory', data);
+      return await api.post<InventoryItem>('/inventory', data);
     } catch (error) {
       if (isConnectionError(error)) {
         const wh = MOCK_WAREHOUSES.find((w) => w.id === data.warehouseId);
@@ -112,7 +113,7 @@ export const inventoryApi = {
 
   update: async (id: string, data: Partial<CreateInventoryItemDto>): Promise<InventoryItem> => {
     try {
-      return await api.patch<InventoryItem>(`/api/inventory/${id}`, data);
+      return await api.patch<InventoryItem>(`/inventory/${id}`, data);
     } catch (error) {
       if (isConnectionError(error)) {
         const index = MOCK_ITEMS.findIndex((i) => i.id === id);
@@ -139,7 +140,7 @@ export const inventoryApi = {
 
   delete: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/api/inventory/${id}`);
+      await api.delete(`/inventory/${id}`);
     } catch (error) {
       if (isConnectionError(error)) {
         const index = MOCK_ITEMS.findIndex((i) => i.id === id);
@@ -153,7 +154,7 @@ export const inventoryApi = {
 
   getStats: async (): Promise<InventoryStats> => {
     try {
-      return await api.get<InventoryStats>('/api/inventory/stats');
+      return await api.get<InventoryStats>('/inventory/stats');
     } catch (error) {
       if (isConnectionError(error)) {
         return {
@@ -175,7 +176,7 @@ export const inventoryApi = {
 
   getActivities: async (id: string): Promise<InventoryActivity[]> => {
     try {
-      return await api.get<InventoryActivity[]>(`/api/inventory/${id}/activities`);
+      return await api.get<InventoryActivity[]>(`/inventory/${id}/activities`);
     } catch (error) {
       if (isConnectionError(error)) return MOCK_ACTIVITIES.filter((a) => a.itemId === id);
       throw error;
@@ -186,48 +187,48 @@ export const inventoryApi = {
 
   getWarehouses: async (): Promise<Warehouse[]> => {
     try {
-      return await api.get<Warehouse[]>('/api/inventory/warehouses');
+      return await api.get<Warehouse[]>('/inventory/warehouses');
     } catch (error) {
       if (isConnectionError(error)) return MOCK_WAREHOUSES;
       throw error;
     }
   },
 
-  createWarehouse: (data: Omit<Warehouse, 'id'>) => api.post<Warehouse>('/api/inventory/warehouses', data),
-  updateWarehouse: (id: string, data: Partial<Warehouse>) => api.patch<Warehouse>(`/api/inventory/warehouses/${id}`, data),
+  createWarehouse: (data: Omit<Warehouse, 'id'>) => api.post<Warehouse>('/inventory/warehouses', data),
+  updateWarehouse: (id: string, data: Partial<Warehouse>) => api.patch<Warehouse>(`/inventory/warehouses/${id}`, data),
 
   // ─── Suppliers ───────────────────────────────────────────────────────────
 
   getSuppliers: async (): Promise<Supplier[]> => {
     try {
-      return await api.get<Supplier[]>('/api/inventory/suppliers');
+      return await api.get<Supplier[]>('/inventory/suppliers');
     } catch (error) {
       if (isConnectionError(error)) return MOCK_SUPPLIERS;
       throw error;
     }
   },
 
-  createSupplier: (data: any) => api.post<Supplier>('/api/inventory/suppliers', data),
-  updateSupplier: (id: string, data: any) => api.patch<Supplier>(`/api/inventory/suppliers/${id}`, data),
+  createSupplier: (data: any) => api.post<Supplier>('/inventory/suppliers', data),
+  updateSupplier: (id: string, data: any) => api.patch<Supplier>(`/inventory/suppliers/${id}`, data),
 
   // ─── Categories ──────────────────────────────────────────────────────────
 
   getCategories: async (): Promise<Category[]> => {
     try {
-      return await api.get<Category[]>('/api/inventory/categories');
+      return await api.get<Category[]>('/inventory/categories');
     } catch (error) {
       if (isConnectionError(error)) return MOCK_CATEGORIES;
       throw error;
     }
   },
 
-  createCategory: (data: any) => api.post<Category>('/api/inventory/categories', data),
+  createCategory: (data: any) => api.post<Category>('/inventory/categories', data),
 
   // ─── Stock Movements ─────────────────────────────────────────────────────
 
   getMovements: async (params?: PaginationParams): Promise<PaginatedData<StockMovement>> => {
     try {
-      return await api.get<PaginatedData<StockMovement>>('/api/inventory/movements', { params });
+      return await api.get<PaginatedData<StockMovement>>('/inventory/movements', { params });
     } catch (error) {
       if (isConnectionError(error)) {
         const page = params?.page ?? 1;
@@ -241,11 +242,11 @@ export const inventoryApi = {
     }
   },
 
-  createMovement: (data: Omit<StockMovement, 'id'>) => api.post<StockMovement>('/api/inventory/movements', data),
+  createMovement: (data: Omit<StockMovement, 'id'>) => api.post<StockMovement>('/inventory/movements', data),
 
   getMovementHistory: async (itemId: string): Promise<StockMovement[]> => {
     try {
-      return await api.get<StockMovement[]>(`/api/inventory/${itemId}/movements`);
+      return await api.get<StockMovement[]>(`/inventory/${itemId}/movements`);
     } catch (error) {
       if (isConnectionError(error)) return MOCK_MOVEMENTS.filter((m) => m.itemId === itemId);
       throw error;
@@ -256,10 +257,10 @@ export const inventoryApi = {
 
   getAlerts: async (): Promise<InventoryAlert[]> => {
     try {
-      return await api.get<InventoryAlert[]>('/api/inventory/alerts');
+      return await api.get<InventoryAlert[]>('/inventory/alerts');
     } catch (error) {
       if (isConnectionError(error)) return MOCK_ALERTS;
       throw error;
     }
   },
-};
+});

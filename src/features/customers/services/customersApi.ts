@@ -58,9 +58,12 @@ export const customersApi = {
     api.get<BackendResponse<CustomerActivity[]>>(`/customer/${id}/activities`),
 
   checkDuplicate: (mobile: string, email?: string) =>
-    api.get<BackendResponse<{ exists: boolean; customer?: Customer }>>('/customer/check-duplicate', {
+    api.get<BackendResponse<{ exists: boolean; isDuplicate?: boolean; customer?: Customer; existingCustomer?: Customer }>>('/customer/check-duplicate', {
       params: { mobile, email },
     }),
+
+  restore: (id: string) =>
+    api.post<BackendResponse<Customer>>(`/customer/${id}/restore`, {}),
 
   convertLeadToCustomer: (data: ConvertLeadToCustomerDto) =>
     api.post<BackendResponse<{ customer: Customer; lead: unknown; summary?: unknown }>>('/customer/convert-lead', data),

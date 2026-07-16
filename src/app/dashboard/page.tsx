@@ -32,9 +32,6 @@ import {
 import { cn } from '@/lib/utils';
 import { componentTextSizes } from '@/lib/design-system';
 
-// Constant months array used across charts
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] as const;
-
 // Lazy load chart components for better initial load performance
 const ChartCard = lazy(() => import('@/components/dashboard/ChartCard').then(mod => ({ default: mod.ChartCard })));
 const DynamicChart = lazy(() => import('@/components/dashboard/DynamicChart').then(mod => ({ default: mod.DynamicChart })));
@@ -127,6 +124,7 @@ export default function DashboardPage() {
   const getTrend = useCallback((value: number): 'up' | 'down' => {
     return value >= 0 ? 'up' : 'down';
   }, []);
+  const financePending = dashboardData.availability.finance === 'backend_pending';
 
   // KPI Card Data
   const kpiCards = useMemo(() => {
@@ -159,14 +157,14 @@ export default function DashboardPage() {
           accent: 'emerald' as const,
           periods: {
             monthly: {
-              value: formatCurrency(dashboardData.finance.monthly),
-              delta: formatChange(dashboardData.finance.change),
+              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.monthly),
+              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
               trend: getTrend(dashboardData.finance.change),
               hint: 'Revenue this month',
             },
             yearly: {
-              value: formatCurrency(dashboardData.finance.yearly),
-              delta: formatChange(dashboardData.finance.change),
+              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.yearly),
+              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
               trend: getTrend(dashboardData.finance.change),
               hint: 'Total revenue YTD',
             },
@@ -219,14 +217,14 @@ export default function DashboardPage() {
           accent: 'green' as const,
           periods: {
             monthly: {
-              value: formatCurrency(dashboardData.finance.monthly),
-              delta: formatChange(dashboardData.finance.change),
+              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.monthly),
+              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
               trend: getTrend(dashboardData.finance.change),
               hint: 'Total revenue this month',
             },
             yearly: {
-              value: formatCurrency(dashboardData.finance.yearly),
-              delta: formatChange(dashboardData.finance.change),
+              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.yearly),
+              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
               trend: getTrend(dashboardData.finance.change),
               hint: 'Total revenue YTD',
             },
@@ -239,14 +237,14 @@ export default function DashboardPage() {
           accent: 'amber' as const,
           periods: {
             monthly: {
-              value: formatCurrency(dashboardData.finance.monthly),
-              delta: formatChange(dashboardData.finance.change),
+              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.monthly),
+              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
               trend: getTrend(dashboardData.finance.change),
               hint: 'Delivered this month',
             },
             yearly: {
-              value: formatCurrency(dashboardData.finance.yearly),
-              delta: formatChange(dashboardData.finance.change),
+              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.yearly),
+              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
               trend: getTrend(dashboardData.finance.change),
               hint: 'Total turnover YTD',
             },
@@ -297,72 +295,17 @@ export default function DashboardPage() {
     } catch (err) {
       return [];
     }
-  }, [dashboardData, formatCurrency, formatChange, getTrend]);
+  }, [dashboardData, financePending, formatCurrency, formatChange, getTrend]);
 
 
-  // Real chart data derived from dashboard KPI data
-  const purchasesTrendData = useMemo(() => {
-    const baseValue = dashboardData?.customers.monthly || 0;
-    return MONTHS.map((month, index) => ({
-      name: month,
-      value: Math.max(0, Math.floor(baseValue * (0.8 + (index * 0.1)))),
-    }));
-  }, [dashboardData?.customers.monthly]);
-
-  const salesTrendData = useMemo(() => {
-    const baseRevenue = dashboardData?.finance.monthly || 0;
-    return MONTHS.map((month, index) => ({
-      name: month,
-      pipeline: Math.max(0, Math.floor(baseRevenue * (0.5 + (index * 0.1)))),
-      won: Math.max(0, Math.floor(baseRevenue * (0.3 + (index * 0.08)))),
-    }));
-  }, [dashboardData?.finance.monthly]);
-
-  const leadsSourceData = useMemo(() => {
-    const totalLeads = dashboardData?.leads.monthly || 0;
-    if (totalLeads === 0) {
-      return [
-        { name: 'Website', value: 0 },
-        { name: 'Partner', value: 0 },
-        { name: 'Cold Call', value: 0 },
-        { name: 'Trade Show', value: 0 },
-        { name: 'Referral', value: 0 },
-      ];
-    }
-    return [
-      { name: 'Website', value: Math.floor(totalLeads * 0.38) },
-      { name: 'Partner', value: Math.floor(totalLeads * 0.25) },
-      { name: 'Cold Call', value: Math.floor(totalLeads * 0.18) },
-      { name: 'Trade Show', value: Math.floor(totalLeads * 0.12) },
-      { name: 'Referral', value: Math.floor(totalLeads * 0.07) },
-    ];
-  }, [dashboardData?.leads.monthly]);
-
-  const revenueData = useMemo(() => {
-    const baseRevenue = dashboardData?.finance.monthly || 0;
-    return MONTHS.map((month, index) => ({
-      name: month,
-      value: Math.max(0, Math.floor(baseRevenue * (0.7 + (index * 0.1)))),
-    }));
-  }, [dashboardData?.finance.monthly]);
-
-  const projectsTrendData = useMemo(() => {
-    const activeProjects = dashboardData?.projects.active || 0;
-    const completedProjects = dashboardData?.projects.completed || 0;
-    return MONTHS.map((month, index) => ({
-      name: month,
-      active: Math.max(0, Math.floor(activeProjects * (0.5 + (index * 0.1)))),
-      completed: Math.max(0, Math.floor(completedProjects * (0.3 + (index * 0.12)))),
-    }));
-  }, [dashboardData?.projects.active, dashboardData?.projects.completed]);
-
-  const inventoryValueData = useMemo(() => {
-    const baseValue = dashboardData?.inventory.totalValue || 0;
-    return MONTHS.map((month, index) => ({
-      name: month,
-      value: Math.max(0, Math.floor(baseValue * (0.8 + (index * 0.05)))),
-    }));
-  }, [dashboardData?.inventory.totalValue]);
+  // Trend/source endpoints are not implemented. Keep every chart mounted with
+  // an empty dataset instead of extrapolating fabricated values from KPIs.
+  const purchasesTrendData: Array<{ name: string; value: number }> = [];
+  const salesTrendData: Array<{ name: string; pipeline: number; won: number }> = [];
+  const leadsSourceData: Array<{ name: string; value: number }> = [];
+  const revenueData: Array<{ name: string; value: number }> = [];
+  const projectsTrendData: Array<{ name: string; active: number; completed: number }> = [];
+  const inventoryValueData: Array<{ name: string; value: number }> = [];
 
   const handleExport = async (type: ExportType) => {
     // Currently only PDF is supported

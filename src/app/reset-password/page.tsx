@@ -10,14 +10,16 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { resetPasswordSchema, ResetPasswordInput } from '@/features/auth/validations';
 import { FormInput } from '@/components/form/FormInput';
 import { FormField } from '@/components/form/FormField';
+import { useOtpRecovery } from '@/features/auth/useOtpRecovery';
 
 function ResetPasswordForm() {
-  const { resetPassword } = useAuth();
+  const { resetPassword, resendOtp } = useAuth();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
   const [apiError, setApiError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const { persist, clear, resendSeconds, isExpired } = useOtpRecovery(email, 'FORGOT_PASSWORD');
 
   const form = useForm<ResetPasswordInput>({
     resolver: zodResolver(resetPasswordSchema),
@@ -33,7 +35,20 @@ function ResetPasswordForm() {
       setApiError(result.error || 'Failed to reset password');
       return;
     }
+    clear();
     setSuccess(true);
+  };
+
+  const onResend = async () => {
+    setSubmitting(true);
+    setApiError('');
+    const result = await resendOtp(email, 'FORGOT_PASSWORD');
+    setSubmitting(false);
+    if (!result.success) {
+      setApiError(result.error || "We couldn't send the verification code. Please try again.");
+      return;
+    }
+    if (result.otpDelivery) persist(result.otpDelivery, 'FORGOT_PASSWORD');
   };
 
   if (success) {
@@ -73,6 +88,11 @@ function ResetPasswordForm() {
       <p className="text-sm text-gray-600 text-center">
         Enter the OTP sent to <strong>{email}</strong> and set a new password.
       </p>
+      {isExpired && (
+        <div className="rounded-md bg-yellow-50 p-3 text-center text-sm text-yellow-800">
+          OTP expired. Request a new OTP.
+        </div>
+      )}
 
       <FormField label="OTP" required error={form.formState.errors.otp?.message}>
         <input
@@ -126,6 +146,24 @@ function ResetPasswordForm() {
           </span>
         ) : 'Reset Password'}
       </button>
+
+      <p className="text-center text-sm text-gray-600">
+        {resendSeconds > 0
+          ? `Resend OTP in ${String(Math.floor(resendSeconds / 60)).padStart(2, '0')}:${String(resendSeconds % 60).padStart(2, '0')}`
+          : (
+            <>
+              Didn&apos;t receive the code?{' '}
+              <button
+                type="button"
+                onClick={onResend}
+                disabled={submitting}
+                className="font-medium text-blue-600 hover:text-blue-500 disabled:text-gray-400"
+              >
+                Resend OTP
+              </button>
+            </>
+          )}
+      </p>
 
       <p className="text-center text-sm text-gray-600">
         <Link href={ROUTES.login} className="font-medium text-blue-600 hover:text-blue-500">

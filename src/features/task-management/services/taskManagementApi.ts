@@ -7,6 +7,7 @@
  */
 
 import { api } from '@/core/api';
+import { guardModuleApi } from '@/core/api/capabilities';
 import {
   Task,
   EmployeePerformanceStats,
@@ -47,8 +48,10 @@ function createActivity(
   };
 }
 
-/** Check if error is a connection failure (no backend) */
+/** Check if error is a connection failure — mocks are NEVER used in production */
 function isConnectionError(error: unknown): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (process.env.NEXT_PUBLIC_ALLOW_MOCK_FALLBACK !== 'true') return false;
   if (error && typeof error === 'object') {
     const err = error as any;
     if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED' || err.code === 'ERR_CONNECTION_REFUSED') return true;
@@ -461,11 +464,11 @@ const mockDashboardKPIs: DashboardTaskKPIs = {
   topPerformers: mockEmployeePerformance.slice(0, 3),
 };
 
-export const taskManagementApi = {
+export const taskManagementApi = guardModuleApi('task', {
   // Task CRUD
   async getAll(query?: TaskQuery): Promise<Task[]> {
     try {
-      return await api.get<Task[]>('/api/tasks', { params: query });
+      return await api.get<Task[]>('/tasks', { params: query });
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -518,7 +521,7 @@ export const taskManagementApi = {
 
   async getById(id: string): Promise<Task> {
     try {
-      return await api.get<Task>(`/api/tasks/${id}`);
+      return await api.get<Task>(`/tasks/${id}`);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -533,7 +536,7 @@ export const taskManagementApi = {
 
   async create(data: CreateTaskDto): Promise<Task> {
     try {
-      return await api.post<Task>('/api/tasks', data);
+      return await api.post<Task>('/tasks', data);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -594,7 +597,7 @@ export const taskManagementApi = {
 
   async update(id: string, data: UpdateTaskDto): Promise<Task> {
     try {
-      return await api.patch<Task>(`/api/tasks/${id}`, data);
+      return await api.patch<Task>(`/tasks/${id}`, data);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -616,7 +619,7 @@ export const taskManagementApi = {
 
   async delete(id: string): Promise<void> {
     try {
-      return await api.delete<void>(`/api/tasks/${id}`);
+      return await api.delete<void>(`/tasks/${id}`);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -632,7 +635,7 @@ export const taskManagementApi = {
   // Task Completion with Photo Proof
   async complete(id: string, data: CompleteTaskDto): Promise<Task> {
     try {
-      return await api.post<Task>(`/api/tasks/${id}/complete`, data);
+      return await api.post<Task>(`/tasks/${id}/complete`, data);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -688,7 +691,7 @@ export const taskManagementApi = {
   // Task Verification
   async verify(id: string, data: VerifyTaskDto, verifiedBy: string, verifiedByName: string): Promise<Task> {
     try {
-      return await api.post<Task>(`/api/tasks/${id}/verify`, { ...data, verifiedBy, verifiedByName });
+      return await api.post<Task>(`/tasks/${id}/verify`, { ...data, verifiedBy, verifiedByName });
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -737,7 +740,7 @@ export const taskManagementApi = {
   // Stats
   async getStats(): Promise<TaskStats> {
     try {
-      return await api.get<TaskStats>('/api/tasks/stats');
+      return await api.get<TaskStats>('/tasks/stats');
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -750,7 +753,7 @@ export const taskManagementApi = {
 
   async getDashboardKPIs(): Promise<DashboardTaskKPIs> {
     try {
-      return await api.get<DashboardTaskKPIs>('/api/tasks/dashboard-kpis');
+      return await api.get<DashboardTaskKPIs>('/tasks/dashboard-kpis');
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -765,7 +768,7 @@ export const taskManagementApi = {
   async getEmployeePerformance(employeeId?: string): Promise<EmployeePerformanceStats[]> {
     try {
       const params = employeeId ? { employeeId } : undefined;
-      return await api.get<EmployeePerformanceStats[]>('/api/tasks/employee-performance', { params });
+      return await api.get<EmployeePerformanceStats[]>('/tasks/employee-performance', { params });
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -876,7 +879,7 @@ export const taskManagementApi = {
 
   async getEmployeeSalaryLedger(employeeId: string, periodStart: Date, periodEnd: Date): Promise<EmployeeSalaryLedger> {
     try {
-      return await api.get<EmployeeSalaryLedger>(`/api/tasks/employee-salary-ledger/${employeeId}`, {
+      return await api.get<EmployeeSalaryLedger>(`/tasks/employee-salary-ledger/${employeeId}`, {
         params: { periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString() }
       });
     } catch (error) {
@@ -930,7 +933,7 @@ export const taskManagementApi = {
   // Salary Adjustments CRUD
   async getSalaryAdjustments(query?: SalaryAdjustmentQuery): Promise<SalaryAdjustment[]> {
     try {
-      return await api.get<SalaryAdjustment[]>('/api/tasks/salary-adjustments', { params: query });
+      return await api.get<SalaryAdjustment[]>('/tasks/salary-adjustments', { params: query });
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -970,7 +973,7 @@ export const taskManagementApi = {
 
   async getSalaryAdjustmentById(id: string): Promise<SalaryAdjustment> {
     try {
-      return await api.get<SalaryAdjustment>(`/api/tasks/salary-adjustments/${id}`);
+      return await api.get<SalaryAdjustment>(`/tasks/salary-adjustments/${id}`);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -985,7 +988,7 @@ export const taskManagementApi = {
 
   async createSalaryAdjustment(data: CreateSalaryAdjustmentDto): Promise<SalaryAdjustment> {
     try {
-      return await api.post<SalaryAdjustment>('/api/tasks/salary-adjustments', data);
+      return await api.post<SalaryAdjustment>('/tasks/salary-adjustments', data);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -1006,7 +1009,7 @@ export const taskManagementApi = {
 
   async updateSalaryAdjustment(id: string, data: UpdateSalaryAdjustmentDto): Promise<SalaryAdjustment> {
     try {
-      return await api.patch<SalaryAdjustment>(`/api/tasks/salary-adjustments/${id}`, data);
+      return await api.patch<SalaryAdjustment>(`/tasks/salary-adjustments/${id}`, data);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -1027,7 +1030,7 @@ export const taskManagementApi = {
 
   async deleteSalaryAdjustment(id: string): Promise<void> {
     try {
-      return await api.delete<void>(`/api/tasks/salary-adjustments/${id}`);
+      return await api.delete<void>(`/tasks/salary-adjustments/${id}`);
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -1042,7 +1045,7 @@ export const taskManagementApi = {
 
   async approveSalaryAdjustment(id: string, approvedBy: string, approvedByName: string): Promise<SalaryAdjustment> {
     try {
-      return await api.post<SalaryAdjustment>(`/api/tasks/salary-adjustments/${id}/approve`, { approvedBy, approvedByName });
+      return await api.post<SalaryAdjustment>(`/tasks/salary-adjustments/${id}/approve`, { approvedBy, approvedByName });
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -1066,7 +1069,7 @@ export const taskManagementApi = {
 
   async processSalaryAdjustment(id: string, processedBy: string): Promise<SalaryAdjustment> {
     try {
-      return await api.post<SalaryAdjustment>(`/api/tasks/salary-adjustments/${id}/process`, { processedBy });
+      return await api.post<SalaryAdjustment>(`/tasks/salary-adjustments/${id}/process`, { processedBy });
     } catch (error) {
       if (isConnectionError(error)) {
         // Mock fallback
@@ -1086,4 +1089,4 @@ export const taskManagementApi = {
       throw error;
     }
   },
-};
+});

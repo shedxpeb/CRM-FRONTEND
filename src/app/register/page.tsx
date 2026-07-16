@@ -1,22 +1,28 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { ROUTES } from '@/core/routes';
 import { useAuth } from '@/features/auth/AuthContext';
 import { registerSchema, verifyOtpSchema, RegisterInput } from '@/features/auth/validations';
 import { FormInput } from '@/components/form/FormInput';
+import { useOtpRecovery } from '@/features/auth/useOtpRecovery';
 
 function RegisterForm() {
   const { register: registerUser, verifyOtp, resendOtp } = useAuth();
   const [step, setStep] = useState<'register' | 'otp'>('register');
   const [email, setEmail] = useState('');
-  const [otpFromServer, setOtpFromServer] = useState('');
   const [apiError, setApiError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const router = useRouter();
+  const { state: otpState, persist, clear, resendSeconds, isExpired } = useOtpRecovery();
+
+  useEffect(() => {
+    if (otpState?.purpose === 'REGISTRATION') {
+      setEmail(otpState.email);
+      setStep('otp');
+    }
+  }, [otpState]);
 
   const registerForm = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -32,7 +38,7 @@ function RegisterForm() {
     setSubmitting(false);
     if (result.success) {
       setEmail(result.email || formData.email);
-      setOtpFromServer(result.otp || '');
+      if (result.otpDelivery) persist(result.otpDelivery, 'REGISTRATION');
       setStep('otp');
     } else {
       setApiError(result.error || 'Registration failed');
@@ -46,7 +52,21 @@ function RegisterForm() {
     setSubmitting(false);
     if (!result.success) {
       setApiError(result.error || 'Verification failed');
+      return;
     }
+    clear();
+  };
+
+  const onResend = async () => {
+    setSubmitting(true);
+    setApiError('');
+    const result = await resendOtp(email, 'REGISTRATION');
+    setSubmitting(false);
+    if (!result.success) {
+      setApiError(result.error || "We couldn't send the verification code. Please try again.");
+      return;
+    }
+    if (result.otpDelivery) persist(result.otpDelivery, 'REGISTRATION');
   };
 
   return (
@@ -88,12 +108,7 @@ function RegisterForm() {
         ) : (
           <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="mt-8 space-y-4" noValidate>
             <p className="text-sm text-gray-600 text-center">We sent a 6-digit code to <strong>{email}</strong></p>
-            {otpFromServer && (
-              <div className="rounded-md bg-yellow-50 p-3 text-center">
-                <p className="text-sm text-yellow-800 font-mono tracking-widest text-2xl">{otpFromServer}</p>
-                <p className="text-xs text-yellow-600 mt-1">Dev mode OTP (copy this)</p>
-              </div>
-            )}
+            {isExpired && <p className="rounded-md bg-yellow-50 p-3 text-center text-sm text-yellow-800">OTP expired. Request a new OTP.</p>}
             <FormInput label="OTP Code" type="text" placeholder="Enter 6-digit OTP" maxLength={6}
               registration={otpForm.register('otp')} error={otpForm.formState.errors.otp?.message as string}
               required disabled={submitting} />
@@ -103,9 +118,9 @@ function RegisterForm() {
               {submitting ? 'Verifying...' : 'Verify Email'}
             </button>
             <p className="text-center text-sm text-gray-600">
-              Didn&apos;t receive code?{' '}
-              <button type="button" onClick={() => resendOtp(email)} className="font-medium text-blue-600 hover:text-blue-500 bg-transparent border-none cursor-pointer">
-                Resend OTP
+              {resendSeconds > 0 ? `Resend OTP in ${String(Math.floor(resendSeconds / 60)).padStart(2, '0')}:${String(resendSeconds % 60).padStart(2, '0')}` : 'Didn’t receive the code? '}
+              <button type="button" onClick={onResend} disabled={submitting || resendSeconds > 0} className="ml-1 font-medium text-blue-600 hover:text-blue-500 disabled:text-gray-400 bg-transparent border-none cursor-pointer disabled:cursor-not-allowed">
+                {resendSeconds > 0 ? '' : 'Resend OTP'}
               </button>
             </p>
           </form>

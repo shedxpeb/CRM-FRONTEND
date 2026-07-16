@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, setAccessToken, setSessionData, clearSession, getTenantId } from '@/core/auth/session';
+import { assertEndpointAvailable, rememberUnavailableEndpoint } from './capabilities';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -50,7 +51,8 @@ export async function silentRefresh(): Promise<string> {
 
 // Request interceptor - attach access token
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
+    await assertEndpointAvailable(config);
     const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -69,6 +71,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    if (error.response?.status === 404 && originalRequest?.url) {
+      rememberUnavailableEndpoint(originalRequest.url);
+    }
 
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);

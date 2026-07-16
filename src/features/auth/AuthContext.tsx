@@ -4,20 +4,20 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { silentRefresh } from '@/core/api';
-import { setAccessToken, setSessionData, clearSession, getAccessToken } from '@/core/auth/session';
+import { setAccessToken, setSessionData, clearSession, getAccessToken, getSessionId } from '@/core/auth/session';
 import { ROUTES } from '@/core/routes';
-import { authService, AuthUser, LoginInput, RegisterInput, VerifyOtpInput, ForgotPasswordInput, ResetPasswordInput } from './authService';
+import { authService, AuthUser, LoginInput, RegisterInput, VerifyOtpInput, ForgotPasswordInput, OtpDeliveryResponse, ResetPasswordInput } from './authService';
 
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (input: LoginInput) => Promise<{ success: boolean; error?: string }>;
-  register: (input: RegisterInput) => Promise<{ success: boolean; email?: string; error?: string; otp?: string }>;
+  register: (input: RegisterInput) => Promise<{ success: boolean; email?: string; otpDelivery?: OtpDeliveryResponse; error?: string }>;
   verifyOtp: (input: VerifyOtpInput) => Promise<{ success: boolean; error?: string }>;
-  forgotPassword: (input: ForgotPasswordInput) => Promise<{ success: boolean; error?: string }>;
+  forgotPassword: (input: ForgotPasswordInput) => Promise<{ success: boolean; otpDelivery?: OtpDeliveryResponse; error?: string }>;
   resetPassword: (input: ResetPasswordInput) => Promise<{ success: boolean; error?: string }>;
-  resendOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resendOtp: (email: string, purpose?: 'REGISTRATION' | 'FORGOT_PASSWORD') => Promise<{ success: boolean; otpDelivery?: OtpDeliveryResponse; error?: string }>;
   logout: () => void;
 }
 
@@ -60,19 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const hydrate = async () => {
-      const currentPath =
-        typeof window !== 'undefined' ? window.location.pathname : '';
-      const isAuthPage =
-        currentPath === ROUTES.login ||
-        currentPath === ROUTES.register ||
-        currentPath === ROUTES.forgotPassword ||
-        currentPath === ROUTES.resetPassword;
-
-      if (isAuthPage && !getAccessToken()) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const hasToken = await authService.bootstrapSession();
         if (!hasToken) {
@@ -83,20 +70,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res: any = await authService.getProfile();
         const userData = res?.data ?? res;
         setUser(userData);
+        const sid = getSessionId();
+        if (sid && userData?.organizationId) {
+          setSessionData(sid, userData.organizationId);
+        }
         startProactiveRefresh();
       } catch {
         clearSession();
         setUser(null);
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-          router.push(ROUTES.login);
-        }
       } finally {
         setIsLoading(false);
       }
     };
 
     hydrate();
-  }, [router, startProactiveRefresh]);
+  }, [startProactiveRefresh]);
 
   // Cleanup interval on unmount
   useEffect(() => {
@@ -111,7 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionData(data.sessionId, data.user?.organizationId || '');
       setUser(data.user);
       startProactiveRefresh();
-      router.push(ROUTES.dashboard);
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const redirect = params?.get('redirect');
+      const safe =
+        redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : ROUTES.dashboard;
+      router.push(safe);
       router.refresh();
       return { success: true };
     } catch (err: any) {
@@ -124,7 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res: any = await authService.register(input);
       const data = res?.data ?? res;
-      return { success: true, email: data.email, otp: data.otp };
+      return {
+        success: true,
+        email: data.email,
+        otpDelivery: data,
+      };
     } catch (err: any) {
       const msg = extractErrorMessage(err, 'Registration failed');
       return { success: false, error: msg };
@@ -150,8 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const forgotPassword = useCallback(async (input: ForgotPasswordInput) => {
     try {
-      await authService.forgotPassword(input);
-      return { success: true };
+      const res: any = await authService.forgotPassword(input);
+      return { success: true, otpDelivery: res?.data ?? res };
     } catch (err: any) {
       const msg = extractErrorMessage(err, 'Failed to send OTP');
       return { success: false, error: msg };
@@ -168,10 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const resendOtp = useCallback(async (email: string) => {
+  const resendOtp = useCallback(async (email: string, purpose: 'REGISTRATION' | 'FORGOT_PASSWORD' = 'REGISTRATION') => {
     try {
-      await authService.resendOtp(email);
-      return { success: true };
+      const res: any = await authService.resendOtp(email, purpose);
+      return { success: true, otpDelivery: res?.data ?? res };
     } catch (err: any) {
       const msg = extractErrorMessage(err, 'Failed to resend OTP');
       return { success: false, error: msg };
