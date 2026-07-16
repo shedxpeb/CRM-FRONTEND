@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { registerSchema, verifyOtpSchema, RegisterInput } from '@/features/auth/validations';
 import { FormInput } from '@/components/form/FormInput';
 import { useOtpRecovery } from '@/features/auth/useOtpRecovery';
+import { OtpResendButton } from '@/features/auth/OtpResendButton';
 
 function RegisterForm() {
   const { register: registerUser, verifyOtp, resendOtp } = useAuth();
@@ -45,7 +46,11 @@ function RegisterForm() {
     }
   };
 
-  const onVerifyOtp = async (data: any) => {
+  const onVerifyOtp = async (data: { otp: string }) => {
+    if (isExpired) {
+      setApiError('OTP has expired. Please request a new one.');
+      return;
+    }
     setSubmitting(true);
     setApiError('');
     const result = await verifyOtp({ email, otp: data.otp });
@@ -58,6 +63,7 @@ function RegisterForm() {
   };
 
   const onResend = async () => {
+    if (resendSeconds > 0 || submitting) return;
     setSubmitting(true);
     setApiError('');
     const result = await resendOtp(email, 'REGISTRATION');
@@ -67,6 +73,8 @@ function RegisterForm() {
       return;
     }
     if (result.otpDelivery) persist(result.otpDelivery, 'REGISTRATION');
+    otpForm.reset({ otp: '' });
+    otpForm.clearErrors();
   };
 
   return (
@@ -98,7 +106,7 @@ function RegisterForm() {
               required disabled={submitting} />
             {apiError && (<div className="rounded-md bg-red-50 p-3"><p className="text-sm text-red-800">{apiError}</p></div>)}
             <button type="submit" disabled={submitting}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
               {submitting ? 'Creating account...' : 'Create Account'}
             </button>
             <p className="text-center text-sm text-gray-600">
@@ -108,20 +116,36 @@ function RegisterForm() {
         ) : (
           <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="mt-8 space-y-4" noValidate>
             <p className="text-sm text-gray-600 text-center">We sent a 6-digit code to <strong>{email}</strong></p>
-            {isExpired && <p className="rounded-md bg-yellow-50 p-3 text-center text-sm text-yellow-800">OTP expired. Request a new OTP.</p>}
-            <FormInput label="OTP Code" type="text" placeholder="Enter 6-digit OTP" maxLength={6}
-              registration={otpForm.register('otp')} error={otpForm.formState.errors.otp?.message as string}
-              required disabled={submitting} />
+            {isExpired && (
+              <p className="rounded-md bg-yellow-50 p-3 text-center text-sm text-yellow-800">
+                OTP has expired. Please request a new one.
+              </p>
+            )}
+            <FormInput
+              label="OTP Code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="Enter 6-digit OTP"
+              maxLength={6}
+              registration={otpForm.register('otp', {
+                setValueAs: (v) => String(v ?? '').replace(/\D/g, '').slice(0, 6),
+              })}
+              error={otpForm.formState.errors.otp?.message as string}
+              required
+              disabled={submitting || isExpired}
+            />
             {apiError && (<div className="rounded-md bg-red-50 p-3"><p className="text-sm text-red-800">{apiError}</p></div>)}
-            <button type="submit" disabled={submitting}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={submitting || isExpired}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {submitting ? 'Verifying...' : 'Verify Email'}
             </button>
             <p className="text-center text-sm text-gray-600">
-              {resendSeconds > 0 ? `Resend OTP in ${String(Math.floor(resendSeconds / 60)).padStart(2, '0')}:${String(resendSeconds % 60).padStart(2, '0')}` : 'Didn’t receive the code? '}
-              <button type="button" onClick={onResend} disabled={submitting || resendSeconds > 0} className="ml-1 font-medium text-blue-600 hover:text-blue-500 disabled:text-gray-400 bg-transparent border-none cursor-pointer disabled:cursor-not-allowed">
-                {resendSeconds > 0 ? '' : 'Resend OTP'}
-              </button>
+              Didn&apos;t receive the code?{' '}
+              <OtpResendButton resendSeconds={resendSeconds} disabled={submitting} onResend={onResend} />
             </p>
           </form>
         )}

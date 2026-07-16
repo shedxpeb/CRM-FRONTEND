@@ -20,8 +20,14 @@ export const registerSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const otpCodeSchema = z
+  .string()
+  .trim()
+  .length(6, 'OTP must be exactly 6 digits')
+  .regex(/^\d{6}$/, 'OTP must be a 6-digit number');
+
 export const verifyOtpSchema = z.object({
-  otp: z.string().length(6, 'OTP must be exactly 6 characters').regex(/^[A-Z0-9]{6}$/, 'OTP must be alphanumeric'),
+  otp: otpCodeSchema,
 });
 
 export const forgotPasswordSchema = z.object({
@@ -29,7 +35,7 @@ export const forgotPasswordSchema = z.object({
 });
 
 export const resetPasswordSchema = z.object({
-  otp: z.string().length(6).regex(/^[A-Z0-9]{6}$/),
+  otp: otpCodeSchema,
   newPassword: z.string().min(8).max(128).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
   confirmPassword: z.string().min(1),
 }).refine((data) => data.newPassword === data.confirmPassword, {

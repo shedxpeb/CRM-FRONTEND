@@ -26,11 +26,15 @@ function readState(): OtpRecoveryState | null {
 
 export function useOtpRecovery(expectedEmail?: string, expectedPurpose?: OtpRecoveryPurpose) {
   const [state, setState] = useState<OtpRecoveryState | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const saved = readState();
-    if (saved && (!expectedEmail || (saved.email === expectedEmail.toLowerCase() && saved.purpose === expectedPurpose))) {
+    if (
+      saved &&
+      (!expectedEmail ||
+        (saved.email === expectedEmail.toLowerCase() && saved.purpose === expectedPurpose))
+    ) {
       setState(saved);
     }
   }, [expectedEmail, expectedPurpose]);
@@ -41,11 +45,16 @@ export function useOtpRecovery(expectedEmail?: string, expectedPurpose?: OtpReco
   }, []);
 
   const persist = useCallback((delivery: OtpDeliveryResponse, purpose: OtpRecoveryPurpose) => {
+    if (!delivery?.email || !delivery?.expiresAt) return;
+    const cooldownSeconds =
+      typeof delivery.resendAvailableInSeconds === 'number' && delivery.resendAvailableInSeconds >= 0
+        ? delivery.resendAvailableInSeconds
+        : 60;
     const next: OtpRecoveryState = {
-      email: delivery.email,
+      email: delivery.email.toLowerCase(),
       purpose,
       expiresAt: delivery.expiresAt,
-      resendAvailableAt: Date.now() + delivery.resendAvailableInSeconds * 1000,
+      resendAvailableAt: Date.now() + cooldownSeconds * 1000,
     };
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setState(next);
@@ -58,6 +67,7 @@ export function useOtpRecovery(expectedEmail?: string, expectedPurpose?: OtpReco
 
   const resendSeconds = Math.max(0, Math.ceil(((state?.resendAvailableAt || 0) - now) / 1000));
   const isExpired = !!state && new Date(state.expiresAt).getTime() <= now;
+  const canResend = !!state && resendSeconds <= 0;
 
-  return { state, persist, clear, resendSeconds, isExpired };
+  return { state, persist, clear, resendSeconds, isExpired, canResend };
 }
