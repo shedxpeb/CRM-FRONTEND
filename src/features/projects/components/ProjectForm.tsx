@@ -10,14 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 import { createProjectSchema, CreateProjectInput } from '@/features/projects/validations';
-import { useCustomers } from '@/features/customers/hooks/useCustomers';
+import { customersApi } from '@/features/customers/services/customersApi';
+import { useCustomer } from '@/features/customers/hooks/useCustomers';
 import { useLeads } from '@/features/leads/hooks/useLeads';
+import { useUsers } from '@/features/settings/hooks/useSettings';
 import { Lead } from '@/types/leads';
 import { smartPrefill } from '@/lib/smartPrefill';
 import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
 import { ProjectCustomFields } from '@/features/projects/components/ProjectCustomFields';
 import { ProjectCustomFieldValues } from '@/features/projects/types';
 import { Info } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 interface ProjectFormProps {
   onSubmit: (data: Partial<CreateProjectInput> & { customFields?: ProjectCustomFieldValues }) => void;
@@ -36,9 +39,21 @@ export const ProjectForm = memo(function ProjectForm({
   prefillCustomerId,
   isEditMode = false,
 }: ProjectFormProps) {
-  const { data: customers } = useCustomers({ page: 1, pageSize: 1000 });
-  const { data: leads } = useLeads({ page: 1, pageSize: 1000 });
+  // Lightweight combobox (≤50) — not full customer list
+  const { data: customersCombobox } = useQuery({
+    queryKey: ['customers', 'combobox', { page: 1, pageSize: 50 }],
+    queryFn: () => customersApi.getCombobox({ page: 1, pageSize: 50 }),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  // Lead picker only on create
+  const { data: leads } = useLeads(
+    isEditMode ? undefined : { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
+  );
+  const { data: users } = useUsers();
   const projectConfig = useProjectConfiguration();
+  const customers = customersCombobox;
   const [showAutoFillNotice, setShowAutoFillNotice] = useState(false);
   const [customFields, setCustomFields] = useState<ProjectCustomFieldValues>(
     initialData?.customFields ?? {}
@@ -70,33 +85,88 @@ export const ProjectForm = memo(function ProjectForm({
   });
 
   const customerId = watch('customerId');
+  const projectManagerId = watch('projectManagerId');
 
-  // Auto-fill location from customer on create only (one-time snapshot — project owns its data)
+  // Resolve selected customer for label + create-mode location autofill
+  const { data: selectedCustomerDetail } = useCustomer(customerId || '');
+
+  const customerOptions = (() => {
+    const options = (customers?.data?.rows ?? []).map((customer) => ({
+      value: customer.id,
+      label: `${customer.customerName} (${customer.companyName})`,
+    }));
+    if (customerId && !options.some((o) => o.value === customerId)) {
+      const detail = selectedCustomerDetail?.data;
+      options.unshift({
+        value: customerId,
+        label: detail
+          ? `${detail.customerName} (${detail.companyName})`
+          : 'Current customer',
+      });
+    }
+    return options;
+  })();
+
+  const managerOptions = (() => {
+    const options = (users ?? [])
+      .filter((u) => u.isActive && !u.isLocked)
+      .map((u) => ({
+        value: u.id,
+        label: `${u.name}${u.email ? ` (${u.email})` : ''}`,
+      }));
+    // Keep current manager selectable even if users API is unavailable or filtered out
+    if (
+      projectManagerId &&
+      !options.some((o) => o.value === projectManagerId)
+    ) {
+      options.unshift({
+        value: projectManagerId,
+        label: `Current manager (${projectManagerId.slice(0, 8)}…)`,
+      });
+    }
+    return options;
+  })();
+
+  // Auto-fill location from customer detail on create only (one-time snapshot)
   useEffect(() => {
     if (isEditMode) return;
-    if (customerId && customers?.data?.rows) {
-      const selectedCustomer = customers.data.rows.find((c) => c.id === customerId);
-      if (selectedCustomer) {
-        setValue('location', selectedCustomer.address || '');
-        setValue('city', selectedCustomer.city || '');
-        setValue('state', selectedCustomer.state || '');
-        setValue('pincode', selectedCustomer.pincode || '');
-        setShowAutoFillNotice(true);
+    const selectedCustomer = selectedCustomerDetail?.data;
+    if (!customerId || !selectedCustomer || selectedCustomer.id !== customerId) return;
 
-        // Hide notice after 3 seconds
-        const timer = setTimeout(() => {
-          setShowAutoFillNotice(false);
-        }, 3000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [customerId, customers?.data?.rows, setValue, isEditMode]);
+    setValue('location', selectedCustomer.address || '');
+    setValue('city', selectedCustomer.city || '');
+    setValue('state', selectedCustomer.state || '');
+    setValue('pincode', selectedCustomer.pincode || '');
+    setShowAutoFillNotice(true);
+
+    const timer = setTimeout(() => {
+      setShowAutoFillNotice(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [customerId, selectedCustomerDetail?.data, setValue, isEditMode]);
 
   const handleCustomFieldChange = (key: string, value: string | number | boolean) => {
     setCustomFields((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleFormSubmit = (data: CreateProjectInput) => {
+    if (isEditMode && initialData) {
+      const changed: Partial<CreateProjectInput> & { customFields?: ProjectCustomFieldValues } = {};
+      (Object.keys(data) as (keyof CreateProjectInput)[]).forEach((key) => {
+        const nextVal = data[key];
+        const prevVal = initialData[key];
+        if (String(nextVal ?? '') !== String(prevVal ?? '')) {
+          (changed as Record<string, unknown>)[key] = nextVal;
+        }
+      });
+      const prevCustom = JSON.stringify(initialData.customFields ?? {});
+      const nextCustom = JSON.stringify(customFields ?? {});
+      if (prevCustom !== nextCustom) {
+        changed.customFields = customFields;
+      }
+      onSubmit(changed);
+      return;
+    }
     onSubmit({ ...data, customFields });
   };
 
@@ -169,12 +239,9 @@ export const ProjectForm = memo(function ProjectForm({
             <div className="space-y-2">
               <label className="text-sm font-medium">Customer *</label>
               <Combobox
-                options={customers?.data?.rows?.map((customer) => ({
-                  value: customer.id,
-                  label: `${customer.customerName} (${customer.companyName})`
-                })) || []}
+                options={customerOptions}
                 value={watch('customerId') || ''}
-                onValueChange={(value) => setValue('customerId', value)}
+                onValueChange={(value) => setValue('customerId', value, { shouldValidate: true })}
                 placeholder="Select customer"
                 searchPlaceholder="Search customers..."
                 emptyMessage="No customer found"
@@ -236,12 +303,12 @@ export const ProjectForm = memo(function ProjectForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Start Date *</label>
-              <Input type="date" {...register('startDate', { valueAsDate: true })} />
+              <Input type="date" {...register('startDate')} />
               {errors.startDate && <p className="text-sm text-red-500">{errors.startDate.message}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">End Date *</label>
-              <Input type="date" {...register('endDate', { valueAsDate: true })} />
+              <Input type="date" {...register('endDate')} />
               {errors.endDate && <p className="text-sm text-red-500">{errors.endDate.message}</p>}
             </div>
           </div>
@@ -271,8 +338,19 @@ export const ProjectForm = memo(function ProjectForm({
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Project Manager *</label>
-            <Input {...register('projectManagerId')} placeholder="Enter project manager ID" />
-            {errors.projectManagerId && <p className="text-sm text-red-500">{errors.projectManagerId.message}</p>}
+            <Combobox
+              options={managerOptions}
+              value={projectManagerId || ''}
+              onValueChange={(value) => {
+                setValue('projectManagerId', value, { shouldValidate: true });
+              }}
+              placeholder="Select project manager"
+              searchPlaceholder="Search users..."
+              emptyMessage="No active users found"
+            />
+            {errors.projectManagerId && (
+              <p className="text-sm text-red-500">{errors.projectManagerId.message}</p>
+            )}
           </div>
         </CardContent>
       </Card>

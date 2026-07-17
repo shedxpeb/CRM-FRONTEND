@@ -144,12 +144,14 @@ export const DataTable = function DataTable<T = Record<string, any>>({
 
   // Keep the current page within range when the data set shrinks (e.g. after a
   // search or filter narrows results) so users never land on an empty page.
+  // Backend pages are 1-based — never emit page 0 when totalPages is 0.
   React.useEffect(() => {
-    if (currentPage > totalPages) {
+    const safeTotalPages = Math.max(1, totalPages);
+    if (currentPage > safeTotalPages) {
       if (pagination) {
-        onPageChange?.(totalPages);
+        onPageChange?.(safeTotalPages);
       } else {
-        setInternalCurrentPage(totalPages);
+        setInternalCurrentPage(safeTotalPages);
       }
     }
   }, [currentPage, totalPages, pagination, onPageChange]);
@@ -159,7 +161,8 @@ export const DataTable = function DataTable<T = Record<string, any>>({
     if (pagination) {
       return data;
     }
-    const safePage = Math.min(currentPage, totalPages);
+    const safeTotalPages = Math.max(1, totalPages);
+    const safePage = Math.min(Math.max(1, currentPage), safeTotalPages);
     const startIndex = (safePage - 1) * rowsPerPage;
     return filteredData.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredData, currentPage, totalPages, rowsPerPage, data, pagination]);
@@ -182,10 +185,11 @@ export const DataTable = function DataTable<T = Record<string, any>>({
   }, [effectiveSortColumn, effectiveSortDirection, sortColumn, sortDirection, onSortChange]);
 
   const handlePageChange = useCallback((page: number) => {
+    const safePage = Math.max(1, page);
     if (pagination) {
-      onPageChange?.(page);
+      onPageChange?.(safePage);
     } else {
-      setInternalCurrentPage(page);
+      setInternalCurrentPage(safePage);
     }
   }, [pagination, onPageChange]);
 

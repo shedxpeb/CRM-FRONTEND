@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useMemo, useState, memo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Lead, LeadActivity } from '@/types/leads';
-import { 
+import { leadsApi } from '@/features/leads/services/leadsApi';
+import {
   FileText,
   Search,
   Plus,
@@ -17,7 +19,8 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Filter
+  Filter,
+  Loader2,
 } from 'lucide-react';
 
 interface LeadLogsDialogProps {
@@ -26,75 +29,64 @@ interface LeadLogsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Mock activity logs - replace with API call
-const mockActivities: LeadActivity[] = [
-  {
-    id: '1',
-    leadId: '1',
-    type: 'created',
-    description: 'Lead created from website enquiry',
-    performedBy: 'Admin',
-    performedAt: new Date('2024-05-28T10:30:00'),
-  },
-  {
-    id: '2',
-    leadId: '1',
-    type: 'assigned',
-    description: 'Lead assigned to Vikram Singh',
-    performedBy: 'Admin',
-    performedAt: new Date('2024-05-28T10:35:00'),
-    metadata: { assignedTo: 'Vikram Singh' },
-  },
-  {
-    id: '3',
-    leadId: '1',
-    type: 'followup',
-    description: 'Initial follow-up call completed - Customer interested in PEB structure',
-    performedBy: 'Vikram Singh',
-    performedAt: new Date('2024-05-29T14:00:00'),
-    metadata: { callDuration: '15 min', outcome: 'Interested', notes: 'Budget approved' },
-  },
-  {
-    id: '4',
-    leadId: '1',
-    type: 'updated',
-    description: 'Updated project height from 10m to 12m',
-    performedBy: 'Vikram Singh',
-    performedAt: new Date('2024-05-29T14:30:00'),
-    metadata: { field: 'height', oldValue: '10m', newValue: '12m' },
-  },
-  {
-    id: '5',
-    leadId: '1',
-    type: 'status_changed',
-    description: 'Status changed from New to Contacted',
-    performedBy: 'Vikram Singh',
-    performedAt: new Date('2024-05-30T09:00:00'),
-    metadata: { oldStatus: 'New', newStatus: 'Contacted' },
-  },
-  {
-    id: '6',
-    leadId: '1',
-    type: 'document_sent',
-    description: 'Company brochure and PEB catalog sent via email',
-    performedBy: 'Vikram Singh',
-    performedAt: new Date('2024-05-30T11:00:00'),
-    metadata: { documentType: 'Brochure', sentVia: 'Email' },
-  },
-  {
-    id: '7',
-    leadId: '1',
-    type: 'followup',
-    description: 'Second follow-up - Discussed technical requirements',
-    performedBy: 'Vikram Singh',
-    performedAt: new Date('2024-06-01T15:30:00'),
-    metadata: { callDuration: '25 min', outcome: 'Very Interested' },
-  },
-];
+interface LeadLogRecord {
+  id: string;
+  action?: string;
+  description?: string;
+  timestamp?: string | Date;
+  createdAt?: string | Date;
+  userId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  user?: { name?: string | null; email?: string | null } | null;
+}
+
+function mapActionToType(action: string): LeadActivity['type'] {
+  const normalized = action.toLowerCase();
+  if (normalized.includes('creat')) return 'created';
+  if (normalized.includes('assign')) return 'assigned';
+  if (normalized.includes('convert')) return 'converted';
+  if (normalized.includes('status')) return 'status_changed';
+  if (normalized.includes('follow')) return 'followup';
+  if (normalized.includes('document') || normalized.includes('send')) return 'document_sent';
+  if (normalized.includes('update') || normalized.includes('patch')) return 'updated';
+  return 'updated';
+}
+
+function mapLogToActivity(log: LeadLogRecord, leadId: string): LeadActivity {
+  const action = log.action || 'updated';
+  const performedAt = new Date(log.timestamp || log.createdAt || Date.now());
+  const performedBy =
+    log.user?.name ||
+    log.user?.email?.split('@')[0] ||
+    (log.userId ? `User ${log.userId.slice(0, 8)}` : 'System');
+
+  return {
+    id: log.id,
+    leadId,
+    type: mapActionToType(action),
+    description: log.description || action.replace(/[._]/g, ' '),
+    performedBy,
+    performedAt,
+    metadata: (log.metadata as Record<string, unknown> | undefined) || undefined,
+  };
+}
 
 export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenChange }: LeadLogsDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['lead-logs', lead.id],
+    queryFn: () => leadsApi.getLogs(lead.id),
+    enabled: open && !!lead.id,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const activities = useMemo(() => {
+    const rows = (data?.data ?? []) as LeadLogRecord[];
+    return rows.map((log) => mapLogToActivity(log, lead.id));
+  }, [data, lead.id]);
 
   const getActivityIcon = (type: LeadActivity['type']) => {
     switch (type) {
@@ -146,16 +138,19 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
     return date.toLocaleDateString();
   };
 
-  const filteredActivities = mockActivities.filter((activity) => {
+  const filteredActivities = activities.filter((activity) => {
     const matchesSearch = searchQuery
       ? activity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         activity.performedBy.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
-    
+
     const matchesFilter = filterType === 'all' || activity.type === filterType;
-    
+
     return matchesSearch && matchesFilter;
   });
+
+  const errorMessage =
+    error instanceof Error ? error.message : 'Failed to load activity logs';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,10 +163,9 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Search and Filter */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -179,6 +173,7 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
+                    aria-label="Search activities"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -187,6 +182,7 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                     className="px-3 py-2 text-sm rounded-md border border-input bg-background"
+                    aria-label="Filter activity type"
                   >
                     <option value="all">All Activities</option>
                     <option value="created">Created</option>
@@ -202,19 +198,27 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
             </CardContent>
           </Card>
 
-          {/* Activity Timeline */}
           <Card>
             <CardContent className="p-6">
-              <div className="space-y-4">
-                {filteredActivities.length === 0 ? (
-                  <div className="text-center py-12">
-                    <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-muted-foreground">No activities found</p>
-                  </div>
-                ) : (
-                  filteredActivities.map((activity, index) => (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin mb-3" />
+                  <p>Loading activity logs...</p>
+                </div>
+              ) : isError ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-3 text-destructive" />
+                  <p className="text-destructive">{errorMessage}</p>
+                </div>
+              ) : filteredActivities.length === 0 ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">No activities found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredActivities.map((activity, index) => (
                     <div key={activity.id} className="flex gap-4">
-                      {/* Icon */}
                       <div className="flex flex-col items-center">
                         <div className={`p-2.5 rounded-lg border ${getActivityColor(activity.type)}`}>
                           {getActivityIcon(activity.type)}
@@ -224,7 +228,6 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
                         )}
                       </div>
 
-                      {/* Content */}
                       <div className="flex-1 pb-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
@@ -248,12 +251,11 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
                           </div>
                         </div>
 
-                        {/* Metadata */}
                         {activity.metadata && Object.keys(activity.metadata).length > 0 && (
                           <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                            <div className="grid grid-cols-2 gap-2">
-                              {Object.entries(activity.metadata).map(([key, value], index) => (
-                                <div key={`${key}-${index}`} className="text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Object.entries(activity.metadata).map(([key, value], idx) => (
+                                <div key={`${key}-${idx}`} className="text-xs">
                                   <span className="font-medium text-muted-foreground">
                                     {key.replace(/([A-Z])/g, ' $1').trim()}:
                                   </span>{' '}
@@ -265,16 +267,13 @@ export const LeadLogsDialog = memo(function LeadLogsDialog({ lead, open, onOpenC
                         )}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
 
-              {/* Summary */}
-              {filteredActivities.length > 0 && (
-                <div className="mt-6 pt-4 border-t">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Total Activities: {filteredActivities.length}</span>
-                    <span>Last Activity: {formatTimeAgo(filteredActivities[0].performedAt)}</span>
+                  <div className="mt-6 pt-4 border-t">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>Total Activities: {filteredActivities.length}</span>
+                      <span>Last Activity: {formatTimeAgo(filteredActivities[0].performedAt)}</span>
+                    </div>
                   </div>
                 </div>
               )}

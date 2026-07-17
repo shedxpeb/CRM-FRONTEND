@@ -20,15 +20,16 @@ import {
 } from '@/features/task-management/hooks/useTaskManagement';
 import { CompleteTaskDto, CreateTaskDto, UpdateTaskDto } from '@/features/task-management/types';
 import { ROUTES } from '@/core/routes';
+import { useAuth } from '@/features/auth/AuthContext';
 import { AlertTriangle } from 'lucide-react';
-
-const CURRENT_USER_ID = 'user-1';
-const CURRENT_USER_NAME = 'Current User';
 
 export default function TaskManagementDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const taskId = params.id as string;
+  const currentUserId = user?.id || '';
+  const currentUserName = user?.name || user?.email || 'User';
 
   const { data: task, isLoading, error } = useTask(taskId);
   const updateMutation = useUpdateTask();
@@ -105,8 +106,8 @@ export default function TaskManagementDetailPage() {
           onComplete={() => setIsCompleteDialogOpen(true)}
           onDelete={() => setIsDeleteDialogOpen(true)}
           isAdmin
-          currentUserId={CURRENT_USER_ID}
-          currentUserName={CURRENT_USER_NAME}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
         />
 
         <TrackingEngine entityType="task" entityId={taskId} />

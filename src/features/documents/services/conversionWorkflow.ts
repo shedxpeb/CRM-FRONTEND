@@ -392,10 +392,11 @@ export function handleConversion(
             sourceDocument as Estimate,
             request as unknown as ConvertToProposalDto
           );
-          // TODO: Call API to create proposal
-          // targetDocumentId = result.id;
-          // targetDocumentNumber = result.proposalNumber;
-          targetDocumentNumber = `PROP-${Date.now()}`;
+          void proposalDto;
+          return {
+            success: false,
+            errors: ['Proposal creation is not available yet. Documents backend is pending.'],
+          };
         } else {
           return {
             success: false,
@@ -410,10 +411,11 @@ export function handleConversion(
             sourceDocument as Proposal,
             request as unknown as ConvertToQuotationDto
           );
-          // TODO: Call API to create quotation
-          // targetDocumentId = result.id;
-          // targetDocumentNumber = result.quotationNumber;
-          targetDocumentNumber = `QUOT-${Date.now()}`;
+          void quotationDto;
+          return {
+            success: false,
+            errors: ['Quotation creation is not available yet. Documents backend is pending.'],
+          };
         } else {
           return {
             success: false,
@@ -428,10 +430,11 @@ export function handleConversion(
             sourceDocument as Quotation,
             request as unknown as ConvertToProjectDto
           );
-          // TODO: Call Projects API to create project
-          // targetDocumentId = result.id;
-          // targetDocumentNumber = result.projectNumber;
-          targetDocumentNumber = `PROJ-${Date.now()}`;
+          void projectData;
+          return {
+            success: false,
+            errors: ['Project conversion from quotation is not available yet.'],
+          };
         } else {
           return {
             success: false,
@@ -645,7 +648,7 @@ export function generateConversionSummary(
     sourceType,
     targetType,
     dataPoints,
-    attachments: 0, // TODO: Count actual attachments
+    attachments: 0,
     configurations,
     warnings,
   };

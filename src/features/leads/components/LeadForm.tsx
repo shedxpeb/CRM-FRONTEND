@@ -214,9 +214,59 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     };
 
     // Remove all undefined keys so they are not sent in the request
-    return Object.fromEntries(
+    const fullPayload = Object.fromEntries(
       Object.entries(raw).filter(([_, v]) => v !== undefined)
     ) as Partial<Lead>;
+
+    // Create: send full required payload. Edit: PATCH only changed fields.
+    if (!initialData?.id) {
+      return fullPayload;
+    }
+
+    const changed: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fullPayload)) {
+      const previous = (initialData as Record<string, unknown>)[key];
+      let previousNormalized = previous;
+      if (
+        ['projectType', 'structureType', 'source', 'status'].includes(key) &&
+        typeof previous === 'string'
+      ) {
+        previousNormalized = normalizeEnum(previous) ?? previous;
+      }
+      if (key === 'nextFollowUpDate') {
+        const prevTime = previous
+          ? new Date(previous as string | Date).getTime()
+          : null;
+        const nextTime = value
+          ? new Date(value as string).getTime()
+          : null;
+        if (prevTime !== nextTime) changed[key] = value;
+        continue;
+      }
+      if (key === 'tags' || key === 'customFields') {
+        if (JSON.stringify(previous ?? null) !== JSON.stringify(value ?? null)) {
+          changed[key] = value;
+        }
+        continue;
+      }
+      if (typeof value === 'number' || typeof previousNormalized === 'number') {
+        const prevNum =
+          previousNormalized === undefined || previousNormalized === null || previousNormalized === ''
+            ? null
+            : Number(previousNormalized);
+        const nextNum = value === undefined || value === null || value === '' ? null : Number(value);
+        if (prevNum !== nextNum) changed[key] = value;
+        continue;
+      }
+      if (typeof value === 'boolean' || typeof previousNormalized === 'boolean') {
+        if (Boolean(previousNormalized) !== Boolean(value)) changed[key] = value;
+        continue;
+      }
+      if (String(previousNormalized ?? '') !== String(value ?? '')) {
+        changed[key] = value;
+      }
+    }
+    return changed as Partial<Lead>;
   };
 
   const validateForm = () => {

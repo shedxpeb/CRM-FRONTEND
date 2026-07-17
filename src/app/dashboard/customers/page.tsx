@@ -21,6 +21,7 @@ import {
   useUpdateCustomer,
   useDeleteCustomer,
   useCustomerConfiguration,
+  useCustomersStats,
 } from '@/features/customers/hooks/useCustomers';
 import { customersApi } from '@/features/customers';
 import { ROUTES } from '@/core/routes';
@@ -46,42 +47,42 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | 'all'>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [stateFilter, setStateFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(25);
 
-  // React Query hooks - single source of truth for server data
-  // Fetch all customers once without filters, then filter client-side
-  const { data: allCustomersResponse, isLoading, error } = useCustomers({ page: 1, pageSize: 1000 });
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter, cityFilter, stateFilter, pageSize]);
+
+  // Server-side pagination / search / filters (no pageSize=1000)
+  const { data: customersResponse, isLoading, error } = useCustomers({
+    page: Math.max(1, currentPage),
+    pageSize,
+    search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    city: cityFilter === 'all' ? undefined : cityFilter,
+    state: stateFilter === 'all' ? undefined : stateFilter,
+  });
+  const { data: statsResponse } = useCustomersStats(true);
+
+  const customers = customersResponse?.data?.rows ?? [];
+  const pagination = customersResponse?.data?.pagination;
 
   const customerFilterOptions = useMemo(() => {
     const cities = new Set<string>();
     const states = new Set<string>();
-    for (const customer of allCustomersResponse?.data?.rows ?? []) {
+    for (const customer of customers) {
       if (customer.city) cities.add(customer.city);
       if (customer.state) states.add(customer.state);
     }
+    if (cityFilter !== 'all') cities.add(cityFilter);
+    if (stateFilter !== 'all') states.add(stateFilter);
     return {
       cities: [...cities].sort(),
       states: [...states].sort(),
     };
-  }, [allCustomersResponse?.data?.rows]);
+  }, [customers, cityFilter, stateFilter]);
 
-  const filteredCustomers = useMemo(() => {
-    if (!allCustomersResponse?.data?.rows) return [];
-    const q = debouncedSearch.toLowerCase();
-    return allCustomersResponse.data.rows.filter((customer: Customer) => {
-      const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
-      const matchesCity = cityFilter === 'all' || customer.city === cityFilter;
-      const matchesState = stateFilter === 'all' || customer.state === stateFilter;
-      const matchesSearch = !debouncedSearch ||
-        customer.customerName.toLowerCase().includes(q) ||
-        customer.companyName.toLowerCase().includes(q) ||
-        customer.email?.toLowerCase().includes(q) ||
-        customer.mobile.includes(debouncedSearch) ||
-        customer.city?.toLowerCase().includes(q) ||
-        customer.gstNumber?.toLowerCase().includes(q) ||
-        customer.customerId.toString().includes(debouncedSearch);
-      return matchesStatus && matchesCity && matchesState && matchesSearch;
-    });
-  }, [allCustomersResponse?.data?.rows, statusFilter, cityFilter, stateFilter, debouncedSearch]);
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer();
   const deleteMutation = useDeleteCustomer();
@@ -93,45 +94,20 @@ export default function CustomersPage() {
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
 
-  const customers = filteredCustomers;
-
   const selectedCustomer = useMemo(
-    () => (selectedCustomerId ? allCustomersResponse?.data?.rows?.find((c) => c.id === selectedCustomerId) ?? null : null),
-    [allCustomersResponse?.data?.rows, selectedCustomerId]
+    () => (selectedCustomerId ? customers.find((c) => c.id === selectedCustomerId) ?? null : null),
+    [customers, selectedCustomerId]
   );
 
-  // Combine stats and KPI data computation to reduce re-renders
-  const { filteredStats, kpiData } = useMemo(() => {
-    const now = new Date();
-    let total = 0;
-    let active = 0;
-    let newThisMonth = 0;
-    let totalRevenue = 0;
-    for (const c of customers) {
-      total++;
-      if (c.status === 'Active') active++;
-      const customerDate = new Date(c.customerSince);
-      if (customerDate.getMonth() === now.getMonth() && customerDate.getFullYear() === now.getFullYear()) {
-        newThisMonth++;
-      }
-      totalRevenue += c.totalRevenue || 0;
-    }
-    const stats = { total, active, newThisMonth, totalRevenue };
-    
-    const kpi = [
-      { title: 'Total Customers', value: String(stats.total), change: 0, icon: <Users className="h-5 w-5 text-blue-600" />, color: 'text-blue-600' },
-      { title: 'Active Customers', value: String(stats.active), change: 0, icon: <UserCheck className="h-5 w-5 text-green-600" />, color: 'text-green-600' },
-      { title: 'New This Month', value: String(stats.newThisMonth), change: 0, icon: <UserPlus className="h-5 w-5 text-purple-600" />, color: 'text-purple-600' },
-      { title: 'Total Revenue', value: `₹${(stats.totalRevenue / 10000000).toFixed(1)}Cr`, change: 0, icon: <DollarSign className="h-5 w-5 text-green-700" />, color: 'text-green-700' },
+  const kpiData = useMemo(() => {
+    const stats = statsResponse?.data ?? { total: 0, active: 0, newThisMonth: 0 };
+    return [
+      { title: 'Total Customers', value: String(stats.total ?? 0), change: 0, icon: <Users className="h-5 w-5 text-blue-600" />, color: 'text-blue-600' },
+      { title: 'Active Customers', value: String(stats.active ?? 0), change: 0, icon: <UserCheck className="h-5 w-5 text-green-600" />, color: 'text-green-600' },
+      { title: 'New This Month', value: String(stats.newThisMonth ?? 0), change: 0, icon: <UserPlus className="h-5 w-5 text-purple-600" />, color: 'text-purple-600' },
+      { title: 'Total Revenue', value: '—', change: 0, icon: <DollarSign className="h-5 w-5 text-green-700" />, color: 'text-green-700' },
     ];
-    
-    return { filteredStats: stats, kpiData: kpi };
-  }, [customers]);
-
-  const tableFilterKey = useMemo(
-    () => [debouncedSearch, statusFilter, cityFilter, stateFilter].join('|'),
-    [debouncedSearch, statusFilter, cityFilter, stateFilter]
-  );
+  }, [statsResponse?.data]);
 
   // Filter configuration for FilterBar
   const filterConfigs: FilterConfig[] = useMemo(() => [
@@ -352,8 +328,12 @@ export default function CustomersPage() {
 
   const handleExport = useCallback(async () => {
     try {
-      const response = await customersApi.export();
-      const rows = response?.data?.rows ?? filteredCustomers;
+      const response = await customersApi.export({
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        city: cityFilter === 'all' ? undefined : cityFilter,
+        state: stateFilter === 'all' ? undefined : stateFilter,
+      });
+      const rows = response?.data?.rows ?? [];
       const headers = ['ID', 'Customer Name', 'Company Name', 'Mobile', 'Email', 'City', 'State', 'Status'];
       const csvRows = rows.map((c) => [
         c.customerId,
@@ -378,10 +358,10 @@ export default function CustomersPage() {
     } catch (error) {
       alert('Failed to export customers. Please try again.');
     }
-  }, [filteredCustomers]);
+  }, [statusFilter, cityFilter, stateFilter]);
 
   // Loading state - only show full loading screen on initial load
-  if (isLoading && !allCustomersResponse) {
+  if (isLoading && !customersResponse) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
@@ -445,7 +425,6 @@ export default function CustomersPage() {
       >
         <div className="min-w-0">
         <DataTable
-          key={tableFilterKey}
           columns={columns}
           data={customers}
           showToolbar={false}
@@ -456,6 +435,8 @@ export default function CustomersPage() {
           onSelectionChange={setSelectedRows}
           rowIdKey="id"
           emptyMessage="No customers found. Adjust your filters or add a new customer."
+          pagination={pagination}
+          onPageChange={(page) => setCurrentPage(Math.max(1, page))}
           rowActions={(row) => (
             <CustomerRowActions
               customer={row as Customer}

@@ -50,10 +50,18 @@ export function useLeadConfiguration(): LeadModuleConfiguration & { isLoading: b
 export function useLeads(params?: PaginationParams & LeadsFilters) {
   return useQuery({
     queryKey: ['leads', params],
-    queryFn: () => leadsApi.getAll(params),
+    queryFn: () => {
+      const safeParams = params
+        ? { ...params, page: Math.max(1, Number(params.page) || 1) }
+        : params;
+      return leadsApi.getAll(safeParams);
+    },
     enabled: params !== undefined,
-    staleTime: 0, // Disable stale time to ensure refetch on param change
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     refetchOnMount: false,
   });
 }
@@ -83,6 +91,7 @@ export function useCreateLead() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     },
   });
 }
@@ -101,6 +110,7 @@ export function useUpdateLead() {
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     },
   });
 }
@@ -121,44 +131,51 @@ export function useDeleteLead() {
       }
     },
     onSuccess: () => {
-      // Refetch all active queries matching 'leads' key
+      // Refetch only active lead list views
       queryClient.refetchQueries({ queryKey: ['leads'], type: 'active' });
       queryClient.refetchQueries({ queryKey: ['leads-kanban'], type: 'active' });
       queryClient.refetchQueries({ queryKey: ['leads-calendar'], type: 'active' });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     },
   });
 }
 
 /**
- * Bulk update leads
+ * Bulk update leads — prefer bulk status endpoint; avoid per-id N+1 for deletes (see useBulkDelete).
  */
 export function useBulkUpdateLeads() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ ids, data }: { ids: string[]; data: Partial<Lead> }) => 
-      Promise.all(ids.map(id => leadsApi.update(id, data))),
+    mutationFn: async ({ ids, data }: { ids: string[]; data: Partial<Lead> }) => {
+      if (data.status && Object.keys(data).length === 1) {
+        return leadsApi.bulkStatusUpdate(ids, data.status);
+      }
+      await Promise.all(ids.map((id) => leadsApi.update(id, data)));
+      return { message: 'Updated', data: { count: ids.length } };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     },
   });
 }
 
 /**
- * Bulk delete leads
+ * Bulk delete leads — always use the bulk delete endpoint (no per-id N+1)
  */
 export function useBulkDeleteLeads() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (ids: string[]) => 
-      Promise.all(ids.map(id => leadsApi.delete(id))),
+    mutationFn: (ids: string[]) => leadsApi.bulkDelete(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     },
   });
 }
@@ -176,6 +193,7 @@ export function useBulkStatusUpdate() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     },
   });
 }
@@ -193,6 +211,7 @@ export function useBulkDelete() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     },
   });
 }
@@ -207,7 +226,10 @@ export function useKanbanLeads(params?: Partial<LeadsFilters>) {
     queryFn: () => leadsApi.getKanban(params),
     enabled: params !== undefined,
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     refetchOnMount: false,
   });
 }
@@ -222,7 +244,10 @@ export function useCalendarLeads(params?: Partial<LeadsFilters>) {
     queryFn: () => leadsApi.getCalendar(params),
     enabled: params !== undefined,
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     refetchOnMount: false,
   });
 }

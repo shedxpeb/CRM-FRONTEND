@@ -1,6 +1,6 @@
 /**
  * Settings-owned default configuration per module.
- * Consumed by settingsApi (mock source) and module configuration hooks (fallback).
+ * Consumed by settingsApi and module configuration hooks as schema defaults.
  */
 
 export const LEAD_MODULE_DEFAULTS = {

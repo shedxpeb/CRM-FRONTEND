@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { flushSync } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import * as XLSX from 'xlsx';
 import { MainLayout } from '@/layouts/MainLayout';
 import { DataTable } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
@@ -255,7 +253,6 @@ export default function LeadsPage() {
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('all');
   const [kpiFilterMode, setKpiFilterMode] = useState<string>('none');
-  const [forceRender, setForceRender] = useState<number>(0);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedLeadData, setSelectedLeadData] = useState<Lead | null>(null);
@@ -279,18 +276,19 @@ export default function LeadsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   // Reset page to 1 when search, filters, or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, priorityFilter, cityFilter, projectTypeFilter, structureTypeFilter, sourceFilter, assignedToFilter, pageSize, sortBy, sortOrder]);
+  }, [debouncedSearch, statusFilter, priorityFilter, cityFilter, projectTypeFilter, structureTypeFilter, sourceFilter, assignedToFilter, pageSize, sortBy, sortOrder]);
 
   // Fetch leads from backend - only when in table view
   const { data: leadsResponse, isLoading: isLoadingLeads, error: leadsError, refetch: refetchLeads } = useLeads(
     viewMode === 'table' ? {
-      page: currentPage,
+      page: Math.max(1, currentPage),
       pageSize,
-      search: searchQuery || undefined,
+      search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
       status: statusFilter === 'all' ? undefined : statusFilter,
       statusMode: kpiFilterMode === 'in-progress' ? 'in-progress' : undefined,
       priority: priorityFilter === 'all' ? undefined : priorityFilter,
@@ -307,7 +305,7 @@ export default function LeadsPage() {
   // Transform backend Kanban columns to flat leads array for KanbanBoard component
   const { data: kanbanResponse, isLoading: isLoadingKanban } = useKanbanLeads(
     viewMode === 'kanban' ? {
-      search: searchQuery || undefined,
+      search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
       priority: priorityFilter === 'all' ? undefined : priorityFilter,
       city: cityFilter === 'all' ? undefined : cityFilter,
       assignedEmployeeId: assignedToFilter === 'all' ? undefined : assignedToFilter,
@@ -317,7 +315,7 @@ export default function LeadsPage() {
   // Fetch Calendar data from backend - only when in calendar view
   const { data: calendarResponse, isLoading: isLoadingCalendar } = useCalendarLeads(
     viewMode === 'calendar' ? {
-      search: searchQuery || undefined,
+      search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
       status: statusFilter === 'all' ? undefined : statusFilter,
       priority: priorityFilter === 'all' ? undefined : priorityFilter,
       city: cityFilter === 'all' ? undefined : cityFilter,
@@ -476,8 +474,7 @@ export default function LeadsPage() {
                 return;
               }
               
-              const response = await leadsApi.getAll({ 
-                pageSize: 10000,
+              const response = await leadsApi.export({ 
                 dateFrom: exportDateFrom,
                 dateTo: exportDateTo,
                 sortBy: 'createdAt',
@@ -486,8 +483,7 @@ export default function LeadsPage() {
               leadsToExport = response.data.rows;
             } else if (exportType === 'today') {
               const today = new Date().toISOString().split('T')[0];
-              const response = await leadsApi.getAll({ 
-                pageSize: 10000,
+              const response = await leadsApi.export({ 
                 dateFrom: today,
                 dateTo: today,
                 sortBy: 'createdAt',
@@ -495,7 +491,7 @@ export default function LeadsPage() {
               });
               leadsToExport = response.data.rows;
             } else {
-              const response = await leadsApi.getAll({ pageSize: 10000 });
+              const response = await leadsApi.export({});
               leadsToExport = response.data.rows;
             }
             
@@ -507,7 +503,9 @@ export default function LeadsPage() {
             
             // Excel generation in another setTimeout
             setTimeout(() => {
+              void (async () => {
               try {
+                const XLSX = await import('xlsx');
                 const formatDate = (dateValue: string | Date | null | undefined) => {
                   if (!dateValue) return '';
                   
@@ -635,6 +633,7 @@ export default function LeadsPage() {
                 console.error('Export failed:', error);
                 toast.error('Failed to export leads');
               }
+              })();
             }, 50);
           } catch (error) {
             isExportingRef.current = false;
@@ -1092,7 +1091,7 @@ export default function LeadsPage() {
                 rowIdKey="id"
                 emptyMessage="No leads found. Adjust your filters or add a new lead."
                 pagination={pagination}
-                onPageChange={setCurrentPage}
+                onPageChange={(page) => setCurrentPage(Math.max(1, page))}
                 onPageSizeChange={setPageSize}
                 onSortChange={handleSortChange}
                 currentSortBy={sortBy}
@@ -1322,7 +1321,7 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {selectedLeadData ? (
+      {isConvertToCustomerDialogOpen && selectedLeadData ? (
         <LeadToCustomerConversionDialog
           open={isConvertToCustomerDialogOpen}
           onOpenChange={setIsConvertToCustomerDialogOpen}
@@ -1331,7 +1330,7 @@ export default function LeadsPage() {
         />
       ) : null}
 
-      {selectedLeadData ? (
+      {isConvertToProjectDialogOpen && selectedLeadData ? (
         <LeadToProjectConversionDialog
           open={isConvertToProjectDialogOpen}
           onOpenChange={setIsConvertToProjectDialogOpen}

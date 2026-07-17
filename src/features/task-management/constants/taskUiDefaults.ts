@@ -1,21 +1,8 @@
 /**
- * Frontend-only mock data for the shared task foundation.
- *
- * These are lightweight, static reference lists used as sensible defaults by the
- * reusable components (followers, saved views, templates). They intentionally do
- * NOT introduce a second mock service — `taskManagementApi` remains the source of
- * truth for task records. All values are clearly mock and carry no persistence.
+ * Static UI defaults for task saved-views and construction templates.
+ * Not mock API data — local schema defaults for pending task UI helpers.
  */
-import type { SavedView, TaskTemplate, TaskUser } from '../types';
-
-// Mock employees aligned with the names already present in taskManagementApi.
-export const MOCK_TASK_EMPLOYEES: TaskUser[] = [
-  { id: 'user-1', name: 'Rajesh Kumar', role: 'Site Engineer' },
-  { id: 'user-2', name: 'Amit Singh', role: 'Fabricator' },
-  { id: 'user-3', name: 'Suresh Patel', role: 'Erector' },
-  { id: 'user-4', name: 'Priya Sharma', role: 'QA Inspector' },
-  { id: 'admin-1', name: 'Admin User', role: 'Manager' },
-];
+import type { SavedView, TaskTemplate } from '../types';
 
 export const DEFAULT_SAVED_VIEWS: SavedView[] = [
   { id: 'default', name: 'All Tasks', scope: 'default', isPinned: true },
@@ -25,7 +12,6 @@ export const DEFAULT_SAVED_VIEWS: SavedView[] = [
   { id: 'critical', name: 'Critical Priority', scope: 'public' },
 ];
 
-// Construction-specific task templates only.
 export const CONSTRUCTION_TASK_TEMPLATES: TaskTemplate[] = [
   {
     id: 'tpl-installation',

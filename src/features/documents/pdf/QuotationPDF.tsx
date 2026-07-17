@@ -187,8 +187,8 @@ export function QuotationPDF({
 
   // Calculate GST
   let taxAmount = 0;
-  let gstType = quotation.pricingConfiguration?.gstType || 'CGST';
-  let gstRate = quotation.pricingConfiguration?.gstRate || 18;
+  const gstType = quotation.pricingConfiguration?.gstType || 'CGST';
+  const gstRate = quotation.pricingConfiguration?.gstRate || 18;
   
   if (gstType === 'CGST' || gstType === 'SGST') {
     taxAmount = afterDiscount * (gstRate / 100);

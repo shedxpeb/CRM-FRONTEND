@@ -40,12 +40,21 @@ export function useProjectConfiguration(): ProjectModuleConfiguration & { isLoad
 
 // ─── Projects ────────────────────────────────────────────────────────────────
 
-export function useProjects(params?: PaginationParams & ProjectFilters) {
+export function useProjects(params?: PaginationParams & ProjectFilters & { search?: string }) {
   return useQuery({
     queryKey: ['projects', params],
-    queryFn: () => projectsApi.getAll(params),
+    queryFn: () => {
+      const safeParams = params
+        ? { ...params, page: Math.max(1, Number(params.page) || 1) }
+        : params;
+      return projectsApi.getAll(safeParams);
+    },
+    enabled: params !== undefined,
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     refetchOnMount: false,
   });
 }

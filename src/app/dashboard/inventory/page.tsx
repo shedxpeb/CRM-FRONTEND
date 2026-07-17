@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ROUTES } from '@/core/routes';
 import { useDebounce } from '@/shared/hooks/useDebounce';
+import { EmptyState } from '@/components/states/EmptyState';
 import { Package, Plus, Download, Warehouse, AlertTriangle, DollarSign } from 'lucide-react';
 
 const InventoryItemForm = dynamic(
@@ -379,9 +380,22 @@ export default function InventoryPage() {
   }
 
   if (error) {
+    const pending =
+      (error as { code?: string; name?: string })?.code === 'BACKEND_PENDING' ||
+      (error as { name?: string })?.name === 'BackendPendingError';
     return (
       <MainLayout>
-        <div className="flex items-center justify-center h-64 text-destructive text-sm">Failed to load inventory</div>
+        <EmptyState
+          title={pending ? 'Inventory not available yet' : 'Failed to load inventory'}
+          description={
+            pending
+              ? 'This module is intentionally incomplete. Stock APIs are not wired for production use yet.'
+              : 'Something went wrong while loading inventory. Try again or return to the dashboard.'
+          }
+          actionLabel="Back to Dashboard"
+          onAction={() => router.push(ROUTES.dashboard)}
+          className="min-h-64"
+        />
       </MainLayout>
     );
   }
@@ -390,7 +404,7 @@ export default function InventoryPage() {
     <MainLayout>
       <StandardPageLayout
         title="Inventory"
-        subtitle="Operational stock management — references Item Master"
+        subtitle="Stock management — local demo data (no backend yet)"
         headerActions={
           <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
             <Plus className="h-4 w-4 mr-2" />

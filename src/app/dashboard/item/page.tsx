@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ROUTES } from '@/core/routes';
+import { EmptyState } from '@/components/states/EmptyState';
 import { Package, Plus, Download } from 'lucide-react';
 
 const ITEM_STATUSES: ItemStatus[] = ['Active', 'Inactive', 'Discontinued'];
@@ -287,9 +288,22 @@ export default function ItemPage() {
   }
 
   if (error) {
+    const pending =
+      (error as { code?: string; name?: string })?.code === 'BACKEND_PENDING' ||
+      (error as { name?: string })?.name === 'BackendPendingError';
     return (
       <MainLayout>
-        <div className="flex items-center justify-center h-64 text-destructive text-sm">Failed to load items</div>
+        <EmptyState
+          title={pending ? 'Items not available yet' : 'Failed to load items'}
+          description={
+            pending
+              ? 'This module is intentionally incomplete. Item Master APIs are not wired for production use yet.'
+              : 'Something went wrong while loading items. Try again or return to the dashboard.'
+          }
+          actionLabel="Back to Dashboard"
+          onAction={() => router.push(ROUTES.dashboard)}
+          className="min-h-64"
+        />
       </MainLayout>
     );
   }
@@ -298,7 +312,7 @@ export default function ItemPage() {
     <MainLayout>
       <StandardPageLayout
         title="Items"
-        subtitle="Product catalog — source of truth for all materials"
+        subtitle="Product catalog — local demo data (no backend yet)"
         headerActions={
           <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
             <Plus className="h-4 w-4 mr-2" />

@@ -11,12 +11,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CardSkeleton } from '@/components/loading/CardSkeleton';
 import { ErrorState } from '@/components/states/ErrorState';
 import { TrackingEngine } from '@/components/tracking/TrackingEngine';
-import { useProject, useProjectActivities, useUpdateProject, useProjectConfiguration } from '@/features/projects/hooks/useProjects';
+import { useProject, useUpdateProject, useProjectConfiguration } from '@/features/projects/hooks/useProjects';
 import { ProjectCustomFields } from '@/features/projects/components/ProjectCustomFields';
-import { useCustomers } from '@/features/customers/hooks/useCustomers';
+import { useCustomer } from '@/features/customers/hooks/useCustomers';
 import { getProjectStatusVariant, getPriorityVariant, getHealthStatusVariant, getHealthStatusColor } from '@/features/projects/constants';
 import { ROUTES } from '@/core/routes';
-import type { Customer } from '@/features/customers/types';
 import type { Project, UpdateProjectDto } from '@/features/projects/types';
 import { ProjectForm } from '@/features/projects/components/ProjectForm';
 import { ArrowLeft, Edit, Building2, Calendar, DollarSign, AlertCircle, Users, Map, Package, CreditCard, FileText, Receipt, FileCheck, Wrench, ChevronDown, ChevronRight, Shield } from 'lucide-react';
@@ -96,14 +95,9 @@ export default function ProjectDetailPage() {
   const project = projectResponse?.data ?? null;
   const projectConfig = useProjectConfiguration();
   const updateMutation = useUpdateProject();
-  const { data: activitiesResponse } = useProjectActivities(projectId);
-  const activities = activitiesResponse?.data;
-  const { data: customersData } = useCustomers({ page: 1, pageSize: 1000 });
+  const { data: linkedCustomerResponse } = useCustomer(project?.customerId ?? '');
+  const linkedCustomer = linkedCustomerResponse?.data ?? null;
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
-  const linkedCustomer = project?.customerId && customersData?.data?.rows
-    ? customersData.data.rows.find((customer: Customer) => customer.id === project.customerId)
-    : null;
 
   if (isLoading) {
     return (
@@ -393,37 +387,48 @@ export default function ProjectDetailPage() {
                 />
               </div>
 
-              {/* Team */}
+              {/* Team — API returns teamMembers; UI contract uses team */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Team</p>
-                {project.team.length > 0 ? (
-                  <div className="space-y-2">
-                    {project.team.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Users className="h-4 w-4 text-blue-600" />
+                {(() => {
+                  const team =
+                    project.team ??
+                    (project as Project & { teamMembers?: Project['team'] }).teamMembers ??
+                    [];
+                  if (team.length > 0) {
+                    return (
+                      <div className="space-y-2">
+                        {team.map((member) => (
+                          <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <Users className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{member.name}</p>
+                                <p className="text-xs text-muted-foreground">{member.role}</p>
+                              </div>
+                            </div>
+                            {member.workload != null && (
+                              <div className="text-right text-xs text-muted-foreground">
+                                {member.workload}% workload
+                              </div>
+                            )}
                           </div>
-                          <div>
-                            <p className="text-sm font-medium">{member.name}</p>
-                            <p className="text-xs text-muted-foreground">{member.role}</p>
-                          </div>
-                        </div>
-                        {member.workload != null && (
-                          <div className="text-right text-xs text-muted-foreground">
-                            {member.workload}% workload
-                          </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Project Manager: {project.projectManager}</p>
-                )}
+                    );
+                  }
+                  return (
+                    <p className="text-sm text-muted-foreground">
+                      Project Manager: {project.projectManager || '—'}
+                    </p>
+                  );
+                })()}
               </div>
 
               {/* Milestones */}
-              {project.milestones.length > 0 && (
+              {(project.milestones?.length ?? 0) > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Milestones</p>
                   <div className="space-y-2">

@@ -35,8 +35,23 @@ export const projectsApi = {
   getAll: (params?: PaginationParams & ProjectFilters) =>
     api.get<BackendResponse<ProjectsData>>('/project', { params }),
 
-  getById: (id: string) =>
-    api.get<BackendResponse<Project>>(`/project/${id}`),
+  getById: async (id: string) => {
+    const res = await api.get<BackendResponse<Project & { teamMembers?: Project['team'] }>>(
+      `/project/${id}`,
+    );
+    const data = res?.data ?? (res as unknown as BackendResponse<Project>).data;
+    const project = (data as any)?.data ?? data;
+    if (project && !project.team && Array.isArray(project.teamMembers)) {
+      project.team = project.teamMembers;
+    }
+    if (project && !Array.isArray(project.milestones)) {
+      project.milestones = [];
+    }
+    if (project && !Array.isArray(project.team)) {
+      project.team = [];
+    }
+    return res;
+  },
 
   create: (data: CreateProjectDto) =>
     api.post<BackendResponse<Project>>('/project', data),

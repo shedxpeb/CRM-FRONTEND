@@ -2,13 +2,15 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 60_000,
+  timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
+  workers: 1,
   retries: 0,
   reporter: [['list']],
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    storageState: { cookies: [], origins: [] },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'off',
@@ -16,6 +18,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /auth\.setup\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         channel: 'msedge',

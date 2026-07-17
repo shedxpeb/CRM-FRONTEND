@@ -150,13 +150,15 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
     try {
       await changeStatus.mutateAsync({ status });
       onStageAction?.(status);
-      // Refresh entity detail pages (lead/customer/project) so header badge updates
+      // Invalidate only the entity that changed status
       queryClient.invalidateQueries({ queryKey: [entityType, entityId] });
-      queryClient.invalidateQueries({ queryKey: [entityType + 's'] });
-      queryClient.invalidateQueries({ queryKey: ['lead', entityId] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['customer', entityId] });
-      queryClient.invalidateQueries({ queryKey: ['project', entityId] });
+      if (entityType === 'lead') {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+      } else if (entityType === 'customer') {
+        queryClient.invalidateQueries({ queryKey: ['customers'] });
+      } else if (entityType === 'project') {
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update status';
       setStatusError(typeof msg === 'string' ? msg : JSON.stringify(msg));

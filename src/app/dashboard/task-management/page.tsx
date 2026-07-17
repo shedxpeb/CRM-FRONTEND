@@ -33,7 +33,8 @@ import {
   AdjustmentType,
   TaskActivity
 } from '@/features/task-management/types';
-import { MOCK_TASK_EMPLOYEES } from '@/features/task-management/constants';
+import { useUsers } from '@/features/settings/hooks/useSettings';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Avatar } from '@/features/task-management/components/shared/Avatar';
 import { EmptyState } from '@/components/states/EmptyState';
 import { cn } from '@/lib/utils';
@@ -57,9 +58,6 @@ import { ROUTES } from '@/core/routes';
 const STATUSES: (TaskStatus | 'all')[] = ['all', 'Pending', 'In Progress', 'Blocked', 'Review', 'Completed', 'Cancelled', 'Reopened'];
 const PRIORITIES: (TaskPriority | 'all')[] = ['all', 'Low', 'Medium', 'High', 'Critical'];
 const LINKED_MODULES: LinkedModule[] = ['Leads', 'Customers', 'Projects', 'Estimates', 'Proposals', 'Quotations', 'Invoices', 'Inventory', 'Purchases', 'Finance', 'Documents', 'General'];
-
-// Placeholder for the signed-in user until an auth context is wired in (frontend only).
-const CURRENT_USER_ID = 'user-1';
 
 type TaskView = 'my-tasks' | 'team' | 'board' | 'calendar' | 'matrix' | 'performance' | 'salary';
 
@@ -240,6 +238,9 @@ function SalaryAdjustmentForm({
 
 export default function TaskManagementPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { data: users = [] } = useUsers();
+  const currentUserId = user?.id || '';
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -277,8 +278,8 @@ export default function TaskManagementPage() {
   const createSalaryMutation = useCreateSalaryAdjustment();
 
   const myTasks = useMemo(
-    () => (tasks || []).filter((t) => t.assignedUserId === CURRENT_USER_ID),
-    [tasks]
+    () => (tasks || []).filter((t) => !!currentUserId && t.assignedUserId === currentUserId),
+    [tasks, currentUserId]
   );
   const isTaskView = TASK_VIEWS.includes(currentView);
 
@@ -459,7 +460,7 @@ export default function TaskManagementPage() {
         onChange: setAssigneeFilter,
         options: [
           { value: 'all', label: 'All Assignees' },
-          ...MOCK_TASK_EMPLOYEES.map((e) => ({ value: e.id, label: e.name })),
+          ...users.map((e) => ({ value: e.id, label: e.name })),
         ],
       },
       {
@@ -473,7 +474,7 @@ export default function TaskManagementPage() {
         ],
       },
     ],
-    [statusFilter, priorityFilter, assigneeFilter, moduleFilter]
+    [statusFilter, priorityFilter, assigneeFilter, moduleFilter, users]
   );
 
   const handleClearFilters = useCallback(() => {
