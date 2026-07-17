@@ -265,6 +265,7 @@ export interface ProjectTask {
  * Project Filters
  */
 export interface ProjectFilters {
+  search?: string;
   status?: ProjectStatus;
   stage?: ProjectStage;
   priority?: ProjectPriority;

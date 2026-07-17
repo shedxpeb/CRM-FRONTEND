@@ -51,7 +51,7 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
     filtered.find((p) => p.status === "Overdue")?.id ??
     filtered.find((p) => p.status === "At Risk")?.id ??
     filtered[0]?.id ??
-    projects[0].id;
+    "";
 
   const [internalId, setInternalId] = useState(defaultId);
   const activeId = selectedId ?? internalId;
@@ -60,14 +60,29 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
     onSelectId?.(id);
   };
 
-  // If filter changes and current id no longer matches, snap to first
   useEffect(() => {
     if (!filtered.some((p) => p.id === activeId)) {
-      setActiveId(filtered[0]?.id ?? projects[0].id);
+      setActiveId(filtered[0]?.id ?? "");
     }
-  }, [filter, activeId, projects]);
+  }, [filter, activeId, filtered]);
 
-  const p = projects.find((x) => x.id === activeId) ?? projects[0];
+  const p = projects.find((x) => x.id === activeId);
+
+  if (!p) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Project timeline</CardTitle>
+          <CardDescription>No project timeline data available yet.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            Timeline will appear when project schedule data is available.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const todayPct = pct(TODAY);
   const start = new Date(p.start);

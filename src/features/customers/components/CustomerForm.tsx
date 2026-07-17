@@ -69,8 +69,10 @@ function mapLeadBusinessTypeToCustomerBusinessType(leadBusinessType?: string): s
 
 export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, onCancel, isLoading, error, isEditMode = false }: CustomerFormProps) {
   const customerConfig = useCustomerConfiguration();
-  // Fetch leads for dropdown (only in create mode)
-  const { data: leadsResponse } = useLeads({ page: 1, pageSize: 1000 });
+  // Load leads only for create-mode lead picker (never on edit)
+  const { data: leadsResponse } = useLeads(
+    isEditMode ? undefined : { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
+  );
   const leads = leadsResponse?.data?.rows || [];
 
   // Filter only non-converted leads
@@ -221,6 +223,19 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
       if (value !== undefined) {
         submitData[key] = value;
       }
+    }
+
+    // Edit: PATCH only changed fields vs initialData
+    if (isEditMode && initialData) {
+      const changed: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(submitData)) {
+        const previous = (initialData as Record<string, unknown>)[key];
+        if (String(previous ?? '') !== String(value ?? '')) {
+          changed[key] = value;
+        }
+      }
+      onSubmit(changed);
+      return;
     }
 
     onSubmit(submitData);

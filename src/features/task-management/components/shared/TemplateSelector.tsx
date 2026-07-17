@@ -11,11 +11,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { CONSTRUCTION_TASK_TEMPLATES } from '../../constants/taskMockData';
+import { CONSTRUCTION_TASK_TEMPLATES } from '../../constants/taskUiDefaults';
 import type { TaskTemplate } from '../../types';
 
 interface TemplateSelectorProps {
-  /** Defaults to the construction task templates when omitted. */
+  /** Defaults to construction task templates when omitted. */
   templates?: TaskTemplate[];
   onSelect: (template: TaskTemplate) => void;
   triggerLabel?: string;
@@ -23,9 +23,8 @@ interface TemplateSelectorProps {
 }
 
 /**
- * Construction task template picker (frontend mock). Selecting a template hands
- * the chosen template back to the caller — pre-fill behaviour belongs to later
- * form phases.
+ * Construction task template picker. Selecting a template hands
+ * the chosen template back to the caller for form pre-fill.
  */
 export function TemplateSelector({
   templates = CONSTRUCTION_TASK_TEMPLATES,

@@ -12,16 +12,20 @@ if (!backendUrl) {
 }
 
 const imageHostname = process.env.IMAGE_HOSTNAME || 'localhost';
+const imageProtocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts'],
+  },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
+        protocol: imageProtocol,
         hostname: imageHostname,
       },
     ],

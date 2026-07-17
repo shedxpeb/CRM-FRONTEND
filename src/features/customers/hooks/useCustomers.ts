@@ -37,12 +37,21 @@ export function useCustomerConfiguration(): CustomerModuleConfiguration & { isLo
 /**
  * Fetch all customers with pagination and filters
  */
-export function useCustomers(params?: PaginationParams & CustomerFilters) {
+export function useCustomers(params?: PaginationParams & CustomerFilters & { search?: string }) {
   return useQuery({
     queryKey: ['customers', params],
-    queryFn: () => customersApi.getAll(params),
+    queryFn: () => {
+      const safeParams = params
+        ? { ...params, page: Math.max(1, Number(params.page) || 1) }
+        : params;
+      return customersApi.getAll(safeParams);
+    },
+    enabled: params !== undefined,
     staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     refetchOnMount: false,
     placeholderData: keepPreviousData,
   });
@@ -68,11 +77,15 @@ export function useCreateCustomer() {
 
   return useMutation({
     mutationFn: (data: CreateCustomerDto) => customersApi.create(data),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+      // Only linked lead lists need refresh when create carries a lead reference
+      if (variables.leadId) {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['lead', variables.leadId] });
+      }
     },
   });
 }
@@ -89,8 +102,7 @@ export function useUpdateCustomer() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
-      // Invalidate projects cache to sync inherited fields from customer
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
     },
   });
 }
@@ -176,11 +188,14 @@ export function useConvertLeadToCustomer() {
 
   return useMutation({
     mutationFn: (data: ConvertLeadToCustomerDto) => customersApi.convertLeadToCustomer(data),
-    onSuccess: () => {
-      // Invalidate customers queries
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
-      // Note: Lead queries should also be invalidated, but that's handled in the leads module
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+      if (variables.leadId) {
+        queryClient.invalidateQueries({ queryKey: ['lead', variables.leadId] });
+      }
     },
   });
 }

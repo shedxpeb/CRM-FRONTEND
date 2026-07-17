@@ -13,6 +13,9 @@
 # testing
 /coverage
 .nyc_output
+/test-results/
+/playwright-report/
+/tests/.auth/
 
 # next.js
 /.next/
@@ -39,7 +42,10 @@ lerna-debug.log*
 .env.local
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
+!.env.production.example
+!.env.example
 
 # vercel
 .vercel

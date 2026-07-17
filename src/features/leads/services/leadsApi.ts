@@ -89,6 +89,14 @@ export const leadsApi = {
   getLogs: (id: string) =>
     api.get<BackendResponse<Array<{ id: string; action: string; description: string; timestamp: Date; userId: string | null }>>>(`/lead/${id}/logs`),
 
+  export: (params?: PaginationParams & LeadsFilters) =>
+    api.get<BackendResponse<LeadsData>>('/lead/export', { params }),
+
+  checkDuplicate: (mobile?: string, email?: string) =>
+    api.get<BackendResponse<{ isDuplicate: boolean; matches?: Lead[] }>>('/lead/check-duplicate', {
+      params: { mobile, email },
+    }),
+
   updateWorkflow: (id: string, stage: string, notes?: string) =>
     api.post<BackendResponse<Lead>>(`/lead/${id}/workflow`, { stage, notes }),
 

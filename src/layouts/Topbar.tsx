@@ -94,7 +94,14 @@ export const Topbar = memo(function Topbar({ title, subtitle, showBackButton, on
               <p className="text-xs text-muted-foreground truncate">Owner</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={logout} className="h-10 w-10 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={logout}
+            className="h-10 w-10 flex-shrink-0"
+            aria-label="Sign out"
+            title="Sign out"
+          >
             <LogOut className="h-5 w-5" />
           </Button>
         </div>

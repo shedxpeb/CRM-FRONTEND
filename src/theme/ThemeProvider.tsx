@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, ReactNode } from 'react';
 import { Theme } from './types';
 import { getThemeConfig } from './colors';
 
@@ -19,10 +19,15 @@ function getStoredTheme(): Theme {
   if (typeof window === 'undefined') return DEFAULT_THEME;
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    return (stored === 'light' || stored === 'dark') ? stored : DEFAULT_THEME;
+    return stored === 'light' || stored === 'dark' ? stored : DEFAULT_THEME;
   } catch {
     return DEFAULT_THEME;
   }
+}
+
+function subscribeToMount(onStoreChange: () => void) {
+  onStoreChange();
+  return () => undefined;
 }
 
 interface ThemeProviderProps {
@@ -31,44 +36,30 @@ interface ThemeProviderProps {
   storageKey?: string;
 }
 
-export function ThemeProvider({ 
-  children, 
+export function ThemeProvider({
+  children,
   defaultTheme = 'light' as Theme,
-  storageKey = THEME_STORAGE_KEY 
+  storageKey = THEME_STORAGE_KEY,
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useSyncExternalStore(subscribeToMount, () => true, () => false);
+  const [theme, setThemeState] = useState<Theme>(() =>
+    typeof window === 'undefined' ? defaultTheme : getStoredTheme(),
+  );
 
-  // Initialize theme on mount
-  useEffect(() => {
-    const start = performance.now();
-    const storedTheme = getStoredTheme();
-    setThemeState(storedTheme);
-    setIsMounted(true);
-  }, []);
-
-  // Apply theme to document and CSS variables
   useEffect(() => {
     if (!isMounted) return;
 
-    const start = performance.now();
     const themeConfig = getThemeConfig(theme);
     const colors = themeConfig.colors;
 
-    // Apply data attribute for CSS selectors
     document.documentElement.setAttribute('data-theme', theme);
 
-    // Apply CSS variables with global transition
     const root = document.documentElement;
     const body = document.body;
-    
-    // Add smooth transition class to body for simultaneous theme change
+
     body.style.transition = 'background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, background 0.3s ease';
-    
-    // Add transition to all elements that use CSS variables
     root.style.setProperty('--transition-duration', '0.3s');
-    
-    // Core colors
+
     root.style.setProperty('--background', colors.background);
     root.style.setProperty('--foreground', colors.foreground);
     root.style.setProperty('--card', colors.card);
@@ -93,10 +84,9 @@ export function ThemeProvider({
     root.style.setProperty('--glow', colors.glow);
     root.style.setProperty('--shadow', colors.shadow);
 
-    // Store theme preference
     try {
       localStorage.setItem(storageKey, theme);
-    } catch (e) {
+    } catch {
       // Failed to save theme to localStorage
     }
   }, [theme, isMounted, storageKey]);
@@ -111,9 +101,6 @@ export function ThemeProvider({
     isMounted,
   };
 
-  // The provider must always wrap children — including during SSR/prerender —
-  // so consumers calling useTheme() never crash. Components that need to avoid
-  // a hydration mismatch can read `isMounted` from the context instead.
   return (
     <ThemeContext.Provider value={value}>
       {children}

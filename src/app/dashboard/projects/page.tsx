@@ -27,7 +27,9 @@ import {
   useUpdateProject,
   useDeleteProject,
   useProjectConfiguration,
+  useProjectsStats,
 } from '@/features/projects/hooks/useProjects';
+import { projectsApi } from '@/features/projects/services/projectsApi';
 import {
   getProjectStatusVariant,
   getPriorityVariant,
@@ -36,6 +38,7 @@ import {
 import { ROUTES } from '@/core/routes';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import { Plus, Download, Building2, CheckCircle, Clock, DollarSign } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 const ProjectForm = dynamic(
   () => import('@/features/projects/components/ProjectForm').then((mod) => ({ default: mod.ProjectForm })),
@@ -93,8 +96,30 @@ export default function ProjectsPage() {
   const [priorityFilter, setPriorityFilter] = useState<ProjectPriority | 'all'>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [healthFilter, setHealthFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(25);
 
-  const { data: allProjectsResponse, isLoading, error } = useProjects({ page: 1, pageSize: 1000 });
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter, stageFilter, priorityFilter, cityFilter, healthFilter, pageSize]);
+
+  // Recover if page was clamped to 0 by an empty result set (pre-fix state)
+  useEffect(() => {
+    if (currentPage < 1) setCurrentPage(1);
+  }, [currentPage]);
+
+  const { data: projectsResponse, isLoading, error } = useProjects({
+    page: Math.max(1, currentPage),
+    pageSize,
+    search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    stage: stageFilter === 'all' ? undefined : stageFilter,
+    priority: priorityFilter === 'all' ? undefined : priorityFilter,
+    city: cityFilter === 'all' ? undefined : cityFilter,
+    healthStatus: healthFilter === 'all' ? undefined : (healthFilter as Project['healthStatus']),
+  });
+  const { data: statsResponse } = useProjectsStats(true);
+
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
@@ -141,8 +166,9 @@ export default function ProjectsPage() {
         setCreateInitialData(initial);
         setIsCreateDialogOpen(true);
         sessionStorage.removeItem('convertFromLead');
-      } catch (err) {
-        // Failed to parse lead data
+      } catch {
+        sessionStorage.removeItem('convertFromLead');
+        toast.error('Could not load lead conversion data. Please create the project manually.');
       }
     }
   }, []);
@@ -154,125 +180,71 @@ export default function ProjectsPage() {
         sessionStorage.setItem('quotationForProject', quotationData);
         setIsCreateDialogOpen(true);
         sessionStorage.removeItem('convertFromQuotation');
-      } catch (err) {
-        // Failed to parse quotation data
+      } catch {
+        sessionStorage.removeItem('convertFromQuotation');
+        toast.error('Could not load quotation conversion data.');
       }
     }
   }, []);
 
   const projectFilterOptions = useMemo(() => {
     const cities = new Set<string>();
-    for (const project of allProjectsResponse?.data?.rows ?? []) {
+    for (const project of projectsResponse?.data?.rows ?? []) {
       if (project.city) cities.add(project.city);
     }
+    if (cityFilter !== 'all') cities.add(cityFilter);
     return { cities: [...cities].sort() };
-  }, [allProjectsResponse?.data?.rows]);
+  }, [projectsResponse?.data?.rows, cityFilter]);
 
-  const filteredProjects = useMemo(() => {
-    if (!allProjectsResponse?.data?.rows) return [];
-    const q = debouncedSearch.toLowerCase();
-    return allProjectsResponse.data.rows.filter((project) => {
-      const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
-      const matchesStage = stageFilter === 'all' || project.stage === stageFilter;
-      const matchesPriority = priorityFilter === 'all' || project.priority === priorityFilter;
-      const matchesCity = cityFilter === 'all' || project.city === cityFilter;
-      const matchesHealth = healthFilter === 'all' || project.healthStatus === healthFilter;
-      const matchesSearch =
-        !debouncedSearch ||
-        project.projectName.toLowerCase().includes(q) ||
-        project.projectCode.toLowerCase().includes(q) ||
-        project.customerName.toLowerCase().includes(q) ||
-        project.city?.toLowerCase().includes(q) ||
-        project.projectManager.toLowerCase().includes(q) ||
-        project.projectId.toString().includes(debouncedSearch);
-      return matchesStatus && matchesStage && matchesPriority && matchesCity && matchesHealth && matchesSearch;
-    });
-  }, [
-    allProjectsResponse?.data?.rows,
-    debouncedSearch,
-    statusFilter,
-    stageFilter,
-    priorityFilter,
-    cityFilter,
-    healthFilter,
-  ]);
-
-  const projects = filteredProjects;
+  const projects = projectsResponse?.data?.rows ?? [];
+  const pagination = projectsResponse?.data?.pagination;
 
   const selectedProject = useMemo(
     () =>
       selectedProjectId
-        ? allProjectsResponse?.data?.rows?.find((p) => p.id === selectedProjectId) ?? null
+        ? projects.find((p) => p.id === selectedProjectId) ?? null
         : null,
-    [allProjectsResponse?.data?.rows, selectedProjectId]
+    [projects, selectedProjectId]
   );
 
-  // Move activeStatuses outside to prevent recreation on every render
-  const ACTIVE_STATUSES = new Set([
-    'Approved',
-    'Design',
-    'BOQ',
-    'Procurement',
-    'Fabrication',
-    'Dispatch',
-    'Installation',
-  ]);
-
-  // Combine stats and KPI data computation to reduce re-renders
-  const { filteredStats, kpiData } = useMemo(() => {
-    const now = new Date();
-    let total = 0;
-    let active = 0;
-    let delayed = 0;
-    let totalRevenue = 0;
-    for (const p of projects) {
-      total++;
-      if (ACTIVE_STATUSES.has(p.status)) active++;
-      if (p.endDate && new Date(p.endDate) < now && p.status !== 'Completion' && p.status !== 'Cancelled') {
-        delayed++;
-      }
-      totalRevenue += p.value || 0;
-    }
-    const stats = { total, active, delayed, totalRevenue };
-    
-    const kpi = [
+  const kpiData = useMemo(() => {
+    const stats = statsResponse?.data ?? {
+      totalProjects: 0,
+      activeProjects: 0,
+      delayedProjects: 0,
+      projectRevenue: 0,
+    };
+    return [
       {
         title: 'Total Projects',
-        value: String(stats.total),
+        value: String(stats.totalProjects ?? 0),
         change: 0,
         icon: <Building2 className="h-5 w-5 text-blue-600" />,
         color: 'text-blue-600',
       },
       {
         title: 'Active',
-        value: String(stats.active),
+        value: String(stats.activeProjects ?? 0),
         change: 0,
         icon: <CheckCircle className="h-5 w-5 text-green-600" />,
         color: 'text-green-600',
       },
       {
         title: 'Delayed',
-        value: String(stats.delayed),
+        value: String(stats.delayedProjects ?? 0),
         change: 0,
         icon: <Clock className="h-5 w-5 text-amber-600" />,
         color: 'text-amber-600',
       },
       {
         title: 'Revenue',
-        value: `₹${(stats.totalRevenue / 1000000).toFixed(1)}M`,
+        value: `₹${((stats.projectRevenue ?? 0) / 1000000).toFixed(1)}M`,
         change: 0,
         icon: <DollarSign className="h-5 w-5 text-emerald-600" />,
         color: 'text-emerald-600',
       },
     ];
-    
-    return { filteredStats: stats, kpiData: kpi };
-  }, [projects]);
-
-  const tableFilterKey = useMemo(
-    () => [debouncedSearch, statusFilter, stageFilter, priorityFilter, cityFilter, healthFilter].join('|'),
-    [debouncedSearch, statusFilter, stageFilter, priorityFilter, cityFilter, healthFilter]
-  );
+  }, [statsResponse?.data]);
 
   const filterConfigs: FilterConfig[] = useMemo(
     () => [
@@ -469,7 +441,15 @@ export default function ProjectsPage() {
   const handleCreate = useCallback(
     (data: Partial<CreateProjectInput> & { customFields?: ProjectCustomFieldValues }) => {
       createMutation.mutate(data as unknown as CreateProjectDto, {
-        onSuccess: () => setIsCreateDialogOpen(false),
+        onSuccess: () => {
+          setIsCreateDialogOpen(false);
+          toast.success('Project created successfully');
+        },
+        onError: (error: any) => {
+          const message =
+            error?.response?.data?.message || error?.message || 'Failed to create project';
+          toast.error(typeof message === 'string' ? message : 'Failed to create project');
+        },
       });
     },
     [createMutation]
@@ -484,6 +464,12 @@ export default function ProjectsPage() {
           onSuccess: () => {
             setIsEditDialogOpen(false);
             setSelectedProjectId(null);
+            toast.success('Project updated successfully');
+          },
+          onError: (error: any) => {
+            const message =
+              error?.response?.data?.message || error?.message || 'Failed to update project';
+            toast.error(typeof message === 'string' ? message : 'Failed to update project');
           },
         }
       );
@@ -516,47 +502,59 @@ export default function ProjectsPage() {
     setIsEditDialogOpen(true);
   }, []);
 
-  const handleExport = useCallback(() => {
-    const headers = [
-      'Project Code',
-      'Project Name',
-      'Customer',
-      'Status',
-      'Stage',
-      'Priority',
-      'Progress',
-      'Manager',
-      'City',
-      'Value',
-      'Health',
-    ];
-    const csvContent = [
-      headers.join(','),
-      ...projects.map((p) =>
-        [
-          p.projectCode,
-          `"${p.projectName.replace(/"/g, '""')}"`,
-          `"${p.customerName.replace(/"/g, '""')}"`,
-          p.status,
-          p.stage,
-          p.priority,
-          p.progress,
-          `"${p.projectManager}"`,
-          p.city,
-          p.value,
-          p.healthStatus,
-        ].join(',')
-      ),
-    ].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `projects_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  }, [projects]);
+  const handleExport = useCallback(async () => {
+    try {
+      const response = await projectsApi.export({
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        stage: stageFilter === 'all' ? undefined : stageFilter,
+        priority: priorityFilter === 'all' ? undefined : priorityFilter,
+        city: cityFilter === 'all' ? undefined : cityFilter,
+        healthStatus: healthFilter === 'all' ? undefined : (healthFilter as Project['healthStatus']),
+      });
+      const rows = response?.data?.rows ?? [];
+      const headers = [
+        'Project Code',
+        'Project Name',
+        'Customer',
+        'Status',
+        'Stage',
+        'Priority',
+        'Progress',
+        'Manager',
+        'City',
+        'Value',
+        'Health',
+      ];
+      const csvContent = [
+        headers.join(','),
+        ...rows.map((p) =>
+          [
+            p.projectCode,
+            `"${String(p.projectName || '').replace(/"/g, '""')}"`,
+            `"${String(p.customerName || '').replace(/"/g, '""')}"`,
+            p.status,
+            p.stage,
+            p.priority,
+            p.progress,
+            `"${p.projectManager || ''}"`,
+            p.city,
+            p.value,
+            p.healthStatus,
+          ].join(',')
+        ),
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `projects_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      toast.error('Failed to export projects. Please try again.');
+    }
+  }, [statusFilter, stageFilter, priorityFilter, cityFilter, healthFilter]);
 
-  if (isLoading && !allProjectsResponse) {
+  if (isLoading && !projectsResponse) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
@@ -620,7 +618,6 @@ export default function ProjectsPage() {
       >
         <div className="min-w-0">
           <DataTable
-            key={tableFilterKey}
             columns={columns}
             data={projects}
             showToolbar={false}
@@ -631,6 +628,8 @@ export default function ProjectsPage() {
             onSelectionChange={setSelectedRows}
             rowIdKey="id"
             emptyMessage="No projects found. Adjust your filters or create a new project."
+            pagination={pagination}
+            onPageChange={(page) => setCurrentPage(Math.max(1, page))}
             rowActions={(row) => (
               <ProjectRowActions
                 project={row as Project}

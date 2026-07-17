@@ -1,2 +1,2 @@
 export * from './taskConfig';
-export * from './taskMockData';
+export * from './taskUiDefaults';

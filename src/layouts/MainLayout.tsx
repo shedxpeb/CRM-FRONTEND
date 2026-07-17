@@ -1,6 +1,15 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import {
+  ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { ContentWrapper } from '@/components/layout/ContentWrapper';
@@ -17,11 +26,57 @@ interface MainLayoutProps {
   showTopbar?: boolean;
 }
 
+type PageChrome = {
+  title: string;
+  subtitle?: string;
+  showBackButton?: boolean;
+  onBackClick?: () => void;
+  showTopbar: boolean;
+};
+
+type MainLayoutContextValue = {
+  setChrome: (chrome: Partial<PageChrome> | null) => void;
+};
+
+const MainLayoutContext = createContext<MainLayoutContextValue | null>(null);
+
 function toNavRole(role?: string | null): 'owner' | 'admin' | 'employee' {
   const r = (role || '').toUpperCase();
   if (r === 'OWNER' || r === 'SUPER_ADMIN') return 'owner';
   if (r === 'ADMIN') return 'admin';
   return 'employee';
+}
+
+/**
+ * Nested MainLayout (page-level) becomes a chrome passthrough so the shell
+ * from dashboard/layout stays mounted across navigations and loading branches.
+ */
+function NestedMainLayout({
+  children,
+  title = '',
+  subtitle,
+  showBackButton,
+  onBackClick,
+  showTopbar = true,
+}: MainLayoutProps) {
+  const ctx = useContext(MainLayoutContext);
+  const onBackClickRef = useRef(onBackClick);
+  onBackClickRef.current = onBackClick;
+
+  useEffect(() => {
+    if (!ctx) return;
+    ctx.setChrome({
+      title,
+      subtitle,
+      showBackButton,
+      // Stable wrapper — avoids effect loops from inline onBackClick props
+      onBackClick: onBackClickRef.current ? () => onBackClickRef.current?.() : undefined,
+      showTopbar,
+    });
+    // Do not clear chrome on unmount — next page overwrites; clearing races Strict Mode remounts
+  }, [ctx, title, subtitle, showBackButton, showTopbar]);
+
+  return <>{children}</>;
 }
 
 export const MainLayout = function MainLayout({
@@ -33,34 +88,97 @@ export const MainLayout = function MainLayout({
   onBackClick,
   showTopbar = true,
 }: MainLayoutProps) {
-  const sidebarWidth = useSidebarWidth();
-  const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Avoid blank flash: render a stable shell skeleton until client mount
-  if (!mounted) {
+  const parent = useContext(MainLayoutContext);
+  if (parent) {
     return (
-      <div className="min-h-screen bg-background" aria-busy="true">
-        <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Loading…</div>
-      </div>
+      <NestedMainLayout
+        title={title}
+        subtitle={subtitle}
+        currentPath={currentPath}
+        showBackButton={showBackButton}
+        onBackClick={onBackClick}
+        showTopbar={showTopbar}
+      >
+        {children}
+      </NestedMainLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <Sidebar currentPath={currentPath} userRole={toNavRole(user?.role)} />
+    <ShellMainLayout
+      title={title}
+      subtitle={subtitle}
+      currentPath={currentPath}
+      showBackButton={showBackButton}
+      onBackClick={onBackClick}
+      showTopbar={showTopbar}
+    >
+      {children}
+    </ShellMainLayout>
+  );
+};
 
-      <main style={{ marginLeft: sidebarWidth }} className="transition-all duration-300 min-h-screen">
-        {showTopbar && (
-          <Topbar title={title} subtitle={subtitle} showBackButton={showBackButton} onBackClick={onBackClick} />
-        )}
+function ShellMainLayout({
+  children,
+  title = '',
+  subtitle,
+  currentPath,
+  showBackButton,
+  onBackClick,
+  showTopbar = true,
+}: MainLayoutProps) {
+  const sidebarWidth = useSidebarWidth();
+  const { user } = useAuth();
+  const [chrome, setChromeState] = useState<PageChrome>({
+    title,
+    subtitle,
+    showBackButton,
+    onBackClick,
+    showTopbar,
+  });
 
-        <ContentWrapper>{children}</ContentWrapper>
-      </main>
-    </div>
+  const setChrome = useCallback((next: Partial<PageChrome> | null) => {
+    if (next === null) return;
+    setChromeState((prev) => {
+      if (
+        prev.title === (next.title ?? prev.title) &&
+        prev.subtitle === (next.subtitle !== undefined ? next.subtitle : prev.subtitle) &&
+        prev.showBackButton === (next.showBackButton !== undefined ? next.showBackButton : prev.showBackButton) &&
+        prev.showTopbar === (next.showTopbar !== undefined ? next.showTopbar : prev.showTopbar) &&
+        next.onBackClick === undefined
+      ) {
+        return prev;
+      }
+      return { ...prev, ...next };
+    });
+  }, []);
+
+  const ctxValue = useMemo(() => ({ setChrome }), [setChrome]);
+
+  const effectiveTitle = chrome.title || title;
+  const effectiveSubtitle = chrome.subtitle ?? subtitle;
+  const effectiveShowBack = chrome.showBackButton ?? showBackButton;
+  const effectiveOnBack = chrome.onBackClick ?? onBackClick;
+  const effectiveShowTopbar = chrome.showTopbar ?? showTopbar;
+
+  return (
+    <MainLayoutContext.Provider value={ctxValue}>
+      <div className="min-h-screen bg-background overflow-x-hidden">
+        <Sidebar currentPath={currentPath} userRole={toNavRole(user?.role)} />
+
+        <main style={{ marginLeft: sidebarWidth }} className="transition-all duration-300 min-h-screen">
+          {effectiveShowTopbar && (
+            <Topbar
+              title={effectiveTitle}
+              subtitle={effectiveSubtitle}
+              showBackButton={effectiveShowBack}
+              onBackClick={effectiveOnBack}
+            />
+          )}
+
+          <ContentWrapper>{children}</ContentWrapper>
+        </main>
+      </div>
+    </MainLayoutContext.Provider>
   );
 };

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { DEFAULT_SAVED_VIEWS } from '../../constants/taskMockData';
+import { DEFAULT_SAVED_VIEWS } from '../../constants/taskUiDefaults';
 import type { SavedView, SavedViewScope } from '../../types';
 
 const SCOPE_LABELS: Record<SavedViewScope, string> = {
@@ -24,7 +24,7 @@ const SCOPE_LABELS: Record<SavedViewScope, string> = {
 const SCOPE_ORDER: SavedViewScope[] = ['default', 'personal', 'team', 'public'];
 
 interface SavedViewDropdownProps {
-  /** Defaults to frontend mock views when omitted. */
+  /** Defaults to static UI views when omitted. */
   views?: SavedView[];
   selectedId?: string;
   onSelect: (view: SavedView) => void;

@@ -19,6 +19,7 @@
         "test:runtime": "node scripts/runtime-check.mjs",
         "test:ui": "playwright test",
         "test:ui:headed": "playwright test --headed",
+        "audit:production": "node scripts/production-static-audit.mjs",
         "clean:workers": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-node-workers.ps1"
     },
     "dependencies": {

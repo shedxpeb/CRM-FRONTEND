@@ -33,20 +33,31 @@ function processQueue(error: any, token: string | null = null) {
   failedQueue = [];
 }
 
+/** Single-flight refresh — AuthContext + axios 401 handler must not rotate in parallel. */
+let refreshInFlight: Promise<string> | null = null;
+
 export async function silentRefresh(): Promise<string> {
-  const { data } = await axios.post(
-    `${API_BASE_URL}/auth/refresh`,
-    {},
-    { withCredentials: true },
-  );
-  const responseData = data?.data ?? data;
-  const accessToken = responseData.accessToken;
-  if (!accessToken) throw new Error('No access token in refresh response');
-  setAccessToken(accessToken);
-  if (responseData.sessionId) {
-    setSessionData(responseData.sessionId, getTenantId() || '');
-  }
-  return accessToken;
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const { data } = await axios.post(
+      `${API_BASE_URL}/auth/refresh`,
+      {},
+      { withCredentials: true },
+    );
+    const responseData = data?.data ?? data;
+    const accessToken = responseData.accessToken;
+    if (!accessToken) throw new Error('No access token in refresh response');
+    setAccessToken(accessToken);
+    if (responseData.sessionId) {
+      setSessionData(responseData.sessionId, getTenantId() || '');
+    }
+    return accessToken;
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return refreshInFlight;
 }
 
 // Request interceptor - attach access token

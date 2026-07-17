@@ -148,6 +148,7 @@ export interface CustomerActivity {
  * Customer Filters - used by DataTable, API, and hooks
  */
 export interface CustomerFilters {
+  search?: string;
   status?: CustomerStatus;
   state?: string;
   city?: string;

@@ -1,4 +1,5 @@
 import { api } from '@/core/api';
+import { BackendPendingError } from '@/core/api/capabilities';
 import type {
   Company,
   Branch,
@@ -9,6 +10,7 @@ import type {
   ModuleConfiguration,
   SettingsStats,
   SecuritySettings,
+  ProjectConfiguration,
 } from '../types';
 import { MODULES } from '../constants/settingsConstants';
 import {
@@ -22,76 +24,16 @@ import {
   ACCOUNTING_MODULE_DEFAULTS,
 } from '../utils/moduleConfigurationDefaults';
 
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-
-const mockCompany: Company = {
-  id: '1',
-  companyName: 'PEB Solutions',
-  legalCompanyName: 'PEB Solutions Pvt Ltd',
-  address: '123 Business Park',
-  city: 'Mumbai',
-  state: 'Maharashtra',
-  country: 'India',
-  postalCode: '400001',
-  gstNumber: '27AAPFU0939J1ZP',
-  panNumber: 'AAPFU0939J',
-  cinNumber: 'U72900MH2020PTC123456',
-  msmeNumber: 'UDYAM-MH-20-0123456',
-  website: 'https://pebsolutions.com',
-  email: 'info@pebsolutions.com',
-  mobile: '+91 9876543210',
-  supportEmail: 'support@pebsolutions.com',
-  supportPhone: '+91 9876543211',
-  facebook: 'https://facebook.com/pebsolutions',
-  instagram: 'https://instagram.com/pebsolutions',
-  linkedin: 'https://linkedin.com/company/pebsolutions',
-  primaryColor: '#3b82f6',
-  secondaryColor: '#8b5cf6',
-  accentColor: '#10b981',
-  themeMode: 'light',
+const DEFAULT_SYSTEM_PREFERENCES: SystemPreferences = {
+  timezone: 'Asia/Kolkata',
+  language: 'en',
+  currency: 'INR',
+  dateFormat: 'DD/MM/YYYY',
+  timeFormat: '12-hour',
+  fileUploadLimit: 10,
+  allowedFileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'png'],
+  defaultTheme: 'light',
 };
-
-const mockBranches: Branch[] = [
-  {
-    id: '1',
-    branchCode: 'HQ',
-    branchName: 'Headquarters',
-    address: '123 Business Park',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    country: 'India',
-    postalCode: '400001',
-    gstNumber: '27AAPFU0939J1ZP',
-    contactPerson: 'John Doe',
-    email: 'mumbai@pebsolutions.com',
-    mobile: '+91 9876543210',
-    isDefault: true,
-    isActive: true,
-  },
-];
-
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'John Owner',
-    email: 'owner@pebsolutions.com',
-    mobile: '+91 9876543210',
-    role: 'owner',
-    isActive: true,
-    isLocked: false,
-    loginHistory: [],
-  },
-  {
-    id: '2',
-    name: 'Jane Admin',
-    email: 'admin@pebsolutions.com',
-    mobile: '+91 9876543211',
-    role: 'admin',
-    isActive: true,
-    isLocked: false,
-    loginHistory: [],
-  },
-];
 
 let moduleStore: Module[] = MODULES.map((module) => ({
   ...module,
@@ -99,535 +41,168 @@ let moduleStore: Module[] = MODULES.map((module) => ({
   requiredPermissions: [...module.requiredPermissions],
 }));
 
-const mockSettingsStats: SettingsStats = {
-  totalUsers: 15,
-  activeUsers: 12,
-  enabledModules: 6,
-  disabledModules: 2,
-  pendingApprovals: 5,
-  systemHealth: 'healthy',
+const MODULE_DEFAULTS: Record<string, { name: string; settings: Record<string, unknown> }> = {
+  leads: { name: 'Leads', settings: LEAD_MODULE_DEFAULTS },
+  customers: { name: 'Customers', settings: CUSTOMER_MODULE_DEFAULTS },
+  projects: { name: 'Projects', settings: PROJECT_MODULE_DEFAULTS },
+  items: { name: 'Items', settings: ITEM_MODULE_DEFAULTS },
+  inventory: { name: 'Inventory', settings: INVENTORY_MODULE_DEFAULTS },
+  documents: { name: 'Documents', settings: DOCUMENT_MODULE_DEFAULTS },
+  finance: { name: 'Finance', settings: FINANCE_MODULE_DEFAULTS },
+  accounting: { name: 'Accounting', settings: ACCOUNTING_MODULE_DEFAULTS },
 };
 
-const mockLeadModuleSettings = LEAD_MODULE_DEFAULTS;
-const mockCustomerModuleSettings = CUSTOMER_MODULE_DEFAULTS;
-const mockProjectModuleSettings = PROJECT_MODULE_DEFAULTS;
-const mockItemModuleSettings = ITEM_MODULE_DEFAULTS;
-const mockInventoryModuleSettings = INVENTORY_MODULE_DEFAULTS;
-const mockDocumentModuleSettings = DOCUMENT_MODULE_DEFAULTS;
-const mockFinanceModuleSettings = FINANCE_MODULE_DEFAULTS;
-const mockAccountingModuleSettings = ACCOUNTING_MODULE_DEFAULTS;
-
-// ─── API Functions with Fallback ───────────────────────────────────────────────
+function pending(resource: string): never {
+  throw new BackendPendingError(resource);
+}
 
 export const settingsApi = {
-  // Company
   async getCompany(): Promise<Company> {
-    try {
-      // TODO: Replace with real API call when settings backend is implemented
-      return mockCompany;
-    } catch (error) {
-      return mockCompany;
-    }
+    return pending('settings-company');
   },
 
-  async updateCompany(data: Partial<Company>): Promise<Company> {
-    try {
-      // TODO: Replace with real API call when settings backend is implemented
-      return { ...mockCompany, ...data };
-    } catch (error) {
-      return { ...mockCompany, ...data };
-    }
+  async updateCompany(_data: Partial<Company>): Promise<Company> {
+    return pending('settings-company');
   },
 
-  // Branches
   async getBranches(): Promise<Branch[]> {
-    try {
-      // TODO: Replace with real API call when settings backend is implemented
-      return mockBranches;
-    } catch (error) {
-      return mockBranches;
-    }
+    return pending('settings-branches');
   },
 
-  async createBranch(data: Omit<Branch, 'id' | 'createdAt' | 'updatedAt'>): Promise<Branch> {
-    try {
-      // TODO: Replace with real API call when settings backend is implemented
-      return { ...data, id: Date.now().toString(), createdAt: new Date(), updatedAt: new Date() };
-    } catch (error) {
-      return { ...data, id: Date.now().toString(), createdAt: new Date(), updatedAt: new Date() };
-    }
+  async createBranch(_data: Omit<Branch, 'id' | 'createdAt' | 'updatedAt'>): Promise<Branch> {
+    return pending('settings-branches');
   },
 
-  async updateBranch(id: string, data: Partial<Branch>): Promise<Branch> {
-    try {
-      return { ...mockBranches[0], ...data, id, updatedAt: new Date() };
-    } catch (error) {
-      return { ...mockBranches[0], ...data, id, updatedAt: new Date() };
-    }
+  async updateBranch(_id: string, _data: Partial<Branch>): Promise<Branch> {
+    return pending('settings-branches');
   },
 
-  async deleteBranch(id: string): Promise<void> {
-    try {
-    } catch (error) {
-      // Mock delete
-    }
+  async deleteBranch(_id: string): Promise<void> {
+    return pending('settings-branches');
   },
 
-  // Users (backend: /users)
   async getUsers(): Promise<User[]> {
-    try {
-      const response = await api.get<{ data: { rows?: User[] } | User[] }>('/users');
-      const payload = response.data;
-      if (Array.isArray(payload)) return payload;
-      if (payload && Array.isArray((payload as { rows?: User[] }).rows)) {
-        return (payload as { rows: User[] }).rows;
-      }
-      return mockUsers;
-    } catch {
-      return mockUsers;
+    const response = await api.get<{ data: { rows?: User[] } | User[] }>('/users');
+    const payload = response.data;
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray((payload as { rows?: User[] }).rows)) {
+      return (payload as { rows: User[] }).rows;
     }
+    return [];
   },
 
   async createUser(data: Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'loginHistory'>): Promise<User> {
-    try {
-      const response = await api.post<{ data: User }>('/users', data);
-      return response.data;
-    } catch {
-      return { ...data, id: Date.now().toString(), createdAt: new Date(), updatedAt: new Date(), loginHistory: [] };
-    }
+    const response = await api.post<{ data: User }>('/users', data);
+    return response.data;
   },
 
   async updateUser(id: string, data: Partial<User>): Promise<User> {
-    try {
-      const response = await api.patch<{ data: User }>(`/users/${id}`, data);
-      return response.data;
-    } catch {
-      return { ...mockUsers[0], ...data, id, updatedAt: new Date() };
-    }
+    const response = await api.patch<{ data: User }>(`/users/${id}`, data);
+    return response.data;
   },
 
   async deleteUser(id: string): Promise<void> {
-    try {
-      await api.delete(`/users/${id}`);
-    } catch {
-      // keep mock behavior on failure
-    }
+    await api.delete(`/users/${id}`);
   },
 
-  // Roles (backend: /roles)
   async getRoles(): Promise<Role[]> {
-    try {
-      const response = await api.get<{ data: Role[] }>('/roles');
-      return response.data ?? [];
-    } catch {
-      return [];
-    }
+    const response = await api.get<{ data: Role[] }>('/roles');
+    return response.data ?? [];
   },
 
   async createRole(data: Omit<Role, 'id' | 'createdAt' | 'updatedAt'>): Promise<Role> {
-    try {
-      const response = await api.post<{ data: Role }>('/roles', data);
-      return response.data;
-    } catch {
-      return { ...data, id: Date.now().toString(), createdAt: new Date(), updatedAt: new Date() };
-    }
+    const response = await api.post<{ data: Role }>('/roles', data);
+    return response.data;
   },
 
   async updateRole(id: string, data: Partial<Role>): Promise<Role> {
-    try {
-      const response = await api.patch<{ data: Role }>(`/roles/${id}`, data);
-      return response.data;
-    } catch {
-      return { id, ...data, updatedAt: new Date() } as Role;
-    }
+    const response = await api.patch<{ data: Role }>(`/roles/${id}`, data);
+    return response.data;
   },
 
   async deleteRole(id: string): Promise<void> {
-    try {
-      await api.delete(`/roles/${id}`);
-    } catch {
-      // keep mock behavior on failure
-    }
+    await api.delete(`/roles/${id}`);
   },
 
-  // Modules
   async getModules(): Promise<Module[]> {
-    try {
-      return moduleStore;
-    } catch (error) {
-      return moduleStore;
-    }
+    return moduleStore;
   },
 
   async updateModule(id: string, data: Partial<Module>): Promise<Module> {
-    try {
-      moduleStore = moduleStore.map((module) =>
-        module.id === id ? { ...module, ...data, id, updatedAt: new Date() } : module
-      );
-      const updated = moduleStore.find((module) => module.id === id);
-      if (!updated) {
-        throw new Error(`Module not found: ${id}`);
-      }
-      return updated;
-    } catch (error) {
-      moduleStore = moduleStore.map((module) =>
-        module.id === id ? { ...module, ...data, id, updatedAt: new Date() } : module
-      );
-      const updated = moduleStore.find((module) => module.id === id);
-      return (updated ?? { id, ...data, updatedAt: new Date() }) as Module;
+    moduleStore = moduleStore.map((module) =>
+      module.id === id ? { ...module, ...data, id, updatedAt: new Date() } : module,
+    );
+    const updated = moduleStore.find((module) => module.id === id);
+    if (!updated) {
+      throw new Error(`Module not found: ${id}`);
     }
+    return updated;
   },
 
-  // System Preferences
   async getSystemPreferences(): Promise<SystemPreferences> {
-    try {
-      return {
-        timezone: 'Asia/Kolkata',
-        language: 'en',
-        currency: 'INR',
-        dateFormat: 'DD/MM/YYYY',
-        timeFormat: '12-hour',
-        fileUploadLimit: 10,
-        allowedFileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'png'],
-        defaultTheme: 'light',
-      };
-    } catch (error) {
-      return {
-        timezone: 'Asia/Kolkata',
-        language: 'en',
-        currency: 'INR',
-        dateFormat: 'DD/MM/YYYY',
-        timeFormat: '12-hour',
-        fileUploadLimit: 10,
-        allowedFileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'png'],
-        defaultTheme: 'light',
-      };
-    }
+    return { ...DEFAULT_SYSTEM_PREFERENCES };
   },
 
-  async updateSystemPreferences(data: Partial<SystemPreferences>): Promise<SystemPreferences> {
-    try {
-      return {
-        timezone: 'Asia/Kolkata',
-        language: 'en',
-        currency: 'INR',
-        dateFormat: 'DD/MM/YYYY',
-        timeFormat: '12-hour',
-        fileUploadLimit: 10,
-        allowedFileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'png'],
-        defaultTheme: 'light',
-        ...data,
-      };
-    } catch (error) {
-      return {
-        timezone: 'Asia/Kolkata',
-        language: 'en',
-        currency: 'INR',
-        dateFormat: 'DD/MM/YYYY',
-        timeFormat: '12-hour',
-        fileUploadLimit: 10,
-        allowedFileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'png'],
-        defaultTheme: 'light',
-        ...data,
-      };
-    }
+  async updateSystemPreferences(_data: Partial<SystemPreferences>): Promise<SystemPreferences> {
+    return pending('settings-preferences');
   },
 
-  // Module Configuration
+  /**
+   * Local defaults for module schemas used by Lead/Customer/Project forms.
+   * Persisted settings backend is not available yet.
+   */
   async getModuleConfiguration(moduleId: string): Promise<ModuleConfiguration> {
-    try {
-      if (moduleId === 'leads') {
-        return { id: 'leads', name: 'Leads', settings: mockLeadModuleSettings };
-      }
-      if (moduleId === 'customers') {
-        return { id: 'customers', name: 'Customers', settings: mockCustomerModuleSettings };
-      }
-      if (moduleId === 'projects') {
-        return { id: 'projects', name: 'Projects', settings: mockProjectModuleSettings };
-      }
-      if (moduleId === 'items') {
-        return { id: 'items', name: 'Items', settings: mockItemModuleSettings };
-      }
-      if (moduleId === 'inventory') {
-        return { id: 'inventory', name: 'Inventory', settings: mockInventoryModuleSettings };
-      }
-      if (moduleId === 'documents') {
-        return { id: 'documents', name: 'Documents', settings: mockDocumentModuleSettings };
-      }
-      if (moduleId === 'finance') {
-        return { id: 'finance', name: 'Finance', settings: mockFinanceModuleSettings };
-      }
-      if (moduleId === 'accounting') {
-        return { id: 'accounting', name: 'Accounting', settings: mockAccountingModuleSettings };
-      }
-      return { id: moduleId, name: '', settings: {} };
-    } catch (error) {
-      if (moduleId === 'leads') {
-        return { id: 'leads', name: 'Leads', settings: mockLeadModuleSettings };
-      }
-      if (moduleId === 'customers') {
-        return { id: 'customers', name: 'Customers', settings: mockCustomerModuleSettings };
-      }
-      if (moduleId === 'projects') {
-        return { id: 'projects', name: 'Projects', settings: mockProjectModuleSettings };
-      }
-      if (moduleId === 'items') {
-        return { id: 'items', name: 'Items', settings: mockItemModuleSettings };
-      }
-      if (moduleId === 'inventory') {
-        return { id: 'inventory', name: 'Inventory', settings: mockInventoryModuleSettings };
-      }
-      if (moduleId === 'documents') {
-        return { id: 'documents', name: 'Documents', settings: mockDocumentModuleSettings };
-      }
-      if (moduleId === 'finance') {
-        return { id: 'finance', name: 'Finance', settings: mockFinanceModuleSettings };
-      }
-      if (moduleId === 'accounting') {
-        return { id: 'accounting', name: 'Accounting', settings: mockAccountingModuleSettings };
-      }
-      return { id: moduleId, name: '', settings: {} };
+    const defaults = MODULE_DEFAULTS[moduleId];
+    if (defaults) {
+      return { id: moduleId, name: defaults.name, settings: defaults.settings };
     }
+    return { id: moduleId, name: '', settings: {} };
   },
 
-  // Stats
   async getSettingsStats(): Promise<SettingsStats> {
-    try {
-      return mockSettingsStats;
-    } catch (error) {
-      return mockSettingsStats;
-    }
+    return pending('settings-stats');
   },
 
-  // Document Settings
-  async getDocumentSettings(): Promise<any> {
-    try {
-      return {
-        estimateNumbering: {
-          prefix: 'EST',
-          suffix: '',
-          startNumber: 1,
-          financialYear: '2026-2027',
-          format: '{PREFIX}-{FY}-{NUMBER}',
-        },
-        proposalNumbering: {
-          prefix: 'PRO',
-          suffix: '',
-          startNumber: 1,
-          financialYear: '2026-2027',
-          format: '{PREFIX}-{FY}-{NUMBER}',
-        },
-        quotationNumbering: {
-          prefix: 'QUO',
-          suffix: '',
-          startNumber: 1,
-          financialYear: '2026-2027',
-          format: '{PREFIX}-{FY}-{NUMBER}',
-        },
-        defaultTerms: 'Payment terms: 50% advance, 50% before delivery.',
-        defaultConditions: 'Valid for 30 days from date of quotation.',
-        bankDetails: {
-          bankName: 'State Bank of India',
-          accountNumber: '1234567890',
-          accountType: 'Current Account',
-          ifscCode: 'SBIN0001234',
-          branchName: 'Mumbai Main Branch',
-        },
-        gstDetails: {
-          gstin: '27AAPFU0939J1ZP',
-          gstType: 'CGST',
-          cgstRate: 9,
-          sgstRate: 9,
-          igstRate: 18,
-          cessRate: 0,
-        },
-      };
-    } catch (error) {
-      return {
-        estimateNumbering: {
-          prefix: 'EST',
-          suffix: '',
-          startNumber: 1,
-          financialYear: '2026-2027',
-          format: '{PREFIX}-{FY}-{NUMBER}',
-        },
-        proposalNumbering: {
-          prefix: 'PRO',
-          suffix: '',
-          startNumber: 1,
-          financialYear: '2026-2027',
-          format: '{PREFIX}-{FY}-{NUMBER}',
-        },
-        quotationNumbering: {
-          prefix: 'QUO',
-          suffix: '',
-          startNumber: 1,
-          financialYear: '2026-2027',
-          format: '{PREFIX}-{FY}-{NUMBER}',
-        },
-        defaultTerms: 'Payment terms: 50% advance, 50% before delivery.',
-        defaultConditions: 'Valid for 30 days from date of quotation.',
-        bankDetails: {
-          bankName: 'State Bank of India',
-          accountNumber: '1234567890',
-          accountType: 'Current Account',
-          ifscCode: 'SBIN0001234',
-          branchName: 'Mumbai Main Branch',
-        },
-        gstDetails: {
-          gstin: '27AAPFU0939J1ZP',
-          gstType: 'CGST',
-          cgstRate: 9,
-          sgstRate: 9,
-          igstRate: 18,
-          cessRate: 0,
-        },
-      };
-    }
+  async getDocumentSettings(): Promise<Record<string, unknown>> {
+    return pending('settings-documents');
   },
 
-  async updateDocumentSettings(data: Record<string, unknown>): Promise<Record<string, unknown>> {
-    try {
-      return data;
-    } catch (error) {
-      return data;
-    }
+  async updateDocumentSettings(_data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return pending('settings-documents');
   },
 
-  // Finance Configuration
-  async getFinanceConfiguration(): Promise<any> {
-    try {
-      return {
-        currency: 'INR',
-        taxRate: 18,
-        paymentTerms: 'Net 30',
-        invoicePrefix: 'INV',
-        receiptPrefix: 'REC',
-        expensePrefix: 'EXP',
-        ...mockFinanceModuleSettings,
-      };
-    } catch (error) {
-      return {
-        currency: 'INR',
-        taxRate: 18,
-        paymentTerms: 'Net 30',
-        invoicePrefix: 'INV',
-        receiptPrefix: 'REC',
-        expensePrefix: 'EXP',
-        ...mockFinanceModuleSettings,
-      };
-    }
+  async getFinanceConfiguration(): Promise<Record<string, unknown>> {
+    return pending('settings-finance');
   },
 
-  async updateFinanceConfiguration(data: Record<string, unknown>): Promise<Record<string, unknown>> {
-    try {
-      return data;
-    } catch (error) {
-      return data;
-    }
+  async updateFinanceConfiguration(_data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return pending('settings-finance');
   },
 
-  // Project Configuration
-  async getProjectConfiguration(): Promise<any> {
-    try {
-      return {
-        defaultProjectType: 'Industrial Shed',
-        defaultPriority: 'Medium',
-        autoAssignProjectManager: true,
-        autoGenerateMilestones: true,
-        milestoneTemplate: 'Standard',
-      };
-    } catch (error) {
-      return {
-        defaultProjectType: 'Industrial Shed',
-        defaultPriority: 'Medium',
-        autoAssignProjectManager: true,
-        autoGenerateMilestones: true,
-        milestoneTemplate: 'Standard',
-      };
-    }
+  async getProjectConfiguration(): Promise<ProjectConfiguration> {
+    const defaults = PROJECT_MODULE_DEFAULTS as Partial<ProjectConfiguration> & {
+      projectTypes?: string[];
+      statuses?: string[];
+      stages?: string[];
+    };
+    return {
+      projectTypes: defaults.projectTypes ?? ['Industrial Shed', 'Warehouse', 'Factory'],
+      stages: defaults.stages ?? ['Planning', 'Execution', 'Handover'],
+      statuses: defaults.statuses ?? ['Active', 'On Hold', 'Completed'],
+      completionRules: defaults.completionRules ?? [],
+      afterSalesRules: defaults.afterSalesRules ?? [],
+    };
   },
 
-  async updateProjectConfiguration(data: Record<string, unknown>): Promise<Record<string, unknown>> {
-    try {
-      return data;
-    } catch (error) {
-      return data;
-    }
+  async updateProjectConfiguration(_data: Partial<ProjectConfiguration>): Promise<ProjectConfiguration> {
+    return pending('settings-projects');
   },
 
-  // Security Settings
   async getSecuritySettings(): Promise<SecuritySettings> {
-    try {
-      return {
-        passwordPolicy: {
-          minLength: 8,
-          requireUppercase: true,
-          requireLowercase: true,
-          requireNumbers: true,
-          requireSpecialChars: true,
-          expiryDays: 90,
-        },
-        sessionTimeout: 30,
-        maxLoginAttempts: 5,
-        lockoutDuration: 30,
-        ipRestrictions: [],
-        twoFactorEnabled: false,
-      };
-    } catch (error) {
-      return {
-        passwordPolicy: {
-          minLength: 8,
-          requireUppercase: true,
-          requireLowercase: true,
-          requireNumbers: true,
-          requireSpecialChars: true,
-          expiryDays: 90,
-        },
-        sessionTimeout: 30,
-        maxLoginAttempts: 5,
-        lockoutDuration: 30,
-        ipRestrictions: [],
-        twoFactorEnabled: false,
-      };
-    }
+    return pending('settings-security');
   },
 
-  async updateSecuritySettings(data: Partial<SecuritySettings>): Promise<SecuritySettings> {
-    try {
-      return {
-        passwordPolicy: {
-          minLength: 8,
-          requireUppercase: true,
-          requireLowercase: true,
-          requireNumbers: true,
-          requireSpecialChars: true,
-          expiryDays: 90,
-        },
-        sessionTimeout: 30,
-        maxLoginAttempts: 5,
-        lockoutDuration: 30,
-        ipRestrictions: [],
-        twoFactorEnabled: false,
-        ...data,
-      };
-    } catch (error) {
-      return {
-        passwordPolicy: {
-          minLength: 8,
-          requireUppercase: true,
-          requireLowercase: true,
-          requireNumbers: true,
-          requireSpecialChars: true,
-          expiryDays: 90,
-        },
-        sessionTimeout: 30,
-        maxLoginAttempts: 5,
-        lockoutDuration: 30,
-        ipRestrictions: [],
-        twoFactorEnabled: false,
-        ...data,
-      };
-    }
+  async updateSecuritySettings(_data: Partial<SecuritySettings>): Promise<SecuritySettings> {
+    return pending('settings-security');
   },
 };

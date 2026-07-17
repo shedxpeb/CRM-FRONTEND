@@ -27,6 +27,13 @@ export const customersApi = {
   getAll: (params?: PaginationParams & CustomerFilters) =>
     api.get<BackendResponse<CustomersData>>('/customer', { params }),
 
+  /** Lightweight dropdown rows (capped server-side ≤100) */
+  getCombobox: (params?: { page?: number; pageSize?: number; search?: string }) =>
+    api.get<BackendResponse<{ rows: Array<Pick<Customer, 'id' | 'customerName' | 'companyName' | 'mobile'>>; pagination: CustomersData['pagination'] }>>(
+      '/customer/combobox',
+      { params },
+    ),
+
   getById: (id: string) =>
     api.get<BackendResponse<Customer>>(`/customer/${id}`),
 

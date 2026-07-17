@@ -204,7 +204,7 @@ export interface LeadActivity {
   description: string;
   performedBy: string;
   performedAt: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface LeadFilter {

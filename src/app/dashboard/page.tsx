@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useMemo, lazy, Suspense, useEffect, useCallback } from 'react';
+import { useState, useMemo, lazy, Suspense, useCallback } from 'react';
 import { MainLayout } from '@/layouts/MainLayout';
 import { ModernKPICard, type KpiPeriodData } from '@/components/dashboard/ModernKPICard';
 import { DashboardFilter, DateRange } from '@/features/dashboard';
 import { useDashboardRealData } from '@/features/dashboard/hooks/useDashboardRealData';
 import { ExportButton } from '@/features/dashboard/components/ExportButton';
-import { PDFExportService } from '@/features/dashboard/services/pdf/PDFExportService';
 import { DashboardExportData, ExportStatus, ExportType } from '@/features/dashboard/types/pdf';
 import { CardSkeleton } from '@/components/loading/CardSkeleton';
 import { ChartSkeleton } from '@/components/loading/ChartSkeleton';
-import { useQueryClient } from '@tanstack/react-query';
 const ProjectStatusGrid = lazy(() => import('@/components/dashboard/ProjectStatusGrid').then(m => ({ default: m.ProjectStatusGrid })));
 const ProjectTimeline = lazy(() => import('@/components/dashboard/ProjectTimeline').then(m => ({ default: m.ProjectTimeline })));
 const DetailedGanttChart = lazy(() => import('@/components/dashboard/DetailedGanttChart').then(m => ({ default: m.DetailedGanttChart })));
@@ -47,51 +45,16 @@ export default function DashboardPage() {
   });
   const [projectStatusFilter, setProjectStatusFilter] = useState<"All" | ProjectStatus>("All");
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>();
-  const queryClient = useQueryClient();
-
-  // Prefetch critical data on mount for faster subsequent loads
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-
-    const prefetchData = async () => {
-      try {
-        // Prefetch leads list for stats (summary is included in list response)
-        await queryClient.prefetchQuery({
-          queryKey: ['leads', { page: 1, pageSize: 1 }],
-          queryFn: () => import('@/features/leads/services/leadsApi').then(m => m.leadsApi.getAll({ page: 1, pageSize: 1 })),
-          staleTime: 2 * 60 * 1000,
-        });
-        // Prefetch projects stats
-        await queryClient.prefetchQuery({
-          queryKey: ['projects', 'stats'],
-          queryFn: () => import('@/features/projects/services/projectsApi').then(m => m.projectsApi.getStats()),
-          staleTime: 2 * 60 * 1000,
-        });
-        // Prefetch customers stats
-        await queryClient.prefetchQuery({
-          queryKey: ['customers', 'stats'],
-          queryFn: () => import('@/features/customers/services/customersApi').then(m => m.customersApi.getStats()),
-          staleTime: 2 * 60 * 1000,
-        });
-      } catch (error) {
-        // Prefetch errors are non-critical, silently ignore
-      }
-    };
-
-    prefetchData();
-  }, [isAuthenticated, queryClient]);
 
   // Use real data from all modules
   const { data: dashboardData, isLoading, error } = useDashboardRealData(isAuthenticated);
   
-  // Fetch recent status updates from projects
+  // Fetch recent status updates from projects (does not block KPI shell)
   const { data: statusUpdates, isLoading: statusUpdatesLoading, error: statusUpdatesError } =
     useRecentStatusUpdates(10, isAuthenticated);
 
-  // Unified loading state - wait for all dashboard data to be ready
-  const isDashboardReady = !isAuthLoading && !isLoading && !statusUpdatesLoading;
+  // Paint KPIs as soon as CRM stats are ready — status feed streams in separately
+  const isDashboardReady = !isAuthLoading && !isLoading;
 
   // Check if we have any data at all
   const hasAnyData = dashboardData && (
@@ -320,7 +283,8 @@ export default function DashboardPage() {
       setExportState({ isGenerating: true, status: 'preparing', progress: 5, message: 'Waiting for charts to render...' });
       
       const charts = await waitForChartsToRender();
-      
+
+      const { PDFExportService } = await import('@/features/dashboard/services/pdf/PDFExportService');
       const service = new PDFExportService((status, message, progress) => {
         setExportState({ isGenerating: true, status, message, progress });
       });

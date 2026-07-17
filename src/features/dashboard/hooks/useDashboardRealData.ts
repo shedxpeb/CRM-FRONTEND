@@ -91,27 +91,16 @@ export function useDashboardRealData(enabled: boolean = true) {
   const financeStats = useFinanceStats(enabled);
   const quotationStats = useQuotationStats(enabled);
 
-  // Calculate loading state (quotationStats uses 'loading' not 'isLoading')
-  const isLoading = 
-    leadsStats.isLoading || 
-    projectsStats.isLoading || 
-    customersStats.isLoading || 
-    inventoryStats.isLoading || 
-    financeStats.isLoading || 
-    quotationStats.loading;
+  // CRM stats gate the shell; pending-module stats load in parallel without blocking
+  const isLoading =
+    leadsStats.isLoading || projectsStats.isLoading || customersStats.isLoading;
 
-  // Calculate error state
-  const error = 
-    leadsStats.error || 
-    projectsStats.error || 
-    customersStats.error || 
-    inventoryStats.error || 
-    financeStats.error || 
-    quotationStats.error;
+  // Calculate error state (CRM only — pending modules surface via availability)
+  const error = leadsStats.error || projectsStats.error || customersStats.error;
 
   // Optimistic UI: Use cached data if available while loading fresh data
   const getCachedData = () => {
-    const cachedLeads = queryClient.getQueryData(['leads', 'stats']);
+    const cachedLeads = queryClient.getQueryData(['leads-stats']);
     const cachedProjects = queryClient.getQueryData(['projects', 'stats']);
     const cachedCustomers = queryClient.getQueryData(['customers', 'stats']);
     const cachedInventory = queryClient.getQueryData(['inventory', 'stats']);

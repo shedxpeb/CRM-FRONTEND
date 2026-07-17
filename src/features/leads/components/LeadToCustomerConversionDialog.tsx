@@ -114,6 +114,18 @@ export function LeadToCustomerConversionDialog({
       const payload = buildCustomerFromLead(lead, selectedGroups, customMappings);
       payload.profileId = profileId;
 
+      const missing: string[] = [];
+      if (!payload.customerName) missing.push('customer name');
+      if (!payload.companyName) missing.push('company name');
+      if (!payload.mobile) missing.push('mobile');
+      if (!payload.source) missing.push('source');
+      if (missing.length) {
+        setError(
+          `Cannot convert: lead is missing ${missing.join(', ')}. Update the lead first, or keep Standard/Contact groups selected.`,
+        );
+        return;
+      }
+
       const customerResult = await convertLeadMutation.mutateAsync(payload as any);
       const resultData = (customerResult as any)?.data ?? customerResult;
       const customer = resultData?.customer ?? resultData;

@@ -18,7 +18,7 @@ interface AuthContextValue {
   forgotPassword: (input: ForgotPasswordInput) => Promise<{ success: boolean; otpDelivery?: OtpDeliveryResponse; error?: string }>;
   resetPassword: (input: ResetPasswordInput) => Promise<{ success: boolean; error?: string }>;
   resendOtp: (email: string, purpose?: 'REGISTRATION' | 'FORGOT_PASSWORD') => Promise<{ success: boolean; otpDelivery?: OtpDeliveryResponse; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -74,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (sid && userData?.organizationId) {
           setSessionData(sid, userData.organizationId);
         }
+        // Warm capabilities cache without blocking first page data requests
+        void import('@/core/api/capabilities').then((m) => m.loadCapabilities());
         startProactiveRefresh();
       } catch {
         clearSession();
@@ -174,15 +176,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     stopProactiveRefresh();
-    queryClient.clear();
-    const sessionId = typeof window !== 'undefined'
-      ? document.cookie.match(/(^| )sessionId=([^;]+)/)?.[2]
-      : undefined;
-    if (sessionId) {
-      authService.logout(sessionId).catch(() => {});
+    // Revoke server session + clear HttpOnly refresh cookie WHILE access token is still present.
+    // Clearing the token first caused logout to 401 and left refreshToken intact (silent re-login).
+    try {
+      await authService.logout(getSessionId() || '');
+    } catch {
+      // Still clear local state even if the network call fails.
     }
+    queryClient.clear();
     clearSession();
     setUser(null);
     router.push(ROUTES.login);

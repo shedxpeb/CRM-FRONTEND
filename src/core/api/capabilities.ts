@@ -112,8 +112,13 @@ export function supportsImport(url: string): boolean {
 export async function assertEndpointAvailable(config: AxiosRequestConfig): Promise<void> {
   const url = config.url || '';
   if (!url || !getAccessToken()) return;
-  const capabilities = await loadCapabilities();
-  if (!capabilities) return;
+
+  // Do not serialize the first authenticated request wave on a cold capabilities fetch.
+  // Warm cache asynchronously; enforce only once capabilities are known.
+  if (!cachedCapabilities) {
+    void loadCapabilities();
+    return;
+  }
 
   const status = isEndpointAvailable(url);
   if (status !== 'available') {
@@ -142,8 +147,29 @@ export function guardModuleApi<T extends Record<string, unknown>>(module: string
 }
 
 export function rememberUnavailableEndpoint(url: string): void {
-  const resource = url.replace(/^\/+/, '').split('/')[0];
-  if (resource) unavailableResources.add(resource);
+  const path = url.replace(/^\/+/, '').split('?')[0];
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length === 0) return;
+
+  // Never poison completed / core modules from entity or action 404s
+  // (e.g. GET /lead/:id not found must not disable the entire lead module).
+  const neverPoison = new Set([
+    'lead',
+    'customer',
+    'project',
+    'auth',
+    'users',
+    'roles',
+    'organization',
+    'system',
+    'health',
+    'tracking',
+    'workflow',
+    'mail',
+  ]);
+  if (neverPoison.has(segments[0])) return;
+
+  unavailableResources.add(segments[0]);
 }
 
 export function isCancelledRequest(error: unknown): boolean {

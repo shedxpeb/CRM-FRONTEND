@@ -2,7 +2,7 @@
 
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
   useSidebarIsOpen,
@@ -15,6 +15,21 @@ import { cn } from '@/lib/utils';
 interface SidebarProps {
   currentPath?: string;
   userRole?: 'owner' | 'admin' | 'employee';
+}
+
+/** Prefetch only production CRM routes — avoid warming pending module chunks. */
+const PREFETCH_HREFS = new Set([
+  '/dashboard',
+  '/dashboard/leads',
+  '/dashboard/customers',
+  '/dashboard/projects',
+  '/dashboard/item',
+  '/dashboard/inventory',
+]);
+
+function shouldPrefetch(href?: string): boolean {
+  if (!href) return false;
+  return PREFETCH_HREFS.has(href);
 }
 
 const ACTIVE_STYLE: React.CSSProperties = {
@@ -50,7 +65,6 @@ const flattenForRail = (items: NavigationItem[]): NavigationItem[] => {
 export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }: SidebarProps) {
   const nextPathname = usePathname();
   const pathname = currentPath || nextPathname;
-  const router = useRouter();
   const isOpen = useSidebarIsOpen();
   const isCollapsed = useSidebarIsCollapsed();
   const collapseSidebar = useSidebarStore((state) => state.collapseSidebar);
@@ -59,9 +73,6 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
   const { items: navigationItems } = useNavigationItems(userRole);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     setExpanded((prev) => {
@@ -79,8 +90,6 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
 
   const toggleSection = (title: string) =>
     setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
-
-  if (!mounted) return null;
 
   return (
     <>
@@ -142,7 +151,7 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
                       href={item.href ?? '#'}
                       title={item.title}
                       aria-label={item.title}
-                      onMouseEnter={() => item.href && router.prefetch(item.href)}
+                      prefetch={shouldPrefetch(item.href)}
                       className={cn(
                         'flex items-center justify-center w-full h-10 rounded-lg transition-all duration-220 glass-sidebar-hover',
                         active ? 'text-primary' : 'text-foreground'
@@ -169,7 +178,7 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
                     <li key={`${item.href}-${index}`}>
                       <Link
                         href={item.href ?? '#'}
-                        onMouseEnter={() => item.href && router.prefetch(item.href)}
+                        prefetch={shouldPrefetch(item.href)}
                         className={cn(
                           'flex items-center gap-3 pl-4 pr-3 h-12 rounded-xl transition-all duration-220 glass-sidebar-hover',
                           active ? 'text-primary' : 'text-foreground'
@@ -195,7 +204,7 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
                       {item.href ? (
                           <Link
                             href={item.href}
-                            onMouseEnter={() => router.prefetch(item.href!)}
+                            prefetch={shouldPrefetch(item.href)}
                             className="flex flex-1 items-center gap-3 pl-4 pr-3 h-12 min-w-0"
                           >
                             <Icon size={20} />
@@ -235,7 +244,7 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
                             <li key={`${child.href}-${childIndex}`}>
                               <Link
                                 href={child.href ?? '#'}
-                                onMouseEnter={() => child.href && router.prefetch(child.href)}
+                                prefetch={shouldPrefetch(child.href)}
                                 className={cn(
                                   'flex items-center gap-2 px-3 h-10 rounded-lg transition-all duration-220 glass-sidebar-hover text-sm',
                                   childActive ? 'text-primary' : 'text-foreground'

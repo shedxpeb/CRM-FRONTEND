@@ -8,8 +8,16 @@ import { ConversionConfirmationDialog } from './ConversionConfirmationDialog';
 import { EstimateBuilder } from '@/features/documents/components/EstimateBuilder';
 import { ProposalBuilder } from '@/features/documents/components/ProposalBuilder';
 import { QuotationBuilder } from '@/features/documents/components/QuotationBuilder';
-import { Estimate, Proposal, Quotation, CreateEstimateDto, CreateProposalDto, CreateQuotationDto } from '@/features/documents/types/peb-commercial';
+import {
+  Estimate,
+  Proposal,
+  Quotation,
+  CreateEstimateDto,
+  CreateProposalDto,
+  CreateQuotationDto,
+} from '@/features/documents/types/peb-commercial';
 import { Lead } from '@/types/leads';
+import { BackendPendingError } from '@/core/api/capabilities';
 
 interface LeadConversionDialogProps {
   open: boolean;
@@ -20,20 +28,18 @@ interface LeadConversionDialogProps {
   onQuotationCreated?: (quotation: Quotation) => void;
 }
 
-type ConversionStep = 'select' | 'confirm' | 'build' | 'complete';
+type ConversionStep = 'select' | 'confirm' | 'build' | 'error';
 
 export function LeadConversionDialog({
   open,
   onOpenChange,
   lead,
-  onEstimateCreated,
-  onProposalCreated,
-  onQuotationCreated,
 }: LeadConversionDialogProps) {
   const [step, setStep] = useState<ConversionStep>('select');
   const [selectedType, setSelectedType] = useState<ConversionType | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [createdDocument, setCreatedDocument] = useState<Estimate | Proposal | Quotation | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleTypeSelect = (type: ConversionType) => {
     setSelectedType(type);
@@ -50,203 +56,75 @@ export function LeadConversionDialog({
     setSelectedType(null);
   };
 
-  const handleEstimateSave = (estimateDto: CreateEstimateDto) => {
-    // In a real implementation, this would call the API
-    const mockEstimate: Estimate = {
-      id: `EST-${Date.now()}`,
-      estimateNumber: `EST-${Date.now()}`,
-      version: 1,
-      customerId: estimateDto.customerId,
-      customerName: lead.companyName || lead.customerName || 'Unknown',
-      leadId: lead.id,
-      leadNumber: String(lead.leadNumber),
-      status: 'Draft',
-      includePricing: estimateDto.includePricing,
-      materialSelections: estimateDto.materialSelections.map((m, i) => ({
-        ...m,
-        id: `mat-${i}`,
-      })),
-      scopeConfiguration: estimateDto.scopeConfiguration,
-      technicalSpecifications: estimateDto.technicalSpecifications || {},
-      inclusions: estimateDto.inclusions || [],
-      exclusions: estimateDto.exclusions || [],
-      notes: estimateDto.notes,
-      internalNotes: estimateDto.internalNotes,
-      terms: estimateDto.terms,
-      contactPersonName: estimateDto.contactPersonName,
-      salesExecutive: estimateDto.salesExecutive,
-      validTill: estimateDto.validTill,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    setCreatedDocument(mockEstimate);
-    setStep('complete');
-    onEstimateCreated?.(mockEstimate);
+  const rejectPendingDocument = async (resource: string): Promise<never> => {
+    throw new BackendPendingError(resource);
   };
 
-  const handleProposalSave = (proposalDto: CreateProposalDto) => {
-    // In a real implementation, this would call the API
-    const mockProposal: Proposal = {
-      id: `PROP-${Date.now()}`,
-      proposalNumber: `PROP-${Date.now()}`,
-      version: 1,
-      estimateId: proposalDto.estimateId,
-      estimateNumber: `EST-${proposalDto.estimateId}`,
-      customerId: lead.customerId || '',
-      customerName: lead.companyName || lead.customerName || 'Unknown',
-      leadId: lead.id,
-      leadNumber: String(lead.leadNumber),
-      status: 'Draft',
-      materialSelections: [],
-      scopeConfiguration: {
-        labour: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        installation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        transportation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        crane: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        civilWork: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        accommodation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        erection: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        freight: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        additionalServices: [],
-      },
-      technicalSpecifications: {},
-      inclusions: [],
-      exclusions: [],
-      proposalConfiguration: proposalDto.proposalConfiguration || {
-        labourIncluded: false,
-        installationIncluded: false,
-        transportationIncluded: false,
-        craneIncluded: false,
-        civilWorkIncluded: false,
-        accommodationIncluded: false,
-        erectionIncluded: false,
-        freightIncluded: false,
-        includeTechnicalDrawings: false,
-        include3DRenderings: false,
-        includeMaterialSamples: false,
-        includePastProjects: false,
-      },
-      includeCommercialSummary: proposalDto.includeCommercialSummary || false,
-      commercialSummary: proposalDto.commercialSummary,
-      timeline: proposalDto.timeline,
-      coverPage: proposalDto.coverPage,
-      companyProfile: proposalDto.companyProfile,
-      projectOverview: proposalDto.projectOverview,
-      scopeOfWork: proposalDto.scopeOfWork,
-      termsAndConditions: proposalDto.termsAndConditions,
-      notes: proposalDto.notes,
-      internalNotes: proposalDto.internalNotes,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    setCreatedDocument(mockProposal);
-    setStep('complete');
-    onProposalCreated?.(mockProposal);
+  const handleSaveFailure = (error: unknown) => {
+    const message =
+      error instanceof BackendPendingError
+        ? 'Document conversion is not available yet. Convert this lead to a Customer or Project instead.'
+        : error instanceof Error
+          ? error.message
+          : 'Failed to create document';
+    setErrorMessage(message);
+    setStep('error');
+    setIsSaving(false);
   };
 
-  const handleQuotationSave = (quotationDto: CreateQuotationDto) => {
-    // In a real implementation, this would call the API
-    const mockQuotation: Quotation = {
-      id: `QUO-${Date.now()}`,
-      quotationNumber: `QUO-${Date.now()}`,
-      version: 1,
-      proposalId: quotationDto.proposalId,
-      proposalNumber: `PROP-${quotationDto.proposalId}`,
-      sourceEstimateId: '',
-      sourceEstimateNumber: '',
-      customerId: lead.customerId || '',
-      customerName: lead.companyName || lead.customerName || 'Unknown',
-      leadId: lead.id,
-      leadNumber: String(lead.leadNumber),
-      status: 'Draft',
-      validUntil: quotationDto.validUntil,
-      paymentTerms: quotationDto.paymentTerms,
-      deliveryTerms: quotationDto.deliveryTerms,
-      materialSelections: [],
-      scopeConfiguration: {
-        labour: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        installation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        transportation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        crane: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        civilWork: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        accommodation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        erection: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        freight: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-        additionalServices: [],
-      },
-      technicalSpecifications: {},
-      inclusions: [],
-      exclusions: [],
-      proposalConfiguration: {
-        labourIncluded: false,
-        installationIncluded: false,
-        transportationIncluded: false,
-        craneIncluded: false,
-        civilWorkIncluded: false,
-        accommodationIncluded: false,
-        erectionIncluded: false,
-        freightIncluded: false,
-        includeTechnicalDrawings: false,
-        include3DRenderings: false,
-        includeMaterialSamples: false,
-        includePastProjects: false,
-      },
-      pricingConfiguration: quotationDto.pricingConfiguration,
-      materialCost: 0,
-      labourCost: 0,
-      installationCost: 0,
-      transportationCost: 0,
-      craneCost: 0,
-      civilCost: 0,
-      accommodationCost: 0,
-      erectionCost: 0,
-      freightCost: 0,
-      otherCosts: 0,
-      subtotal: 0,
-      discountAmount: 0,
-      taxAmount: 0,
-      gstType: 'CGST',
-      grandTotal: 0,
-      termsAndConditions: quotationDto.termsAndConditions,
-      notes: quotationDto.notes,
-      internalNotes: quotationDto.internalNotes,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  const handleEstimateSave = async (_estimateDto: CreateEstimateDto) => {
+    setIsSaving(true);
+    try {
+      await rejectPendingDocument('estimates');
+    } catch (error) {
+      handleSaveFailure(error);
+    }
+  };
 
-    setCreatedDocument(mockQuotation);
-    setStep('complete');
-    onQuotationCreated?.(mockQuotation);
+  const handleProposalSave = async (_proposalDto: CreateProposalDto) => {
+    setIsSaving(true);
+    try {
+      await rejectPendingDocument('proposals');
+    } catch (error) {
+      handleSaveFailure(error);
+    }
+  };
+
+  const handleQuotationSave = async (_quotationDto: CreateQuotationDto) => {
+    setIsSaving(true);
+    try {
+      await rejectPendingDocument('quotations');
+    } catch (error) {
+      handleSaveFailure(error);
+    }
   };
 
   const handleBuilderCancel = () => {
     setStep('select');
     setSelectedType(null);
+    setErrorMessage(null);
+    setIsSaving(false);
   };
 
   const handleClose = () => {
     setStep('select');
     setSelectedType(null);
     setShowConfirmation(false);
-    setCreatedDocument(null);
+    setErrorMessage(null);
+    setIsSaving(false);
     onOpenChange(false);
   };
 
-  const getDocumentNumber = () => {
-    if (!createdDocument) return '';
-    const doc = createdDocument as any;
-    return doc.estimateNumber || doc.proposalNumber || doc.quotationNumber || '';
-  };
-
-  const getDocumentType = () => {
-    if (!createdDocument) return '';
-    const doc = createdDocument as any;
-    if (doc.estimateNumber) return 'Estimate';
-    if (doc.proposalNumber) return 'Proposal';
-    if (doc.quotationNumber) return 'Quotation';
-    return 'Document';
+  const emptyScope = {
+    labour: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    installation: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    transportation: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    crane: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    civilWork: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    accommodation: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    erection: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    freight: { state: 'Included' as const, requirement: 'Optional' as const, chargeability: 'Chargeable' as const, visibility: 'Visible' as const },
+    additionalServices: [] as never[],
   };
 
   return (
@@ -268,20 +146,23 @@ export function LeadConversionDialog({
             </div>
           )}
 
-          {step === 'complete' && createdDocument && (
+          {step === 'error' && (
             <div className="py-8 text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold">{getDocumentType()} Created</h3>
-                <p className="text-muted-foreground">{getDocumentNumber()}</p>
+                <h3 className="text-lg font-semibold">Unable to create document</h3>
+                <p className="text-muted-foreground">{errorMessage}</p>
               </div>
-              <Button onClick={handleClose} className="mt-4">
-                Done
-              </Button>
+              <div className="flex justify-center gap-2">
+                <Button variant="outline" onClick={handleBuilderCancel}>
+                  Back
+                </Button>
+                <Button onClick={handleClose}>Close</Button>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -324,23 +205,13 @@ export function LeadConversionDialog({
                 status: 'Draft',
                 includePricing: false,
                 materialSelections: [],
-                scopeConfiguration: {
-                  labour: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  installation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  transportation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  crane: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  civilWork: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  accommodation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  erection: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  freight: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  additionalServices: [],
-                },
+                scopeConfiguration: emptyScope,
                 technicalSpecifications: {},
                 inclusions: [],
                 exclusions: [],
                 createdAt: new Date(),
                 updatedAt: new Date(),
-              }}
+              } as Estimate}
               onSave={handleProposalSave}
               onCancel={handleBuilderCancel}
             />
@@ -364,17 +235,7 @@ export function LeadConversionDialog({
                 leadNumber: String(lead.leadNumber),
                 status: 'Draft',
                 materialSelections: [],
-                scopeConfiguration: {
-                  labour: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  installation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  transportation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  crane: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  civilWork: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  accommodation: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  erection: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  freight: { state: 'Included', requirement: 'Optional', chargeability: 'Chargeable', visibility: 'Visible' },
-                  additionalServices: [],
-                },
+                scopeConfiguration: emptyScope,
                 technicalSpecifications: {},
                 inclusions: [],
                 exclusions: [],
@@ -395,7 +256,7 @@ export function LeadConversionDialog({
                 includeCommercialSummary: false,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-              }}
+              } as Proposal}
               onSave={handleQuotationSave}
               onCancel={handleBuilderCancel}
             />
