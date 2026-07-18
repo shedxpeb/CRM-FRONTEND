@@ -74,7 +74,7 @@ export function useLead(id: string) {
     queryKey: ['lead', id],
     queryFn: () => leadsApi.getById(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
   });
 }
@@ -130,12 +130,12 @@ export function useDeleteLead() {
         throw error;
       }
     },
-    onSuccess: () => {
-      // Refetch only active lead list views
+    onSuccess: (_data, id) => {
       queryClient.refetchQueries({ queryKey: ['leads'], type: 'active' });
       queryClient.refetchQueries({ queryKey: ['leads-kanban'], type: 'active' });
       queryClient.refetchQueries({ queryKey: ['leads-calendar'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', id] });
     },
   });
 }
@@ -154,11 +154,12 @@ export function useBulkUpdateLeads() {
       await Promise.all(ids.map((id) => leadsApi.update(id, data)));
       return { message: 'Updated', data: { count: ids.length } };
     },
-    onSuccess: () => {
+    onSuccess: (_data, { ids }) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
 }
@@ -171,11 +172,12 @@ export function useBulkDeleteLeads() {
 
   return useMutation({
     mutationFn: (ids: string[]) => leadsApi.bulkDelete(ids),
-    onSuccess: () => {
+    onSuccess: (_data, ids) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
 }
@@ -189,11 +191,12 @@ export function useBulkStatusUpdate() {
   return useMutation({
     mutationFn: ({ ids, status }: { ids: string[]; status: string }) =>
       leadsApi.bulkStatusUpdate(ids, status),
-    onSuccess: () => {
+    onSuccess: (_data, { ids }) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
 }
@@ -207,11 +210,12 @@ export function useBulkDelete() {
   return useMutation({
     mutationFn: (ids: string[]) =>
       leadsApi.bulkDelete(ids),
-    onSuccess: () => {
+    onSuccess: (_data, ids) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
 }
@@ -225,7 +229,7 @@ export function useKanbanLeads(params?: Partial<LeadsFilters>) {
     queryKey: ['leads-kanban', params],
     queryFn: () => leadsApi.getKanban(params),
     enabled: params !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
@@ -243,7 +247,7 @@ export function useCalendarLeads(params?: Partial<LeadsFilters>) {
     queryKey: ['leads-calendar', params],
     queryFn: () => leadsApi.getCalendar(params),
     enabled: params !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
@@ -254,15 +258,14 @@ export function useCalendarLeads(params?: Partial<LeadsFilters>) {
 
 /**
  * Get lead statistics for dashboard.
- * Uses a dedicated stats query with long staleTime to avoid duplicating
- * the main leads query on every dashboard mount.
+ * Uses a dedicated stats query with short staleTime to keep dashboard in sync.
  */
 export function useLeadsStats(enabled: boolean = true) {
   const { data: leadsData, isLoading } = useQuery({
     queryKey: ['leads-stats'],
     queryFn: () => leadsApi.getAll({ page: 1, pageSize: 1 }),
     enabled,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
@@ -272,5 +275,41 @@ export function useLeadsStats(enabled: boolean = true) {
     isLoading,
     error: null,
   };
+}
+
+/**
+ * Hook to import leads from Excel file
+ */
+export function useImportLeads() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => leadsApi.importLeads(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+    },
+  });
+}
+
+/**
+ * Hook to update lead workflow stage
+ */
+export function useUpdateWorkflow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, stage, notes }: { id: string; stage: string; notes?: string }) =>
+      leadsApi.updateWorkflow(id, stage, notes),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+    },
+  });
 }
 

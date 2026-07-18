@@ -150,14 +150,26 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
     try {
       await changeStatus.mutateAsync({ status });
       onStageAction?.(status);
-      // Invalidate only the entity that changed status
+      // Invalidate the entity type queries and the specific entity
       queryClient.invalidateQueries({ queryKey: [entityType, entityId] });
       if (entityType === 'lead') {
         queryClient.invalidateQueries({ queryKey: ['leads'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['lead', entityId] });
       } else if (entityType === 'customer') {
         queryClient.invalidateQueries({ queryKey: ['customers'] });
+        queryClient.invalidateQueries({ queryKey: ['customers-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['customers-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['customer', entityId] });
       } else if (entityType === 'project') {
         queryClient.invalidateQueries({ queryKey: ['projects'] });
+        queryClient.invalidateQueries({ queryKey: ['projects-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['projects-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['projects-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['project', entityId] });
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update status';
