@@ -73,9 +73,17 @@ export function useCreateProject() {
 
   return useMutation({
     mutationFn: (data: CreateProjectDto) => projectsApi.create(data),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
+      // If created from a lead conversion, invalidate lead queries too
+      if ((variables as any).leadId) {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['lead', (variables as any).leadId] });
+      }
     },
   });
 }

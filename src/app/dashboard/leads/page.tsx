@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/layouts/MainLayout';
@@ -42,7 +43,7 @@ const LeadCalendarView = dynamic(() => import('@/features/leads/components/LeadC
   ssr: false
 });
 import { Lead, LeadStatus, LeadPriority } from '@/types/leads';
-import { useLeadConfiguration, useLeads, useKanbanLeads, useCalendarLeads, useDeleteLead, useCreateLead, useUpdateLead, useBulkStatusUpdate, useBulkDelete } from '@/features/leads/hooks/useLeads';
+import { useLeadConfiguration, useLeads, useKanbanLeads, useCalendarLeads, useDeleteLead, useCreateLead, useUpdateLead, useBulkStatusUpdate, useBulkDelete, useImportLeads } from '@/features/leads/hooks/useLeads';
 import { getLeadCustomFieldValue } from '@/features/leads/components/LeadCustomFields';
 import { leadsApi, ImportResult } from '@/features/leads/services/leadsApi';
 import { toast } from '@/components/ui/toast';
@@ -238,12 +239,14 @@ const baseColumns = [
 
 export default function LeadsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const leadConfig = useLeadConfiguration();
   const deleteLeadMutation = useDeleteLead();
   const createLeadMutation = useCreateLead();
   const updateLeadMutation = useUpdateLead();
   const bulkStatusUpdateMutation = useBulkStatusUpdate();
   const bulkDeleteMutation = useBulkDelete();
+  const importLeadsMutation = useImportLeads();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -269,7 +272,6 @@ export default function LeadsPage() {
   const [customColumns, setCustomColumns] = useState<Array<{key: string, label: string}>>([]);
   const [isCustomColumnDialogOpen, setIsCustomColumnDialogOpen] = useState(false);
   const [quickDateFilter, setQuickDateFilter] = useState<string>('all');
-  const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isImportResultOpen, setIsImportResultOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -659,25 +661,18 @@ export default function LeadsPage() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
-      setIsImporting(true);
       try {
-        const result = await leadsApi.importLeads(file);
+        const result = await importLeadsMutation.mutateAsync(file);
         const data = result.data;
         setImportResult(data);
         setIsImportResultOpen(true);
-
-        if (data.imported > 0) {
-          refetchLeads();
-        }
       } catch (error: any) {
         const message = error?.response?.data?.message || error?.message || 'Import failed';
         toast.error(typeof message === 'string' ? message : 'Import failed');
-      } finally {
-        setIsImporting(false);
       }
     };
     input.click();
-  }, [refetchLeads]);
+  }, [importLeadsMutation]);
 
   const handleAddCustomColumn = useCallback((key: string, label: string) => {
     setCustomColumns(prevColumns => [...prevColumns, { key, label }]);
@@ -835,38 +830,37 @@ export default function LeadsPage() {
 
   const handleCustomerCreated = useCallback((customer: any) => {
     refetchLeads();
+    queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+    queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+    queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
     toast.success(`Customer "${customer?.customerName}" created successfully`);
-  }, [refetchLeads]);
+  }, [refetchLeads, queryClient]);
 
   // Phase 1: Score/Status/Bulk handlers disabled - using backend data only
   const handleAddScore = useCallback(async (lead: Lead, score: number) => {
     try {
-      // Auto-update priority based on score
       let priority: LeadPriority = 'Low';
       if (score >= 90) priority = 'Urgent';
       else if (score >= 70) priority = 'High';
       else if (score >= 50) priority = 'Medium';
       
-      await leadsApi.update(lead.id, { score, priority });
+      await updateLeadMutation.mutateAsync({ id: lead.id, data: { score, priority } });
       toast.success(`Score updated to ${score}, Priority updated to ${priority}`);
-      refetchLeads();
     } catch (error: any) {
-      console.error('[handleAddScore] Error:', error);
       const msg = error?.response?.data?.message || error?.message || 'Failed to update score';
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
-  }, [refetchLeads]);
+  }, [updateLeadMutation]);
 
   const handleStatusChange = useCallback(async (lead: Lead, status: LeadStatus) => {
     try {
-      await leadsApi.update(lead.id, { status });
+      await updateLeadMutation.mutateAsync({ id: lead.id, data: { status } });
       toast.success(`Status changed to ${status}`);
-      refetchLeads();
     } catch (error: any) {
       const msg = error?.response?.data?.message || error?.message || 'Failed to change status';
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
-  }, [refetchLeads]);
+  }, [updateLeadMutation]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRows.size === 0) return;
@@ -1001,9 +995,9 @@ export default function LeadsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="sm" onClick={handleImport} disabled={isImporting} className="h-9 gap-1.5 text-xs">
-              <Upload className={`h-3.5 w-3.5 ${isImporting ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isImporting ? 'Importing...' : 'Import'}</span>
+            <Button variant="outline" size="sm" onClick={handleImport} disabled={importLeadsMutation.isPending} className="h-9 gap-1.5 text-xs">
+              <Upload className={`h-3.5 w-3.5 ${importLeadsMutation.isPending ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{importLeadsMutation.isPending ? 'Importing...' : 'Import'}</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setIsCustomColumnDialogOpen(true)} className="h-9 gap-1.5 text-xs">
               <FileText className="h-3.5 w-3.5" />
@@ -1132,7 +1126,6 @@ export default function LeadsPage() {
                     try {
                       const { id, status } = lead;
                       await updateLeadMutation.mutateAsync({ id, data: { status } });
-                      refetchLeads();
                     } catch (error: any) {
                       const msg = error?.response?.data?.message || error?.message || 'Failed to update lead status';
                       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));

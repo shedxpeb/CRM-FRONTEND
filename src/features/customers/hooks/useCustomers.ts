@@ -84,6 +84,8 @@ export function useCreateCustomer() {
       if (variables.leadId) {
         queryClient.invalidateQueries({ queryKey: ['leads'] });
         queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
         queryClient.invalidateQueries({ queryKey: ['lead', variables.leadId] });
       }
     },
@@ -193,6 +195,8 @@ export function useConvertLeadToCustomer() {
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
       if (variables.leadId) {
         queryClient.invalidateQueries({ queryKey: ['lead', variables.leadId] });
       }
