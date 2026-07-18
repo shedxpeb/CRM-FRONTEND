@@ -32,11 +32,26 @@ import { useDebounce } from '@/shared/hooks/useDebounce';
 import { ROUTES } from '@/core/routes';
 import {
   useBankAccounts,
+  useCreateBankAccount,
+  useCreateExpense,
+  useCreateInvoice,
+  useCreatePayment,
+  useCreateVendor,
+  useDeleteBankAccount,
+  useDeleteExpense,
+  useDeleteInvoice,
+  useDeletePayment,
+  useDeleteVendor,
   useExpenses,
   useFinanceActivities,
   useInvoices,
   usePayments,
   useTransactions,
+  useUpdateBankAccount,
+  useUpdateExpense,
+  useUpdateInvoice,
+  useUpdatePayment,
+  useUpdateVendor,
   useVendors,
 } from '@/features/finance/hooks/useFinance';
 import {
@@ -178,36 +193,30 @@ export default function FinancePage() {
   const { data: transactionsResponse, isLoading: transactionsLoading } = useTransactions({ page: 1, pageSize: 1000 });
   const { data: activitiesResponse } = useFinanceActivities({ page: 1, pageSize: 1000 }, true);
 
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Mutation hooks
+  const createInvoice = useCreateInvoice();
+  const updateInvoice = useUpdateInvoice();
+  const deleteInvoice = useDeleteInvoice();
+  const createPayment = useCreatePayment();
+  const updatePayment = useUpdatePayment();
+  const deletePayment = useDeletePayment();
+  const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
+  const createVendor = useCreateVendor();
+  const updateVendor = useUpdateVendor();
+  const deleteVendor = useDeleteVendor();
+  const createBankAccount = useCreateBankAccount();
+  const updateBankAccount = useUpdateBankAccount();
+  const deleteBankAccount = useDeleteBankAccount();
 
-  useEffect(() => {
-    if (invoices.length === 0 && invoicesResponse?.data) setInvoices(invoicesResponse.data);
-  }, [invoices.length, invoicesResponse?.data]);
-
-  useEffect(() => {
-    if (payments.length === 0 && paymentsResponse?.data) setPayments(paymentsResponse.data);
-  }, [payments.length, paymentsResponse?.data]);
-
-  useEffect(() => {
-    if (expenses.length === 0 && expensesResponse?.data) setExpenses(expensesResponse.data);
-  }, [expenses.length, expensesResponse?.data]);
-
-  useEffect(() => {
-    if (vendors.length === 0 && vendorsResponse) setVendors(vendorsResponse);
-  }, [vendors.length, vendorsResponse]);
-
-  useEffect(() => {
-    if (bankAccounts.length === 0 && bankAccountsResponse) setBankAccounts(bankAccountsResponse);
-  }, [bankAccounts.length, bankAccountsResponse]);
-
-  useEffect(() => {
-    if (transactions.length === 0 && transactionsResponse?.data) setTransactions(transactionsResponse.data);
-  }, [transactions.length, transactionsResponse?.data]);
+  // Use React Query data directly - no local state duplication
+  const invoices = invoicesResponse?.data ?? [];
+  const payments = paymentsResponse?.data ?? [];
+  const expenses = expensesResponse?.data ?? [];
+  const vendors = vendorsResponse ?? [];
+  const bankAccounts = bankAccountsResponse ?? [];
+  const transactions = transactionsResponse?.data ?? [];
 
   const derivedInvoices = useMemo(() => deriveInvoices(invoices, payments), [invoices, payments]);
   const derivedBankAccounts = useMemo(
@@ -353,36 +362,6 @@ export default function FinancePage() {
     bankAccountsLoading ||
     transactionsLoading;
 
-  const lookupCustomer = (customerId?: string) => {
-    const fromInvoice = derivedInvoices.find((item) => item.customerId === customerId);
-    if (fromInvoice) {
-      return {
-        customerName: fromInvoice.customerName,
-        customerAddress: fromInvoice.customerAddress,
-        customerGST: fromInvoice.customerGST,
-      };
-    }
-    const fromPayment = payments.find((item) => item.customerId === customerId);
-    return {
-      customerName: fromPayment?.customerName ?? `Customer ${customerId ?? ''}`.trim(),
-      customerAddress: '',
-      customerGST: undefined,
-    };
-  };
-
-  const lookupProjectName = (projectId?: string) => {
-    if (!projectId) return undefined;
-    return (
-      derivedInvoices.find((item) => item.projectId === projectId)?.projectName ??
-      payments.find((item) => item.projectId === projectId)?.projectName ??
-      expenses.find((item) => item.projectId === projectId)?.projectName ??
-      `Project ${projectId}`
-    );
-  };
-
-  const nextNumber = (prefix: string, existing: string[]) =>
-    `${prefix}-${String(existing.length + 1).padStart(4, '0')}`;
-
   const resetTransientState = () => {
     setSelectedItem(null);
     setDeleteOpen(false);
@@ -428,23 +407,31 @@ export default function FinancePage() {
   };
 
   const handleSendInvoice = (invoice: Invoice) => {
-    setInvoices((current) =>
-      current.map((item) =>
-        item.id === invoice.id ? { ...item, status: 'Sent', sentAt: new Date() } : item
-      )
+    updateInvoice.mutate(
+      { id: invoice.id, data: { status: 'Sent' as const, sentAt: new Date() } },
+      {
+        onSuccess: () => {
+          setToast({ message: `${invoice.invoiceNumber} marked as sent`, type: 'success' });
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to send invoice', type: 'error' });
+        },
+      }
     );
-    setToast({ message: `${invoice.invoiceNumber} marked as sent`, type: 'success' });
   };
 
   const handleApproveExpense = (expense: Expense) => {
-    setExpenses((current) =>
-      current.map((item) =>
-        item.id === expense.id
-          ? { ...item, status: 'Approved', approvedAt: new Date(), approvedBy: 'Finance User' }
-          : item
-      )
+    updateExpense.mutate(
+      { id: expense.id, data: { status: 'Approved' as const, approvedAt: new Date(), approvedBy: 'Finance User' } },
+      {
+        onSuccess: () => {
+          setToast({ message: `${expense.expenseNumber} approved`, type: 'success' });
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to approve expense', type: 'error' });
+        },
+      }
     );
-    setToast({ message: `${expense.expenseNumber} approved`, type: 'success' });
   };
 
   const handleRejectExpense = (expense: Expense) => {
@@ -456,297 +443,227 @@ export default function FinancePage() {
 
   const confirmRejectExpense = () => {
     if (!selectedItem) return;
-    setExpenses((current) =>
-      current.map((item) =>
-        item.id === selectedItem.id
-          ? { ...item, status: 'Rejected', rejectionReason: rejectReason }
-          : item
-      )
+    updateExpense.mutate(
+      { id: selectedItem.id, data: { status: 'Rejected' as const, rejectionReason: rejectReason } },
+      {
+        onSuccess: () => {
+          setToast({ message: `${selectedItem.expenseNumber} rejected`, type: 'success' });
+          resetTransientState();
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to reject expense', type: 'error' });
+        },
+      }
     );
-    setToast({ message: `${selectedItem.expenseNumber} rejected`, type: 'success' });
-    resetTransientState();
   };
 
   const confirmDelete = () => {
     if (!selectedItem) return;
 
     if (selectedEntityTab === 'invoices') {
-      const invoiceId = selectedItem.id;
-      const linkedPaymentIds = payments.filter((item) => item.invoiceId === invoiceId).map((item) => item.id);
-      setInvoices((current) => current.filter((item) => item.id !== invoiceId));
-      setPayments((current) => current.filter((item) => !linkedPaymentIds.includes(item.id)));
-      setTransactions((current) =>
-        current.filter(
-          (item) => item.referenceId !== invoiceId && !linkedPaymentIds.includes(item.referenceId ?? '')
-        )
-      );
-      setToast({ message: 'Invoice and linked payment records removed', type: 'success' });
+      deleteInvoice.mutate(selectedItem.id, {
+        onSuccess: () => {
+          setToast({ message: 'Invoice deleted', type: 'success' });
+          resetTransientState();
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to delete invoice', type: 'error' });
+        },
+      });
     }
 
     if (selectedEntityTab === 'payments') {
-      setPayments((current) => current.filter((item) => item.id !== selectedItem.id));
-      setTransactions((current) => current.filter((item) => item.referenceId !== selectedItem.id));
-      setToast({ message: 'Payment deleted', type: 'success' });
+      deletePayment.mutate(selectedItem.id, {
+        onSuccess: () => {
+          setToast({ message: 'Payment deleted', type: 'success' });
+          resetTransientState();
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to delete payment', type: 'error' });
+        },
+      });
     }
 
     if (selectedEntityTab === 'expenses') {
-      setExpenses((current) => current.filter((item) => item.id !== selectedItem.id));
-      setTransactions((current) => current.filter((item) => item.referenceId !== selectedItem.id));
-      setToast({ message: 'Expense deleted', type: 'success' });
+      deleteExpense.mutate(selectedItem.id, {
+        onSuccess: () => {
+          setToast({ message: 'Expense deleted', type: 'success' });
+          resetTransientState();
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to delete expense', type: 'error' });
+        },
+      });
     }
 
     if (selectedEntityTab === 'vendors') {
-      setVendors((current) => current.filter((item) => item.id !== selectedItem.id));
-      setToast({ message: 'Vendor deleted', type: 'success' });
+      deleteVendor.mutate(selectedItem.id, {
+        onSuccess: () => {
+          setToast({ message: 'Vendor deleted', type: 'success' });
+          resetTransientState();
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to delete vendor', type: 'error' });
+        },
+      });
     }
 
     if (selectedEntityTab === 'bank-accounts') {
-      setBankAccounts((current) => current.filter((item) => item.id !== selectedItem.id));
-      setTransactions((current) => current.filter((item) => item.bankAccountId !== selectedItem.id));
-      setToast({ message: 'Bank account deleted', type: 'success' });
+      deleteBankAccount.mutate(selectedItem.id, {
+        onSuccess: () => {
+          setToast({ message: 'Bank account deleted', type: 'success' });
+          resetTransientState();
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to delete bank account', type: 'error' });
+        },
+      });
     }
-
-    resetTransientState();
   };
 
   const submitInvoice = (data: CreateInvoiceDto) => {
-    const customer = lookupCustomer(data.customerId);
     if (editorState?.mode === 'edit' && selectedItem) {
-      setInvoices((current) =>
-        current.map((item) =>
-          item.id === selectedItem.id
-            ? {
-                ...item,
-                ...data,
-                customerName: customer.customerName,
-                customerAddress: customer.customerAddress,
-                customerGST: customer.customerGST,
-                projectName: lookupProjectName(data.projectId),
-                updatedAt: new Date(),
-              }
-            : item
-        )
+      updateInvoice.mutate(
+        { id: selectedItem.id, data },
+        {
+          onSuccess: () => {
+            setToast({ message: 'Invoice updated', type: 'success' });
+            setEditorState(null);
+            setSelectedItem(null);
+          },
+          onError: (error) => {
+            setToast({ message: 'Failed to update invoice', type: 'error' });
+          },
+        }
       );
-      setToast({ message: 'Invoice updated', type: 'success' });
     } else {
-      const nextInvoice: Invoice = {
-        id: `invoice-${Date.now()}`,
-        invoiceNumber: nextNumber('INV', invoices.map((item) => item.invoiceNumber)),
-        version: 1,
-        customerId: data.customerId,
-        customerName: customer.customerName,
-        customerAddress: customer.customerAddress,
-        customerGST: customer.customerGST,
-        projectId: data.projectId,
-        projectName: lookupProjectName(data.projectId),
-        sourceType: data.sourceType,
-        sourceId: data.sourceId,
-        subtotal: data.subtotal,
-        taxAmount: data.taxAmount,
-        totalAmount: data.totalAmount,
-        paidAmount: 0,
-        pendingAmount: data.totalAmount,
-        gstType: data.gstType,
-        cgstAmount: data.gstType === 'CGST' ? data.taxAmount / 2 : 0,
-        sgstAmount: data.gstType === 'CGST' ? data.taxAmount / 2 : 0,
-        igstAmount: data.gstType === 'IGST' ? data.taxAmount : 0,
-        dueDate: data.dueDate,
-        paymentTerms: data.paymentTerms,
-        status: 'Draft',
-        lineItems: data.lineItems,
-        createdAt: new Date(),
-      };
-      setInvoices((current) => [nextInvoice, ...current]);
-      setToast({ message: 'Invoice created', type: 'success' });
+      createInvoice.mutate(data, {
+        onSuccess: () => {
+          setToast({ message: 'Invoice created', type: 'success' });
+          setEditorState(null);
+          setSelectedItem(null);
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to create invoice', type: 'error' });
+        },
+      });
     }
-    setEditorState(null);
-    setSelectedItem(null);
   };
 
   const submitPayment = (data: CreatePaymentDto) => {
-    const customer = lookupCustomer(data.customerId);
-    const totalAmount = Number(data.amount) + Number(data.taxAmount ?? 0);
-    const linkedInvoice = derivedInvoices.find((item) => item.id === data.invoiceId);
-    const paymentId = editorState?.mode === 'edit' && selectedItem ? selectedItem.id : `payment-${Date.now()}`;
-    const paymentRecord: Payment = {
-      id: paymentId,
-      paymentNumber:
-        editorState?.mode === 'edit' && selectedItem
-          ? selectedItem.paymentNumber
-          : nextNumber('PAY', payments.map((item) => item.paymentNumber)),
-      type: data.type,
-      invoiceId: data.invoiceId,
-      invoiceNumber: linkedInvoice?.invoiceNumber,
-      customerId: data.customerId,
-      customerName: customer.customerName,
-      projectId: data.projectId,
-      projectName: lookupProjectName(data.projectId),
-      amount: data.amount,
-      taxAmount: data.taxAmount,
-      totalAmount,
-      paymentDate: data.paymentDate,
-      paymentMethod: data.paymentMethod,
-      referenceNumber: data.referenceNumber,
-      transactionId: data.transactionId,
-      notes: data.notes,
-      attachments: data.attachments ?? [],
-      status: 'Completed',
-      createdAt: editorState?.mode === 'edit' && selectedItem ? selectedItem.createdAt : new Date(),
-      updatedAt: new Date(),
-    };
-
-    const transactionRecord: Transaction = {
-      id: `txn-payment-${paymentId}`,
-      transactionNumber:
-        editorState?.mode === 'edit' && selectedItem
-          ? `TXN-${selectedItem.paymentNumber}`
-          : nextNumber('TXN', transactions.map((item) => item.transactionNumber)),
-      type: 'Credit',
-      category: 'Income',
-      amount: totalAmount,
-      referenceType: 'Payment',
-      referenceId: paymentId,
-      referenceNumber: data.referenceNumber ?? paymentRecord.paymentNumber,
-      bankAccountId: bankAccounts[0]?.id,
-      bankAccountName: bankAccounts[0]?.accountName,
-      description: `Payment from ${customer.customerName}`,
-      transactionDate: data.paymentDate,
-      balance: undefined,
-      createdAt: new Date(),
-    };
-
     if (editorState?.mode === 'edit' && selectedItem) {
-      setPayments((current) => current.map((item) => (item.id === paymentId ? paymentRecord : item)));
-      setTransactions((current) => {
-        const rest = current.filter((item) => item.referenceId !== paymentId);
-        return [transactionRecord, ...rest];
-      });
-      setToast({ message: 'Payment updated', type: 'success' });
+      updatePayment.mutate(
+        { id: selectedItem.id, data },
+        {
+          onSuccess: () => {
+            setToast({ message: 'Payment updated', type: 'success' });
+            setEditorState(null);
+            setSelectedItem(null);
+          },
+          onError: (error) => {
+            setToast({ message: 'Failed to update payment', type: 'error' });
+          },
+        }
+      );
     } else {
-      setPayments((current) => [paymentRecord, ...current]);
-      setTransactions((current) => [transactionRecord, ...current]);
-      setToast({ message: 'Payment created', type: 'success' });
+      createPayment.mutate(data, {
+        onSuccess: () => {
+          setToast({ message: 'Payment created', type: 'success' });
+          setEditorState(null);
+          setSelectedItem(null);
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to create payment', type: 'error' });
+        },
+      });
     }
-    setEditorState(null);
-    setSelectedItem(null);
   };
 
   const submitExpense = (data: CreateExpenseDto) => {
-    const vendor = vendors.find((item) => item.id === data.vendorId);
-    const totalAmount = Number(data.amount) + Number(data.taxAmount ?? 0);
-    const expenseRecord: Expense = {
-      id: editorState?.mode === 'edit' && selectedItem ? selectedItem.id : `expense-${Date.now()}`,
-      expenseNumber:
-        editorState?.mode === 'edit' && selectedItem
-          ? selectedItem.expenseNumber
-          : nextNumber('EXP', expenses.map((item) => item.expenseNumber)),
-      vendorId: data.vendorId,
-      vendorName: vendor?.name ?? `Vendor ${data.vendorId}`,
-      category: data.category,
-      subCategory: data.subCategory,
-      projectId: data.projectId,
-      projectName: lookupProjectName(data.projectId),
-      amount: data.amount,
-      taxAmount: data.taxAmount,
-      totalAmount,
-      date: data.date,
-      description: data.description,
-      receiptNumber: data.receiptNumber,
-      invoiceNumber: data.invoiceNumber,
-      notes: data.notes,
-      attachments: data.attachments ?? [],
-      status:
-        editorState?.mode === 'edit' && selectedItem
-          ? selectedItem.status
-          : 'Pending',
-      createdAt: editorState?.mode === 'edit' && selectedItem ? selectedItem.createdAt : new Date(),
-      updatedAt: new Date(),
-    };
-
     if (editorState?.mode === 'edit' && selectedItem) {
-      setExpenses((current) => current.map((item) => (item.id === expenseRecord.id ? expenseRecord : item)));
-      setToast({ message: 'Expense updated', type: 'success' });
+      updateExpense.mutate(
+        { id: selectedItem.id, data },
+        {
+          onSuccess: () => {
+            setToast({ message: 'Expense updated', type: 'success' });
+            setEditorState(null);
+            setSelectedItem(null);
+          },
+          onError: (error) => {
+            setToast({ message: 'Failed to update expense', type: 'error' });
+          },
+        }
+      );
     } else {
-      setExpenses((current) => [expenseRecord, ...current]);
-      setToast({ message: 'Expense created', type: 'success' });
+      createExpense.mutate(data, {
+        onSuccess: () => {
+          setToast({ message: 'Expense created', type: 'success' });
+          setEditorState(null);
+          setSelectedItem(null);
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to create expense', type: 'error' });
+        },
+      });
     }
-    setEditorState(null);
-    setSelectedItem(null);
   };
 
   const submitVendor = (data: CreateVendorDto) => {
-    const vendorRecord: Vendor = {
-      id: editorState?.mode === 'edit' && selectedItem ? selectedItem.id : `vendor-${Date.now()}`,
-      vendorCode:
-        editorState?.mode === 'edit' && selectedItem
-          ? selectedItem.vendorCode
-          : nextNumber('VND', vendors.map((item) => item.vendorCode)),
-      name: data.name,
-      gstNumber: data.gstNumber,
-      panNumber: data.panNumber,
-      contactPerson: data.contactPerson,
-      mobile: data.mobile,
-      email: data.email,
-      address: data.address,
-      city: data.city,
-      state: data.state,
-      pincode: data.pincode,
-      creditLimit: data.creditLimit,
-      creditPeriod: data.creditPeriod,
-      paymentTerms: data.paymentTerms,
-      totalPurchases: selectedItem?.totalPurchases ?? 0,
-      totalPayments: selectedItem?.totalPayments ?? 0,
-      outstandingBalance: selectedItem?.outstandingBalance ?? 0,
-      performanceRating: selectedItem?.performanceRating ?? 0,
-      status: selectedItem?.status ?? 'Active',
-      createdAt: editorState?.mode === 'edit' && selectedItem ? selectedItem.createdAt : new Date(),
-      updatedAt: new Date(),
-    };
-
     if (editorState?.mode === 'edit' && selectedItem) {
-      setVendors((current) => current.map((item) => (item.id === vendorRecord.id ? vendorRecord : item)));
-      setToast({ message: 'Vendor updated', type: 'success' });
+      updateVendor.mutate(
+        { id: selectedItem.id, data },
+        {
+          onSuccess: () => {
+            setToast({ message: 'Vendor updated', type: 'success' });
+            setEditorState(null);
+            setSelectedItem(null);
+          },
+          onError: (error) => {
+            setToast({ message: 'Failed to update vendor', type: 'error' });
+          },
+        }
+      );
     } else {
-      setVendors((current) => [vendorRecord, ...current]);
-      setToast({ message: 'Vendor created', type: 'success' });
+      createVendor.mutate(data, {
+        onSuccess: () => {
+          setToast({ message: 'Vendor created', type: 'success' });
+          setEditorState(null);
+          setSelectedItem(null);
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to create vendor', type: 'error' });
+        },
+      });
     }
-    setEditorState(null);
-    setSelectedItem(null);
   };
 
   const submitBankAccount = (data: CreateBankAccountDto) => {
-    const bankAccountRecord: BankAccount = {
-      id:
-        editorState?.mode === 'edit' && selectedItem
-          ? selectedItem.id
-          : `bank-${Date.now()}`,
-      accountCode:
-        editorState?.mode === 'edit' && selectedItem
-          ? selectedItem.accountCode
-          : nextNumber('ACC', bankAccounts.map((item) => item.accountCode)),
-      accountName: data.accountName,
-      bankName: data.bankName,
-      accountNumber: data.accountNumber,
-      ifscCode: data.ifscCode,
-      branch: data.branch,
-      accountType: data.accountType,
-      currentBalance: selectedItem?.currentBalance ?? 0,
-      status: selectedItem?.status ?? 'Active',
-      createdAt: editorState?.mode === 'edit' && selectedItem ? selectedItem.createdAt : new Date(),
-      updatedAt: new Date(),
-    };
-
     if (editorState?.mode === 'edit' && selectedItem) {
-      setBankAccounts((current) =>
-        current.map((item) => (item.id === bankAccountRecord.id ? bankAccountRecord : item))
+      updateBankAccount.mutate(
+        { id: selectedItem.id, data },
+        {
+          onSuccess: () => {
+            setToast({ message: 'Bank account updated', type: 'success' });
+            setEditorState(null);
+            setSelectedItem(null);
+          },
+          onError: (error) => {
+            setToast({ message: 'Failed to update bank account', type: 'error' });
+          },
+        }
       );
-      setToast({ message: 'Bank account updated', type: 'success' });
     } else {
-      setBankAccounts((current) => [bankAccountRecord, ...current]);
-      setToast({ message: 'Bank account created', type: 'success' });
+      createBankAccount.mutate(data, {
+        onSuccess: () => {
+          setToast({ message: 'Bank account created', type: 'success' });
+          setEditorState(null);
+          setSelectedItem(null);
+        },
+        onError: (error) => {
+          setToast({ message: 'Failed to create bank account', type: 'error' });
+        },
+      });
     }
-    setEditorState(null);
-    setSelectedItem(null);
   };
 
   const invoiceRows = useMemo(() => {

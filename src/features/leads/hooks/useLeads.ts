@@ -92,6 +92,7 @@ export function useCreateLead() {
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -106,11 +107,18 @@ export function useUpdateLead() {
     mutationFn: ({ id, data }: { id: string; data: Partial<Lead> }) => 
       leadsApi.update(id, data),
     onSuccess: (_, { id }) => {
+      // Invalidate leads queries
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // Invalidate tracking queries to ensure tracking timeline stays synchronized
+      queryClient.invalidateQueries({ queryKey: ['tracking', 'lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['tracking', 'lead', id, 'timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['tracking', 'lead', id, 'all'] });
     },
   });
 }
@@ -136,6 +144,7 @@ export function useDeleteLead() {
       queryClient.refetchQueries({ queryKey: ['leads-calendar'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -159,6 +168,7 @@ export function useBulkUpdateLeads() {
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
@@ -177,6 +187,7 @@ export function useBulkDeleteLeads() {
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
@@ -196,6 +207,7 @@ export function useBulkStatusUpdate() {
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
@@ -215,6 +227,7 @@ export function useBulkDelete() {
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       ids.forEach(id => queryClient.invalidateQueries({ queryKey: ['lead', id] }));
     },
   });
@@ -290,6 +303,7 @@ export function useImportLeads() {
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -309,6 +323,7 @@ export function useUpdateWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
       queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

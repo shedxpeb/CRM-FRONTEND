@@ -113,6 +113,7 @@ export const useCreateDocument = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['documentStats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -127,6 +128,7 @@ export const useUpdateDocument = () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['document', id] });
       queryClient.invalidateQueries({ queryKey: ['documentStats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -139,6 +141,7 @@ export const useDeleteDocument = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['documentStats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -164,6 +167,7 @@ export const useConvertDocument = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['documentStats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };

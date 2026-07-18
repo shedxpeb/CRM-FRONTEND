@@ -67,9 +67,15 @@ export function useCreateInventoryItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateInventoryItemDto) => inventoryApi.create(data),
-    onSuccess: () => {
+    onSuccess: (newItem) => {
+      // Invalidate list queries
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['inventory', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // Set the new item in cache for immediate detail view
+      queryClient.setQueryData(['inventory', newItem.id], newItem);
     },
   });
 }
@@ -79,9 +85,16 @@ export function useUpdateInventoryItem() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateInventoryItemDto }) =>
       inventoryApi.update(id, data),
-    onSuccess: (_, { id }) => {
+    onSuccess: (updatedItem, { id }) => {
+      // Invalidate list and detail queries
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['inventory', id] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // Update cache with new data for immediate UI update
+      queryClient.setQueryData(['inventory', id], updatedItem);
     },
   });
 }
@@ -90,9 +103,15 @@ export function useDeleteInventoryItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => inventoryApi.delete(id),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
+      // Invalidate list queries
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['inventory', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // Remove deleted item from cache
+      queryClient.removeQueries({ queryKey: ['inventory', id] });
     },
   });
 }
@@ -134,6 +153,8 @@ export function useCreateWarehouse() {
     mutationFn: (data: CreateWarehouseDto) => inventoryApi.createWarehouse(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      // Invalidate inventory list since warehouse filter options may change
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
   });
 }
@@ -155,6 +176,8 @@ export function useCreateSupplier() {
     mutationFn: (data: CreateSupplierDto) => inventoryApi.createSupplier(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      // Invalidate inventory list since supplier filter options may change
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
   });
 }
@@ -176,6 +199,8 @@ export function useCreateCategory() {
     mutationFn: (data: CreateCategoryDto) => inventoryApi.createCategory(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      // Invalidate inventory list since category filter options may change
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
   });
 }
@@ -196,9 +221,19 @@ export function useCreateStockMovement() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateStockMovementDto) => inventoryApi.createMovement(data),
-    onSuccess: () => {
+    onSuccess: (_, data) => {
+      // Invalidate inventory list and stats since stock levels change
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'alerts'] });
       queryClient.invalidateQueries({ queryKey: ['stockMovements'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // Invalidate specific item detail and movement history
+      if (data.itemId) {
+        queryClient.invalidateQueries({ queryKey: ['inventory', data.itemId] });
+        queryClient.invalidateQueries({ queryKey: ['inventory', data.itemId, 'movements'] });
+      }
     },
   });
 }

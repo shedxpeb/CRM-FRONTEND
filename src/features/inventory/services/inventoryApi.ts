@@ -88,8 +88,9 @@ export const inventoryApi = {
     return res.data;
   },
 
-  getActivities: async (_id: string): Promise<InventoryActivity[]> => {
-    return [];
+  getActivities: async (id: string): Promise<InventoryActivity[]> => {
+    const res = await api.get<BackendResponse<InventoryActivity[]>>(`/inventory/${id}/activities`);
+    return res.data;
   },
 
   getWarehouses: async (): Promise<Warehouse[]> => {

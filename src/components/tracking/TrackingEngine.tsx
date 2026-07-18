@@ -1,7 +1,6 @@
 'use client';
 
 import { memo, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useTrackingData, useChangeStatus } from '@/features/tracking/hooks/useTracking';
 import { UniversalComments } from './UniversalComments';
@@ -109,7 +108,6 @@ function StageDetailPanel({ details }: { details: StageDetails }) {
 }
 
 function TrackingEngineComponent({ entityType, entityId, className, onStageAction }: TrackingEngineProps) {
-  const queryClient = useQueryClient();
   const { data, isLoading, error } = useTrackingData(entityType, entityId);
   const changeStatus = useChangeStatus(entityType, entityId);
   const [tab, setTab] = useState<TabId>('pipeline');
@@ -150,27 +148,8 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
     try {
       await changeStatus.mutateAsync({ status });
       onStageAction?.(status);
-      // Invalidate the entity type queries and the specific entity
-      queryClient.invalidateQueries({ queryKey: [entityType, entityId] });
-      if (entityType === 'lead') {
-        queryClient.invalidateQueries({ queryKey: ['leads'] });
-        queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
-        queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
-        queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
-        queryClient.invalidateQueries({ queryKey: ['lead', entityId] });
-      } else if (entityType === 'customer') {
-        queryClient.invalidateQueries({ queryKey: ['customers'] });
-        queryClient.invalidateQueries({ queryKey: ['customers-kanban'] });
-        queryClient.invalidateQueries({ queryKey: ['customers-calendar'] });
-        queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
-        queryClient.invalidateQueries({ queryKey: ['customer', entityId] });
-      } else if (entityType === 'project') {
-        queryClient.invalidateQueries({ queryKey: ['projects'] });
-        queryClient.invalidateQueries({ queryKey: ['projects-kanban'] });
-        queryClient.invalidateQueries({ queryKey: ['projects-calendar'] });
-        queryClient.invalidateQueries({ queryKey: ['projects-stats'] });
-        queryClient.invalidateQueries({ queryKey: ['project', entityId] });
-      }
+      // Cache invalidation is now handled centrally in useChangeStatus mutation
+      // No manual invalidation needed here
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update status';
       setStatusError(typeof msg === 'string' ? msg : JSON.stringify(msg));

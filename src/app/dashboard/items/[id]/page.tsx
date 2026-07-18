@@ -44,7 +44,7 @@ function InfoGrid({ items }: { items: { label: string; value: React.ReactNode; i
       {items.map(item => (
         <div key={item.label} className="space-y-1">
           <p className="text-xs text-muted-foreground flex items-center gap-1">{item.icon}{item.label}</p>
-          <p className="text-sm font-medium">{item.value}</p>
+          <div className="text-sm font-medium">{item.value}</div>
         </div>
       ))}
     </div>

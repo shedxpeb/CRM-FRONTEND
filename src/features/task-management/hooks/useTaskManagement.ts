@@ -72,6 +72,7 @@ export function useCreateTask() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['task-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-task-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -86,6 +87,7 @@ export function useUpdateTask() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['task', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['task-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -98,6 +100,7 @@ export function useDeleteTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['task-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -113,6 +116,7 @@ export function useCompleteTask() {
       queryClient.invalidateQueries({ queryKey: ['task', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['task-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-task-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -137,6 +141,7 @@ export function useVerifyTask() {
       queryClient.invalidateQueries({ queryKey: ['task', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['task-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-task-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -190,6 +195,7 @@ export function useCreateSalaryAdjustment() {
     mutationFn: (data: CreateSalaryAdjustmentDto) => taskManagementApi.createSalaryAdjustment(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -203,6 +209,7 @@ export function useUpdateSalaryAdjustment() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustment', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -214,6 +221,7 @@ export function useDeleteSalaryAdjustment() {
     mutationFn: (id: string) => taskManagementApi.deleteSalaryAdjustment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -234,6 +242,7 @@ export function useApproveSalaryAdjustment() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustment', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -247,6 +256,7 @@ export function useProcessSalaryAdjustment() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustment', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

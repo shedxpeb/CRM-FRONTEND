@@ -41,9 +41,34 @@ export function useChangeStatus(entityType: string, entityId: string) {
     mutationFn: ({ status, reason }: { status: string; reason?: string }) =>
       trackingApi.changeStatus(entityType, entityId, status, reason),
     onSuccess: () => {
+      // Invalidate tracking queries
       queryClient.invalidateQueries({ queryKey: trackingKey(entityType, entityId) });
       queryClient.invalidateQueries({ queryKey: ['tracking', entityType, entityId, 'timeline'] });
       queryClient.invalidateQueries({ queryKey: ['tracking', entityType, entityId, 'all'] });
+      
+      // Invalidate entity-specific queries to ensure all views stay synchronized
+      if (entityType === 'lead') {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['lead', entityId] });
+      } else if (entityType === 'customer') {
+        queryClient.invalidateQueries({ queryKey: ['customers'] });
+        queryClient.invalidateQueries({ queryKey: ['customers-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['customers-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['customer', entityId] });
+      } else if (entityType === 'project') {
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+        queryClient.invalidateQueries({ queryKey: ['projects-kanban'] });
+        queryClient.invalidateQueries({ queryKey: ['projects-calendar'] });
+        queryClient.invalidateQueries({ queryKey: ['projects-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['project', entityId] });
+      }
+      
+      // Invalidate dashboard to ensure stats stay synchronized
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
