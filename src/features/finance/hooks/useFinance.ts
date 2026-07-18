@@ -43,6 +43,7 @@ export function useCreateIncome() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'income'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -54,6 +55,7 @@ export function useUpdateIncome() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'income'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'income', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -65,6 +67,7 @@ export function useDeleteIncome() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'income'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -98,6 +101,7 @@ export function useCreateExpense() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'expenses'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -109,6 +113,7 @@ export function useUpdateExpense() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'expenses'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'expenses', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -120,6 +125,7 @@ export function useDeleteExpense() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'expenses'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -130,6 +136,7 @@ export function useApproveExpense() {
     mutationFn: (id: string) => financeApi.approveExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -140,6 +147,7 @@ export function useRejectExpense() {
     mutationFn: ({ id, reason }: { id: string; reason: string }) => financeApi.rejectExpense(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -174,6 +182,7 @@ export function useCreateInvoice() {
       queryClient.invalidateQueries({ queryKey: ['finance', 'invoices'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'receivables'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -185,6 +194,7 @@ export function useUpdateInvoice() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'invoices'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'invoices', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -197,6 +207,7 @@ export function useDeleteInvoice() {
       queryClient.invalidateQueries({ queryKey: ['finance', 'invoices'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'receivables'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -207,6 +218,7 @@ export function useSendInvoice() {
     mutationFn: (id: string) => financeApi.sendInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -219,6 +231,7 @@ export function useMarkInvoicePaid() {
       queryClient.invalidateQueries({ queryKey: ['finance', 'invoices'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'receivables'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -253,6 +266,7 @@ export function useCreatePayment() {
       queryClient.invalidateQueries({ queryKey: ['finance', 'payments'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'receivables'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -264,6 +278,7 @@ export function useUpdatePayment() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'payments'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'payments', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -275,6 +290,7 @@ export function useDeletePayment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'payments'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -305,6 +321,7 @@ export function useCreateVendor() {
     mutationFn: (data: CreateVendorDto) => financeApi.createVendor(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -316,6 +333,7 @@ export function useUpdateVendor() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'vendors'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'vendors', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -326,6 +344,7 @@ export function useDeleteVendor() {
     mutationFn: (id: string) => financeApi.deleteVendor(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -356,6 +375,7 @@ export function useCreateBankAccount() {
     mutationFn: (data: CreateBankAccountDto) => financeApi.createBankAccount(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'bank-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -367,6 +387,7 @@ export function useUpdateBankAccount() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'bank-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['finance', 'bank-accounts', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -377,6 +398,7 @@ export function useDeleteBankAccount() {
     mutationFn: (id: string) => financeApi.deleteBankAccount(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'bank-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

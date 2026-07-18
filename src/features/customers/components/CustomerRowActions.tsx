@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { useState, memo } from 'react';
 import { EntityRowActionsMenu } from '@/components/row-actions';
 import { Customer, CustomerStatus } from '@/features/customers/types';
 import { useCustomerConfiguration } from '@/features/customers/hooks/useCustomers';
@@ -17,6 +17,7 @@ import {
   Calendar,
   Phone,
 } from 'lucide-react';
+import { DeleteCustomerDialog } from '@/components/dialog/DangerConfirmationDialog';
 
 interface CustomerRowActionsProps {
   customer: Customer;
@@ -48,102 +49,123 @@ export const CustomerRowActions = memo(function CustomerRowActions({
   onStatusChange,
 }: CustomerRowActionsProps) {
   const { statuses } = useCustomerConfiguration();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(customer);
+      setShowDeleteDialog(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
-    <EntityRowActionsMenu
-      sections={{
-        view: [
-          {
-            key: 'view',
-            label: 'View Details',
-            icon: Eye,
-            onClick: () => onViewDetails?.(customer),
-            hidden: !onViewDetails,
-          },
-        ],
-        edit: [
-          {
-            key: 'edit',
-            label: 'Edit Customer',
-            icon: Edit,
-            onClick: () => onEdit(customer),
-          },
-        ],
-        communication: [
-          {
-            key: 'whatsapp',
-            label: 'Send WhatsApp',
-            icon: MessageSquare,
-            onClick: () => onSendWhatsApp?.(customer),
-            hidden: !onSendWhatsApp,
-          },
-          {
-            key: 'email',
-            label: 'Send Email',
-            icon: Mail,
-            onClick: () => onSendEmail?.(customer),
-            hidden: !onSendEmail,
-          },
-          {
-            key: 'meeting',
-            label: 'Schedule Meeting',
-            icon: Calendar,
-            onClick: () => onScheduleMeeting?.(customer),
-            hidden: !onScheduleMeeting,
-          },
-          {
-            key: 'call',
-            label: 'Log Call',
-            icon: Phone,
-            onClick: () => (onLogCall ? onLogCall(customer) : onEdit(customer)),
-          },
-        ],
-        workflow: [
-          {
-            key: 'change-status',
-            label: 'Change Status',
-            icon: GitBranch,
-            items: statuses.map((status) => ({
-              key: `status-${status}`,
-              label: status,
-              icon: customer.status === status ? CheckCircle : GitBranch,
-              onClick: () => onStatusChange?.(customer, status as CustomerStatus),
-            })),
-            hidden: !onStatusChange,
-          },
-          {
-            key: 'create-project',
-            label: 'Create Project',
-            icon: FolderKanban,
-            onClick: () => onCreateProject?.(customer),
-            hidden: !onCreateProject,
-          },
-        ],
-        utility: [
-          {
-            key: 'view-projects',
-            label: 'View Projects',
-            icon: FolderKanban,
-            onClick: () => onViewProjects?.(customer),
-            hidden: !onViewProjects,
-          },
-          {
-            key: 'view-documents',
-            label: 'View Documents',
-            icon: FileText,
-            onClick: () => onViewDocuments?.(customer),
-            hidden: !onViewDocuments,
-          },
-        ],
-        danger: [
-          {
-            key: 'delete',
-            label: 'Delete Customer',
-            icon: Trash2,
-            onClick: () => onDelete(customer),
-          },
-        ],
-      }}
-    />
+    <>
+      <EntityRowActionsMenu
+        sections={{
+          view: [
+            {
+              key: 'view',
+              label: 'View Details',
+              icon: Eye,
+              onClick: () => onViewDetails?.(customer),
+              hidden: !onViewDetails,
+            },
+          ],
+          edit: [
+            {
+              key: 'edit',
+              label: 'Edit Customer',
+              icon: Edit,
+              onClick: () => onEdit(customer),
+            },
+          ],
+          communication: [
+            {
+              key: 'whatsapp',
+              label: 'Send WhatsApp',
+              icon: MessageSquare,
+              onClick: () => onSendWhatsApp?.(customer),
+              hidden: !onSendWhatsApp,
+            },
+            {
+              key: 'email',
+              label: 'Send Email',
+              icon: Mail,
+              onClick: () => onSendEmail?.(customer),
+              hidden: !onSendEmail,
+            },
+            {
+              key: 'meeting',
+              label: 'Schedule Meeting',
+              icon: Calendar,
+              onClick: () => onScheduleMeeting?.(customer),
+              hidden: !onScheduleMeeting,
+            },
+            {
+              key: 'call',
+              label: 'Log Call',
+              icon: Phone,
+              onClick: () => (onLogCall ? onLogCall(customer) : onEdit(customer)),
+            },
+          ],
+          workflow: [
+            {
+              key: 'change-status',
+              label: 'Change Status',
+              icon: GitBranch,
+              items: statuses.map((status) => ({
+                key: `status-${status}`,
+                label: status,
+                icon: customer.status === status ? CheckCircle : GitBranch,
+                onClick: () => onStatusChange?.(customer, status as CustomerStatus),
+              })),
+              hidden: !onStatusChange,
+            },
+            {
+              key: 'create-project',
+              label: 'Create Project',
+              icon: FolderKanban,
+              onClick: () => onCreateProject?.(customer),
+              hidden: !onCreateProject,
+            },
+          ],
+          utility: [
+            {
+              key: 'view-projects',
+              label: 'View Projects',
+              icon: FolderKanban,
+              onClick: () => onViewProjects?.(customer),
+              hidden: !onViewProjects,
+            },
+            {
+              key: 'view-documents',
+              label: 'View Documents',
+              icon: FileText,
+              onClick: () => onViewDocuments?.(customer),
+              hidden: !onViewDocuments,
+            },
+          ],
+          danger: [
+            {
+              key: 'delete',
+              label: 'Delete Customer',
+              icon: Trash2,
+              onClick: () => setShowDeleteDialog(true),
+            },
+          ],
+        }}
+      />
+      <DeleteCustomerDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+        entityName={`${customer.customerName} (${customer.companyName})`}
+      />
+    </>
   );
 });

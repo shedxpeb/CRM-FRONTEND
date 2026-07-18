@@ -52,7 +52,7 @@ export function useCustomers(params?: PaginationParams & CustomerFilters & { sea
     retry: 1,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     placeholderData: keepPreviousData,
   });
 }
@@ -65,7 +65,7 @@ export function useCustomer(id: string) {
     queryKey: ['customer', id],
     queryFn: () => customersApi.getById(id),
     enabled: !!id,
-    refetchOnMount: false,
+    refetchOnMount: true,
   });
 }
 
@@ -80,6 +80,8 @@ export function useCreateCustomer() {
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       // Only linked lead lists need refresh when create carries a lead reference
       if (variables.leadId) {
         queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -105,6 +107,8 @@ export function useUpdateCustomer() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -120,6 +124,8 @@ export function useDeleteCustomer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -135,6 +141,9 @@ export function useBulkUpdateCustomers() {
       customersApi.bulkUpdate(ids, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -150,6 +159,8 @@ export function useBulkDeleteCustomers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -193,6 +204,8 @@ export function useConvertLeadToCustomer() {
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
       queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });

@@ -17,6 +17,7 @@ import { LeadTracker } from './LeadTracker';
 import { LeadLogsDialog } from './LeadLogsDialog';
 import { AddScoreDialog } from './AddScoreDialog';
 import { DEFAULT_LEAD_CONFIGURATION } from '@/features/leads/hooks/useLeads';
+import { DeleteLeadDialog } from '@/components/dialog/DangerConfirmationDialog';
 
 interface LeadRowActionsProps {
   lead: Lead;
@@ -46,6 +47,18 @@ export const LeadRowActions = memo(function LeadRowActions({
   const [showTracker, setShowTracker] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [showScore, setShowScore] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(lead);
+      setShowDeleteDialog(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <>
@@ -122,7 +135,7 @@ export const LeadRowActions = memo(function LeadRowActions({
               key: 'delete',
               label: 'Delete Lead',
               icon: Trash2,
-              onClick: () => onDelete(lead),
+              onClick: () => setShowDeleteDialog(true),
             },
           ],
         }}
@@ -138,6 +151,13 @@ export const LeadRowActions = memo(function LeadRowActions({
           onAddScore?.(lead, score);
           setShowScore(false);
         }}
+      />
+      <DeleteLeadDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+        entityName={`${lead.customerName} (${lead.companyName})`}
       />
     </>
   );

@@ -76,6 +76,7 @@ export function useCreateProject() {
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       // If created from a lead conversion, invalidate lead queries too
       if ((variables as any).leadId) {
         queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -97,6 +98,7 @@ export function useUpdateProject() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -109,6 +111,7 @@ export function useDeleteProject() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -121,6 +124,7 @@ export function useBulkUpdateProjects() {
       projectsApi.bulkUpdate(ids, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -133,6 +137,7 @@ export function useBulkDeleteProjects() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
