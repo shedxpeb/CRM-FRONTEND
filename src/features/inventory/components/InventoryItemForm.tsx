@@ -11,7 +11,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { InventoryItem, StockStatus } from '@/features/inventory/types';
 import { useWarehouses, useInventoryConfiguration } from '@/features/inventory/hooks/useInventory';
 import { useItemMasters } from '@/features/item-master/hooks/useItemMaster';
@@ -160,9 +159,6 @@ const InventoryItemForm = memo(function InventoryItemForm({
             <ReadOnlyField label="Item Type" value={formData.itemTypeClass} />
             <ReadOnlyField label="Unit" value={formData.unit} />
           </div>
-          {formData.itemMasterId && (
-            <Badge variant="outline" className="text-xs">Item Master: {formData.itemMasterId}</Badge>
-          )}
         </CardContent>
       </Card>
 

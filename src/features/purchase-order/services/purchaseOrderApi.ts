@@ -9,12 +9,28 @@ import {
   PurchaseOrderQuery,
   PurchaseOrderStats,
   PaginatedPurchaseOrderData,
+  ReceiveItemDto,
+  RejectPoDto,
 } from '../types/purchase-order.types';
 
 interface BackendResponse<T> {
-  success: boolean;
-  data: T;
   message?: string;
+  data: T;
+}
+
+interface BackendPaginatedResponse {
+  message?: string;
+  data: {
+    rows: PurchaseOrder[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrevious: boolean;
+    };
+  };
 }
 
 function buildParams(query?: PurchaseOrderQuery): Record<string, any> {
@@ -32,14 +48,31 @@ function buildParams(query?: PurchaseOrderQuery): Record<string, any> {
   return params;
 }
 
+function mapBackendError(error: any): never {
+  const message =
+    error?.response?.data?.message ||
+    error?.message ||
+    'An unexpected error occurred';
+  throw new Error(Array.isArray(message) ? message.join(', ') : message);
+}
+
 export const purchaseOrderApi = {
   async getAll(query?: PurchaseOrderQuery): Promise<PaginatedPurchaseOrderData> {
     try {
       const params = buildParams(query);
-      const res = await api.get<BackendResponse<PaginatedPurchaseOrderData>>('/purchase-order', { params });
-      return res.data;
+      const res = await api.get<BackendPaginatedResponse>('/purchase-order', { params });
+      const { rows, pagination } = res.data;
+      return {
+        data: rows,
+        meta: {
+          total: pagination.total,
+          page: pagination.page,
+          limit: pagination.pageSize,
+          totalPages: pagination.totalPages,
+        },
+      };
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch purchase orders');
+      mapBackendError(error);
     }
   },
 
@@ -48,7 +81,7 @@ export const purchaseOrderApi = {
       const res = await api.get<BackendResponse<PurchaseOrder>>(`/purchase-order/${id}`);
       return res.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch purchase order');
+      mapBackendError(error);
     }
   },
 
@@ -57,7 +90,7 @@ export const purchaseOrderApi = {
       const res = await api.post<BackendResponse<PurchaseOrder>>('/purchase-order', data);
       return res.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create purchase order');
+      mapBackendError(error);
     }
   },
 
@@ -66,7 +99,7 @@ export const purchaseOrderApi = {
       const res = await api.patch<BackendResponse<PurchaseOrder>>(`/purchase-order/${id}`, data);
       return res.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update purchase order');
+      mapBackendError(error);
     }
   },
 
@@ -75,7 +108,7 @@ export const purchaseOrderApi = {
       const res = await api.patch<BackendResponse<PurchaseOrder>>(`/purchase-order/${id}/approve`);
       return res.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to approve purchase order');
+      mapBackendError(error);
     }
   },
 
@@ -83,7 +116,7 @@ export const purchaseOrderApi = {
     try {
       await api.delete(`/purchase-order/${id}`);
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete purchase order');
+      mapBackendError(error);
     }
   },
 
@@ -92,7 +125,7 @@ export const purchaseOrderApi = {
       const res = await api.get<BackendResponse<PurchaseOrderStats>>('/purchase-order/stats');
       return res.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch purchase order stats');
+      mapBackendError(error);
     }
   },
 
@@ -101,7 +134,7 @@ export const purchaseOrderApi = {
       const res = await api.patch<BackendResponse<{ count: number }>>('/purchase-order/bulk/status', { ids, status });
       return res.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update purchase order status');
+      mapBackendError(error);
     }
   },
 
@@ -110,7 +143,58 @@ export const purchaseOrderApi = {
       const res = await api.delete<BackendResponse<{ count: number }>>('/purchase-order/bulk', { data: { ids } });
       return res.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete purchase orders');
+      mapBackendError(error);
     }
+  },
+
+  async reject(id: string, data: RejectPoDto): Promise<PurchaseOrder> {
+    try {
+      const res = await api.patch<BackendResponse<PurchaseOrder>>(`/purchase-order/${id}/reject`, data);
+      return res.data;
+    } catch (error: any) {
+      mapBackendError(error);
+    }
+  },
+
+  async markSent(id: string): Promise<PurchaseOrder> {
+    try {
+      const res = await api.patch<BackendResponse<PurchaseOrder>>(`/purchase-order/${id}/send`);
+      return res.data;
+    } catch (error: any) {
+      mapBackendError(error);
+    }
+  },
+
+  async receiveItems(id: string, items: ReceiveItemDto[]): Promise<PurchaseOrder> {
+    try {
+      const res = await api.patch<BackendResponse<PurchaseOrder>>(`/purchase-order/${id}/receive`, { items });
+      return res.data;
+    } catch (error: any) {
+      mapBackendError(error);
+    }
+  },
+
+  async restore(id: string): Promise<PurchaseOrder> {
+    try {
+      const res = await api.patch<BackendResponse<PurchaseOrder>>(`/purchase-order/${id}/restore`);
+      return res.data;
+    } catch (error: any) {
+      mapBackendError(error);
+    }
+  },
+
+  async getCombobox(search?: string): Promise<{ id: string; poNumber: string; vendorName: string; status: string; grandTotal: number; createdAt: string }[]> {
+    try {
+      const params = search ? { search } : {};
+      const res = await api.get<BackendResponse<{ id: string; poNumber: string; vendorName: string; status: string; grandTotal: number; createdAt: string }[]>>('/purchase-order/combobox', { params });
+      return res.data;
+    } catch (error: any) {
+      mapBackendError(error);
+    }
+  },
+
+  getPdfUrl(id: string): string {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    return `${baseUrl}/purchase-order/${id}/pdf`;
   },
 };

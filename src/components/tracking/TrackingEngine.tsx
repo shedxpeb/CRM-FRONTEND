@@ -17,7 +17,15 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { PipelineStage, StageDetails } from '@/features/tracking/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import type { StageDetails } from '@/features/tracking/types';
 
 interface TrackingEngineProps {
   entityType: string;
@@ -28,7 +36,7 @@ interface TrackingEngineProps {
   variant?: 'pipeline' | 'full';
 }
 
-type TabId = 'pipeline' | 'activity' | 'comments' | 'files';
+type TabId = 'pipeline' | 'view' | 'activity' | 'comments' | 'files';
 
 function StageIcon({ isCurrent, isPast, isFinal }: { isCurrent: boolean; isPast: boolean; isFinal: boolean }) {
   if (isFinal && isCurrent) return <XCircle className="w-4 h-4 text-red-500" />;
@@ -54,7 +62,7 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-function StageDetailPanel({ details }: { details: StageDetails }) {
+function RecordSnapshot({ details }: { details: StageDetails }) {
   const fieldRows = Object.entries(details.fields ?? {}).filter(([key, v]) => {
     if (v === null || v === undefined) return false;
     if (key === 'id' || key.endsWith('Id') || key.endsWith('Ids')) return false;
@@ -91,7 +99,7 @@ function StageDetailPanel({ details }: { details: StageDetails }) {
       <div className="px-4 py-3 border-b bg-muted/30">
         <h4 className="text-sm font-semibold">{details.title || details.stage} — Record Snapshot</h4>
       </div>
-      <div className="p-4 space-y-2 max-h-64 overflow-y-auto">
+      <div className="p-4 space-y-2 max-h-[500px] overflow-y-auto">
         {fieldRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No details available</p>
         ) : (
@@ -111,8 +119,8 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
   const { data, isLoading, error } = useTrackingData(entityType, entityId);
   const changeStatus = useChangeStatus(entityType, entityId);
   const [tab, setTab] = useState<TabId>('pipeline');
-  const [selectedStage, setSelectedStage] = useState<PipelineStage | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const tracking = data?.data;
 
@@ -148,8 +156,6 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
     try {
       await changeStatus.mutateAsync({ status });
       onStageAction?.(status);
-      // Cache invalidation is now handled centrally in useChangeStatus mutation
-      // No manual invalidation needed here
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update status';
       setStatusError(typeof msg === 'string' ? msg : JSON.stringify(msg));
@@ -158,13 +164,11 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
 
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: 'pipeline', label: 'Pipeline' },
+    { id: 'view', label: 'View' },
     { id: 'activity', label: 'Activity', count: tracking.timeline?.length },
     { id: 'comments', label: 'Comments', count: comments?.length || 0 },
     { id: 'files', label: 'Files', count: attachments?.length || 0 },
   ];
-
-  const canMoveTo = (status: string) =>
-    transitions.some((t) => t.replace(/[\s_-]/g, '').toLowerCase() === status.replace(/[\s_-]/g, '').toLowerCase());
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -200,7 +204,7 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
                   variant="outline"
                   size="sm"
                   className="text-xs h-7 gap-1"
-                  onClick={() => handleMoveTo(t)}
+                  onClick={() => setPendingStatus(t)}
                   disabled={changeStatus.isPending}
                 >
                   <ArrowRight className="w-3 h-3" />
@@ -240,110 +244,97 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
         ))}
       </div>
 
+      {/* Pipeline Tab */}
       {tab === 'pipeline' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className={cn(selectedStage || stageDetails ? 'lg:col-span-1' : 'lg:col-span-3')}>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-              <GitBranch className="w-3.5 h-3.5" /> Workflow Stages
-            </div>
-            <div className="space-y-0 relative">
-              {pipeline.map((stage, idx) => {
-                const isLast = idx === pipeline.length - 1;
-                const movable = !stage.isCurrent && canMoveTo(stage.status);
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+            <GitBranch className="w-3.5 h-3.5" /> Workflow Stages
+          </div>
+          <div className="space-y-0 relative">
+            {pipeline.map((stage, idx) => {
+              const isLast = idx === pipeline.length - 1;
 
-                return (
-                  <div key={stage.id} className="relative flex gap-3 pb-1 last:pb-0">
-                    {!isLast && (
-                      <div
-                        className={cn(
-                          'absolute left-[13px] top-6 bottom-0 w-0.5',
-                          stage.isPast ? 'bg-green-400' : 'bg-border'
-                        )}
-                      />
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStage(selectedStage?.id === stage.id ? null : stage)}
+              return (
+                <div
+                  key={stage.id}
+                  className={cn(
+                    'relative flex gap-3 pb-1 last:pb-0',
+                    !stage.isCurrent && 'cursor-pointer'
+                  )}
+                  onClick={() => {
+                    if (!stage.isCurrent) setPendingStatus(stage.status);
+                  }}
+                >
+                  {!isLast && (
+                    <div
                       className={cn(
-                        'relative z-10 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all',
-                        selectedStage?.id === stage.id && 'ring-2 ring-primary ring-offset-2',
-                        stage.isPast && 'bg-green-100 dark:bg-green-900/30',
-                        stage.isCurrent && 'bg-primary/10',
-                        !stage.isPast && !stage.isCurrent && 'bg-muted hover:bg-muted/80',
+                        'absolute left-[13px] top-6 bottom-0 w-0.5',
+                        stage.isPast ? 'bg-green-400' : 'bg-border'
                       )}
-                    >
-                      <StageIcon isCurrent={stage.isCurrent} isPast={stage.isPast} isFinal={stage.isFinal} />
-                    </button>
+                    />
+                  )}
 
-                    <div className="flex-1 min-w-0 py-1 flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        className="text-left min-w-0"
-                        onClick={() => setSelectedStage(selectedStage?.id === stage.id ? null : stage)}
+                  <div
+                    className={cn(
+                      'relative z-10 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center',
+                      stage.isPast && 'bg-green-100 dark:bg-green-900/30',
+                      stage.isCurrent && 'bg-primary/10',
+                      !stage.isPast && !stage.isCurrent && 'bg-muted',
+                    )}
+                  >
+                    <StageIcon isCurrent={stage.isCurrent} isPast={stage.isPast} isFinal={stage.isFinal} />
+                  </div>
+
+                  <div className="flex-1 min-w-0 py-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'text-sm font-medium',
+                          stage.isPast && 'text-green-600',
+                          stage.isCurrent && 'text-primary font-semibold',
+                          !stage.isPast && !stage.isCurrent && 'text-muted-foreground',
+                        )}
                       >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              'text-sm font-medium',
-                              stage.isPast && 'text-green-600',
-                              stage.isCurrent && 'text-primary font-semibold',
-                              !stage.isPast && !stage.isCurrent && 'text-muted-foreground',
-                            )}
-                          >
-                            {stage.label}
-                          </span>
-                          {stage.isCurrent && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                              Current
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                      {movable && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs"
-                          disabled={changeStatus.isPending}
-                          onClick={() => handleMoveTo(stage.status)}
-                        >
-                          Move here
-                        </Button>
+                        {stage.label}
+                      </span>
+                      {stage.isCurrent && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          Current
+                        </span>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
-
-          <div className="lg:col-span-2 space-y-4">
-            {(selectedStage || stageDetails) && (
-              <StageDetailPanel
-                details={
-                  stageDetails || {
-                    stage: selectedStage?.status || currentStatus || '',
-                    title: selectedStage?.label || currentStatus || 'Stage',
-                    fields: {},
-                  }
-                }
-              />
-            )}
-            <div className="rounded-lg border p-3 bg-muted/20 text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground text-sm">How tracking works</p>
-              <p>Status is synced from the live {entityType} record and status history.</p>
-              <p>Use <strong>Move here</strong> or the arrows above to change status — updates the record, timeline, and audit log.</p>
-            </div>
+          <div className="rounded-lg border p-3 bg-muted/20 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground text-sm">How tracking works</p>
+            <p>Status is synced from the live {entityType} record and status history.</p>
+            <p>Use the action buttons above to change status — updates the record, timeline, and audit log.</p>
           </div>
         </div>
       )}
 
+      {/* View Tab */}
+      {tab === 'view' && (
+        <div>
+          {stageDetails ? (
+            <RecordSnapshot details={stageDetails} />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              No record snapshot available
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Activity Tab */}
       {tab === 'activity' && (
         <ActivityAuditLog entityType={entityType} entityId={entityId} />
       )}
 
+      {/* Comments Tab */}
       {tab === 'comments' && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -354,6 +345,7 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
         </div>
       )}
 
+      {/* Files Tab */}
       {tab === 'files' && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -374,6 +366,42 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
           )}
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Workflow Change</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to move this lead to the selected workflow stage?
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This action will update the lead status, create a status history entry, and record the activity in the audit log.
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingStatus(null)}
+              disabled={changeStatus.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const status = pendingStatus;
+                setPendingStatus(null);
+                if (status) handleMoveTo(status);
+              }}
+              disabled={changeStatus.isPending}
+            >
+              {changeStatus.isPending ? 'Processing...' : 'Yes, Proceed'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

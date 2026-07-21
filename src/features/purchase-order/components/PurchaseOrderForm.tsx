@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,9 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, CreatePurchaseOrderItemDto } from '../types/purchase-order.types';
+import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, PurchaseOrder } from '../types/purchase-order.types';
 import { vendorApi } from '@/features/vendor';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PO_UNITS } from '../constants';
+import { formatCurrency } from '../utils/format';
+import { Plus, Trash2 } from 'lucide-react';
 
 const poItemSchema = z.object({
   itemCode: z.string().min(1, 'Item code is required'),
@@ -49,12 +52,14 @@ const purchaseOrderSchema = z.object({
   discount: z.number().min(0).optional(),
   discountType: z.string().optional(),
   freight: z.number().min(0).optional(),
+  packingCharges: z.number().min(0).optional(),
+  shippingCharges: z.number().min(0).optional(),
+  otherCharges: z.number().min(0).optional(),
   notes: z.string().optional(),
   terms: z.string().optional(),
   internalNotes: z.string().optional(),
   items: z.array(poItemSchema).min(1, 'At least one item is required'),
 }).refine((data) => {
-  // Validate that if discount is provided, discountType is also provided
   if (data.discount && !data.discountType) {
     return false;
   }
@@ -70,7 +75,7 @@ interface PurchaseOrderFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreatePurchaseOrderDto | UpdatePurchaseOrderDto) => Promise<void>;
-  initialData?: any;
+  initialData?: PurchaseOrder;
   isSubmitting?: boolean;
 }
 
@@ -87,7 +92,6 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
     formState: { errors },
     setValue,
     watch,
-    control,
   } = useForm<PurchaseOrderFormData>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: initialData ? {
@@ -101,6 +105,12 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
   });
 
   const items = watch('items') || [];
+  const discount = watch('discount') || 0;
+  const discountType = watch('discountType') || 'Amount';
+  const freight = watch('freight') || 0;
+  const packingCharges = watch('packingCharges') || 0;
+  const shippingCharges = watch('shippingCharges') || 0;
+  const otherCharges = watch('otherCharges') || 0;
 
   const addItem = () => {
     setValue('items', [...items, { itemCode: '', itemName: '', quantity: 1, unit: 'PCS', rate: 0, discountType: 'Amount' }]);
@@ -120,24 +130,21 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
     let subtotal = 0;
     let totalTax = 0;
 
-    items.forEach((item) => {
+    items.forEach((item: any) => {
       const itemTotal = item.quantity * item.rate;
-      const discountAmount = item.discountType === 'Percentage' 
-        ? (itemTotal * (item.discount || 0)) / 100 
+      const discountAmount = item.discountType === 'Percentage'
+        ? (itemTotal * (item.discount || 0)) / 100
         : (item.discount || 0);
       const afterDiscount = itemTotal - discountAmount;
       const gstAmount = item.gstRate ? (afterDiscount * item.gstRate) / 100 : 0;
-      
+
       subtotal += afterDiscount;
       totalTax += gstAmount;
     });
 
-    const discount = watch('discount') || 0;
-    const discountType = watch('discountType') || 'Amount';
     const discountAmount = discountType === 'Percentage' ? (subtotal * discount) / 100 : discount;
     const afterDiscount = subtotal - discountAmount;
-    const freight = watch('freight') || 0;
-    const grandTotal = afterDiscount + totalTax + freight;
+    const grandTotal = afterDiscount + totalTax + freight + packingCharges + shippingCharges + otherCharges;
     const roundOff = Math.round(grandTotal) - grandTotal;
 
     return {
@@ -145,6 +152,9 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
       totalTax,
       discountAmount,
       freight,
+      packingCharges,
+      shippingCharges,
+      otherCharges,
       roundOff,
       grandTotal: grandTotal + roundOff,
     };
@@ -233,10 +243,11 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Items</h3>
               <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                <Plus className="mr-2 h-4 w-4" />
                 Add Item
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div key={index} className="border rounded-lg p-4 space-y-3">
@@ -248,10 +259,10 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       size="sm"
                       onClick={() => removeItem(index)}
                     >
-                      Remove
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Item Code *</Label>
@@ -282,11 +293,19 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Unit *</Label>
-                      <Input
-                        value={item.unit}
-                        onChange={(e) => updateItem(index, 'unit', e.target.value)}
-                        placeholder="PCS"
-                      />
+                      <Select
+                        value={item.unit || 'PCS'}
+                        onValueChange={(value) => updateItem(index, 'unit', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PO_UNITS.map((u) => (
+                            <SelectItem key={u} value={u}>{u}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Rate *</Label>
@@ -343,12 +362,12 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
             </div>
           </div>
 
-          {/* Totals */}
+          {/* Financial Summary */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Totals</h3>
+            <h3 className="text-lg font-semibold">Financial Summary</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="discount">Discount</Label>
+                <Label htmlFor="discount">Header Discount</Label>
                 <Input id="discount" type="number" {...register('discount', { valueAsNumber: true })} />
               </div>
               <div className="space-y-2">
@@ -367,40 +386,70 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="freight">Freight</Label>
-              <Input id="freight" type="number" {...register('freight', { valueAsNumber: true })} />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="freight">Freight</Label>
+                <Input id="freight" type="number" {...register('freight', { valueAsNumber: true })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="packingCharges">Packing Charges</Label>
+                <Input id="packingCharges" type="number" {...register('packingCharges', { valueAsNumber: true })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="shippingCharges">Shipping Charges</Label>
+                <Input id="shippingCharges" type="number" {...register('shippingCharges', { valueAsNumber: true })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="otherCharges">Other Charges</Label>
+                <Input id="otherCharges" type="number" {...register('otherCharges', { valueAsNumber: true })} />
+              </div>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>₹{totals.subtotal.toFixed(2)}</span>
+                <span>{formatCurrency(totals.subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Discount:</span>
-                <span>-₹{totals.discountAmount.toFixed(2)}</span>
+                <span>-{formatCurrency(totals.discountAmount)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tax:</span>
-                <span>₹{totals.totalTax.toFixed(2)}</span>
+                <span>{formatCurrency(totals.totalTax)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Freight:</span>
-                <span>₹{totals.freight.toFixed(2)}</span>
+                <span>{formatCurrency(totals.freight)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Packing Charges:</span>
+                <span>{formatCurrency(totals.packingCharges)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Shipping Charges:</span>
+                <span>{formatCurrency(totals.shippingCharges)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Other Charges:</span>
+                <span>{formatCurrency(totals.otherCharges)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Round Off:</span>
-                <span>₹{totals.roundOff.toFixed(2)}</span>
+                <span>{formatCurrency(totals.roundOff)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Grand Total:</span>
-                <span>₹{totals.grandTotal.toFixed(2)}</span>
+                <span>{formatCurrency(totals.grandTotal)}</span>
               </div>
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Notes & Terms */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Notes & Terms</h3>
             <div className="space-y-2">
@@ -409,7 +458,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
             </div>
             <div className="space-y-2">
               <Label htmlFor="terms">Terms</Label>
-              <Textarea id="terms" {...register('terms')} rows={2} />
+              <Textarea id="terms" {...register('terms')} rows={3} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="internalNotes">Internal Notes</Label>
@@ -418,9 +467,9 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
           </div>
 
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={(e) => {
                 e.preventDefault();
                 onOpenChange(false);
@@ -428,13 +477,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-              onClick={(e) => {
-                // Allow form submission to proceed
-              }}
-            >
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : initialData ? 'Update PO' : 'Create PO'}
             </Button>
           </DialogFooter>
