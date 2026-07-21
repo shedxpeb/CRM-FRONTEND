@@ -12,11 +12,17 @@ export interface PurchaseOrder {
   paymentTerms?: string;
   expectedDeliveryDate?: string;
   status: string;
+  revision: number;
+  revisionNote?: string;
+  currency: string;
   subtotal: number;
   discount: number;
   discountType?: string;
   tax: number;
   freight: number;
+  packingCharges: number;
+  shippingCharges: number;
+  otherCharges: number;
   roundOff: number;
   grandTotal: number;
   notes?: string;
@@ -25,10 +31,15 @@ export interface PurchaseOrder {
   approvedById?: string;
   approvedBy?: string;
   approvedAt?: string;
+  rejectedById?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectReason?: string;
   pdfGenerated: boolean;
   pdfUrl?: string;
   sentToVendor: boolean;
   sentAt?: string;
+  receivedDate?: string;
   customFields?: any;
   createdById?: string;
   createdBy?: string;
@@ -61,6 +72,7 @@ export interface PurchaseOrderItem {
   total: number;
   hsnCode?: string;
   receivedQuantity: number;
+  receivedDate?: string;
   pendingQuantity?: number;
   customFields?: any;
   createdAt: string;
@@ -110,6 +122,9 @@ export interface CreatePurchaseOrderDto {
   discount?: number;
   discountType?: string;
   freight?: number;
+  packingCharges?: number;
+  shippingCharges?: number;
+  otherCharges?: number;
   notes?: string;
   terms?: string;
   internalNotes?: string;
@@ -140,6 +155,10 @@ export interface PurchaseOrderStats {
   approved: number;
   pendingApproval: number;
   sent: number;
+  rejected: number;
+  partiallyReceived: number;
+  fullyReceived: number;
+  cancelled: number;
   totalPurchase: number;
 }
 
@@ -151,4 +170,13 @@ export interface PaginatedPurchaseOrderData {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface ReceiveItemDto {
+  itemId: string;
+  receivedQuantity: number;
+}
+
+export interface RejectPoDto {
+  reason?: string;
 }
