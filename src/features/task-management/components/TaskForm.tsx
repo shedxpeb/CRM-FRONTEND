@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateTaskDto, LinkedModule, Task, TaskPriority } from '../types';
+import { useUsers } from '@/features/settings/hooks/useSettings';
 
 interface TaskFormProps {
   task?: Task;
@@ -15,6 +16,7 @@ interface TaskFormProps {
 }
 
 export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
+  const { data: users = [] } = useUsers();
   const [formData, setFormData] = useState({
     title: task?.title || '',
     description: task?.description || '',
@@ -45,6 +47,8 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
       }
     }
 
+    const selectedUser = users.find((u) => u.id === formData.assignedUserId);
+
     const dto: CreateTaskDto = {
       title: formData.title,
       description: formData.description,
@@ -56,7 +60,7 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
       linkedRecordId: formData.linkedRecordId || undefined,
       linkedRecordName: formData.linkedRecordName || undefined,
       projectId: formData.projectId || undefined,
-      incentiveValue: parseFloat(formData.incentiveValue),
+      incentiveValue: parseFloat(formData.incentiveValue) || 0,
       notes: formData.notes || undefined,
     };
 
@@ -85,13 +89,19 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="assignedUserId">Assigned User ID *</Label>
-          <Input
-            id="assignedUserId"
-            value={formData.assignedUserId}
-            onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
-            required
-          />
+          <Label htmlFor="assignedUserId">Assigned User *</Label>
+          <Select value={formData.assignedUserId} onValueChange={(value) => setFormData({ ...formData, assignedUserId: value })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a user" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.name || user.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label htmlFor="startDate">Start Date</Label>
