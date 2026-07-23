@@ -66,9 +66,6 @@ export const LeadFormWizard = memo(function LeadFormWizard({
     state: initialData?.state ?? '',
     country: initialData?.country ?? '',
     pincode: initialData?.pincode ?? '',
-    companySize: initialData?.companySize ?? '',
-    annualRevenue: initialData?.annualRevenue?.toString() ?? '',
-    employeeCount: initialData?.employeeCount?.toString() ?? '',
     linkedin: initialData?.linkedin ?? '',
     facebook: initialData?.facebook ?? '',
     instagram: initialData?.instagram ?? '',
@@ -171,9 +168,6 @@ export const LeadFormWizard = memo(function LeadFormWizard({
       state: formData.state || undefined,
       country: formData.country || undefined,
       pincode: formData.pincode || undefined,
-      companySize: formData.companySize || undefined,
-      annualRevenue: formData.annualRevenue ? parseFloat(formData.annualRevenue as string) : undefined,
-      employeeCount: formData.employeeCount ? parseInt(formData.employeeCount as string, 10) : undefined,
       linkedin: formData.linkedin || undefined,
       facebook: formData.facebook || undefined,
       instagram: formData.instagram || undefined,
@@ -598,60 +592,26 @@ export const LeadFormWizard = memo(function LeadFormWizard({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Company Size</label>
-            <Select
-              value={formData.companySize}
-              onValueChange={(value) => handleInputChange('companySize', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select size" />
-              </SelectTrigger>
-              <SelectContent>
-                {['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'].map((size) => (
-                  <SelectItem key={size} value={size}>{size}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Annual Revenue (₹)</label>
-            <Input
-              type="number"
-              placeholder="Enter annual revenue"
-              value={formData.annualRevenue ?? ''}
-              onChange={(e) => handleInputChange('annualRevenue', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Employee Count</label>
-            <Input
-              type="number"
-              placeholder="Enter employee count"
-              value={formData.employeeCount ?? ''}
-              onChange={(e) => handleInputChange('employeeCount', e.target.value)}
-            />
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Social Links</label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="LinkedIn"
-              value={formData.linkedin ?? ''}
-              onChange={(e) => handleInputChange('linkedin', e.target.value)}
-            />
-            <Input
-              placeholder="Facebook"
-              value={formData.facebook ?? ''}
-              onChange={(e) => handleInputChange('facebook', e.target.value)}
-            />
-            <Input
-              placeholder="Instagram"
-              value={formData.instagram ?? ''}
-              onChange={(e) => handleInputChange('instagram', e.target.value)}
-            />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Social Links</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                placeholder="LinkedIn"
+                value={formData.linkedin ?? ''}
+                onChange={(e) => handleInputChange('linkedin', e.target.value)}
+              />
+              <Input
+                placeholder="Facebook"
+                value={formData.facebook ?? ''}
+                onChange={(e) => handleInputChange('facebook', e.target.value)}
+              />
+              <Input
+                placeholder="Instagram"
+                value={formData.instagram ?? ''}
+                onChange={(e) => handleInputChange('instagram', e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>

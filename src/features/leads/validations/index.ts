@@ -55,10 +55,6 @@ export const baseLeadSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  companySize: z.string().max(50).optional().or(z.literal('')),
-  annualRevenue: z.union([z.string(), z.number()]).optional(),
-  employeeCount: z.union([z.string(), z.number()]).optional(),
-
   linkedin: z.string().max(200).optional().or(z.literal('')),
   facebook: z.string().max(200).optional().or(z.literal('')),
   instagram: z.string().max(200).optional().or(z.literal('')),
