@@ -784,14 +784,16 @@ export default function LeadsPage() {
   // Phase 2: Create lead using backend API
   const handleCreateLead = useCallback(async (data: Partial<Lead>) => {
     try {
-      await createLeadMutation.mutateAsync(data);
+      const result = await createLeadMutation.mutateAsync(data);
       setIsCreateDialogOpen(false);
       toast.success('Lead created successfully');
+      await refetchLeads();
     } catch (error: any) {
       const msg = error?.response?.data?.message || error?.message || 'Failed to create lead';
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      throw error;
     }
-  }, [createLeadMutation]);
+  }, [createLeadMutation, refetchLeads]);
 
   // Phase 2: Edit lead using backend API
   const handleEditLead = useCallback(async (data: Partial<Lead>) => {
@@ -801,11 +803,13 @@ export default function LeadsPage() {
       setIsEditDialogOpen(false);
       setSelectedLeadId(null);
       toast.success('Lead updated successfully');
+      await refetchLeads();
     } catch (error: any) {
       const msg = error?.response?.data?.message || error?.message || 'Failed to update lead';
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      throw error;
     }
-  }, [selectedLeadId, updateLeadMutation]);
+  }, [selectedLeadId, updateLeadMutation, refetchLeads]);
 
   // Phase 2: Delete lead using backend API
   const handleDeleteLead = useCallback(async (lead: Lead) => {

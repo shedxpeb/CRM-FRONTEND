@@ -94,6 +94,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     status: (initialData?.status ?? config.statuses[0] ?? 'New') as LeadStatus,
     customFields: initialData?.customFields ?? {},
   });
+
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -278,9 +279,9 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
       return true;
     } catch (err: any) {
       const fieldErrors: Record<string, string> = {};
-      if (err.errors) {
-        err.errors.forEach((e: any) => {
-          const path = e.path[0];
+      if (err.issues && Array.isArray(err.issues)) {
+        err.issues.forEach((e: any) => {
+          const path = e.path && e.path.length > 0 ? e.path[0] : null;
           if (path) {
             fieldErrors[path] = e.message;
           }
@@ -291,7 +292,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -304,18 +305,16 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
 
     const submitData = getSubmitData();
     if (onSubmit) {
-      onSubmit(submitData);
+      try {
+        await onSubmit(submitData);
+      } catch (error) {
+        throw error;
+      }
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {duplicateWarning && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          <span>{duplicateWarning}</span>
-        </div>
-      )}
       {/* Customer Details */}
       <Card>
         <CardHeader>
@@ -443,7 +442,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
                   {[
                     'Construction', 'Manufacturing', 'Technology', 'Healthcare',
                     'Hospitality', 'Retail', 'Education', 'Finance', 'RealEstate',
-                    'Infrastructure', 'Energy', 'Mining', 'Agriculture', 'Transportation', 'Other',
+                    'Infrastructure', 'Energy', 'Mining', 'Agriculture', 'Transportation', 'Logistics', 'Commercial', 'Other',
                   ].map((type) => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
@@ -452,22 +451,11 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Business Type</label>
-              <Select
-                value={formData.businessType}
-                onValueChange={(value) => handleInputChange('businessType', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select business type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[
-                    'SoleProprietorship', 'Partnership', 'PrivateLimited',
-                    'PublicLimited', 'LLP', 'Government', 'NonProfit', 'Other',
-                  ].map((type) => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                placeholder="Enter business type"
+                value={formData.businessType ?? ''}
+                onChange={(e) => handleInputChange('businessType', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Address Line 1</label>
@@ -509,7 +497,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">State *</label>
+              <label className="text-sm font-medium">State</label>
               <Input
                 placeholder="Enter state"
                 value={formData.state ?? ''}
@@ -1091,6 +1079,28 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
         values={formData.customFields}
         onChange={handleCustomFieldChange}
       />
+
+      {/* Error Display */}
+      {Object.keys(errors).length > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-center gap-2 font-medium mb-2">
+            <AlertCircle className="h-4 w-4" />
+            <span>Please fix the following errors:</span>
+          </div>
+          <ul className="space-y-1 list-disc list-inside">
+            {Object.entries(errors).map(([field, message]) => (
+              <li key={field}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {duplicateWarning && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <span>{duplicateWarning}</span>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex justify-end gap-3">

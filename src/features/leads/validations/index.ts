@@ -17,7 +17,7 @@ export const baseLeadSchema = z.object({
     .max(15, 'Mobile must be at most 15 digits')
     .regex(/^[0-9]+$/, 'Mobile must contain only numbers'),
 
-  email: z.string().email('Invalid email address'),
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
 
   alternateMobile: z.string().max(20).optional().or(z.literal('')),
   gstNumber: z.string().max(50).optional().or(z.literal('')),
@@ -26,13 +26,10 @@ export const baseLeadSchema = z.object({
   industry: z.enum([
     'Construction', 'Manufacturing', 'Technology', 'Healthcare',
     'Hospitality', 'Retail', 'Education', 'Finance', 'RealEstate',
-    'Infrastructure', 'Energy', 'Mining', 'Agriculture', 'Transportation', 'Other',
+    'Infrastructure', 'Energy', 'Mining', 'Agriculture', 'Transportation', 'Logistics', 'Commercial', 'Other',
   ]).optional().or(z.literal('')),
 
-  businessType: z.enum([
-    'SoleProprietorship', 'Partnership', 'PrivateLimited',
-    'PublicLimited', 'LLP', 'Government', 'NonProfit', 'Other',
-  ]).optional().or(z.literal('')),
+  businessType: z.string().max(100).optional().or(z.literal('')),
 
   addressLine1: z.string().max(255).optional().or(z.literal('')),
   addressLine2: z.string().max(255).optional().or(z.literal('')),
@@ -68,7 +65,7 @@ export const baseLeadSchema = z.object({
     .min(2, 'Project title must be at least 2 characters')
     .max(200, 'Project title must be less than 200 characters'),
 
-  projectType: z.enum(['Factory', 'Warehouse', 'IndustrialShed', 'Commercial', 'Residential', 'Other']),
+  projectType: z.enum(['Factory', 'Warehouse', 'IndustrialShed', 'Commercial', 'Residential', 'ColdStorage', 'Other']),
 
   structureType: z.enum(['PEB', 'SteelStructure', 'Hybrid', 'Other']),
 
