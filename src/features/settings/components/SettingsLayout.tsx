@@ -136,8 +136,7 @@ export const SettingsLayout = memo(function SettingsLayout({ children }: Setting
       <aside 
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-64 border-r bg-card overflow-y-auto transform transition-transform duration-300 lg:relative lg:transform-none',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          'top-16 lg:top-0'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="p-4">
