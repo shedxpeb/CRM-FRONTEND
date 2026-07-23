@@ -60,9 +60,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     state: initialData?.state ?? '',
     country: initialData?.country ?? '',
     pincode: initialData?.pincode ?? '',
-    companySize: initialData?.companySize ?? '',
-    annualRevenue: initialData?.annualRevenue?.toString() ?? '',
-    employeeCount: initialData?.employeeCount?.toString() ?? '',
     linkedin: initialData?.linkedin ?? '',
     facebook: initialData?.facebook ?? '',
     instagram: initialData?.instagram ?? '',
@@ -167,9 +164,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
       state: formData.state || undefined,
       country: formData.country || undefined,
       pincode: formData.pincode || undefined,
-      companySize: formData.companySize || undefined,
-      annualRevenue: formData.annualRevenue ? parseFloat(formData.annualRevenue as string) : undefined,
-      employeeCount: formData.employeeCount ? parseInt(formData.employeeCount as string, 10) : undefined,
       linkedin: formData.linkedin || undefined,
       facebook: formData.facebook || undefined,
       instagram: formData.instagram || undefined,
@@ -406,14 +400,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Designation</label>
-              <Input
-                placeholder="Enter designation"
-                value={formData.designation ?? ''}
-                onChange={(e) => handleInputChange('designation', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
               <label className="text-sm font-medium">Website</label>
               <Input
                 placeholder="Enter website URL"
@@ -564,51 +550,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
         </CardContent>
       </Card>
 
-      {/* Company Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Company Info</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Company Size</label>
-              <Select
-                value={formData.companySize}
-                onValueChange={(value) => handleInputChange('companySize', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  {['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'].map((size) => (
-                    <SelectItem key={size} value={size}>{size}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Annual Revenue (₹)</label>
-              <Input
-                type="number"
-                placeholder="Enter annual revenue"
-                value={formData.annualRevenue ?? ''}
-                onChange={(e) => handleInputChange('annualRevenue', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Employee Count</label>
-              <Input
-                type="number"
-                placeholder="Enter employee count"
-                value={formData.employeeCount ?? ''}
-                onChange={(e) => handleInputChange('employeeCount', e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Social Links */}
       <Card>
         <CardHeader>
@@ -644,47 +585,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
         </CardContent>
       </Card>
 
-      {/* Tags */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Tags</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {formData.tags?.map((tag: string, idx: number) => (
-              <Badge key={idx} variant="secondary" className="gap-1">
-                {tag}
-                <button
-                  type="button"
-                  className="ml-1 hover:text-destructive"
-                  onClick={() => {
-                    const next = [...formData.tags];
-                    next.splice(idx, 1);
-                    handleInputChange('tags', next);
-                  }}
-                >
-                  ×
-                </button>
-              </Badge>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Add a tag and press Enter"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const val = (e.target as HTMLInputElement).value.trim();
-                  if (val && !formData.tags.includes(val)) {
-                    handleInputChange('tags', [...formData.tags, val]);
-                  }
-                  (e.target as HTMLInputElement).value = '';
-                }
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Project Details */}
       <Card>
@@ -1079,14 +979,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
                 onChange={(e) => handleInputChange('siteLocation', e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Map Coordinates</label>
-              <Input
-                placeholder="Enter coordinates"
-                value={formData.mapCoordinates ?? ''}
-                onChange={(e) => handleInputChange('mapCoordinates', e.target.value)}
-              />
-            </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Site Address</label>
               <Input
@@ -1121,28 +1013,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
               value={formData.customerNotes ?? ''}
               onChange={(e) => handleInputChange('customerNotes', e.target.value)}
             />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Special Requirement</label>
-            <textarea
-              className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Enter special requirements"
-              value={formData.specialRequirement ?? ''}
-              onChange={(e) => handleInputChange('specialRequirement', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Attachments</label>
-            <div className="border-2 border-dashed border-input rounded-lg p-6 text-center bg-muted/40 cursor-not-allowed">
-              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-              <p className="text-sm font-medium text-muted-foreground/75 mb-1">
-                Attachment Upload is Disabled
-              </p>
-              <p className="text-xs text-muted-foreground/60">
-                File upload functionality will be enabled in a future release.
-              </p>
-              <input type="file" className="hidden" disabled multiple />
-            </div>
           </div>
         </CardContent>
       </Card>

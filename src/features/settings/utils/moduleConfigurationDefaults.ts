@@ -33,6 +33,7 @@ export const LEAD_MODULE_DEFAULTS = {
     'IndustrialShed',
     'Commercial',
     'Residential',
+    'ColdStorage',
     'Other',
   ],
   structureTypes: ['PEB', 'SteelStructure', 'Hybrid', 'Other'],
@@ -40,7 +41,6 @@ export const LEAD_MODULE_DEFAULTS = {
   wallTypes: ['MetalSheet', 'BrickWall', 'SandwichPanel', 'Other'],
   materialPreferences: ['Standard', 'Premium', 'Economy'],
   customFields: [
-    { key: 'referralCode', label: 'Referral Code', type: 'text' as const },
     {
       key: 'budgetRange',
       label: 'Budget Range',

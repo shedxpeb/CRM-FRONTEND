@@ -16,6 +16,7 @@ export type ProjectType =
   | 'IndustrialShed'
   | 'Commercial'
   | 'Residential'
+  | 'ColdStorage'
   | 'Other';
 
 export type StructureType = 
@@ -109,11 +110,6 @@ export interface Lead {
   state: string;
   country?: string;
   pincode?: string;
-  
-  // Company Info
-  companySize?: string;
-  annualRevenue?: number;
-  employeeCount?: number;
   
   // Social Links
   linkedin?: string;
@@ -248,9 +244,6 @@ export interface CreateLeadDto {
   state: string;
   country?: string;
   pincode?: string;
-  companySize?: string;
-  annualRevenue?: number;
-  employeeCount?: number;
   linkedin?: string;
   facebook?: string;
   instagram?: string;
@@ -309,9 +302,6 @@ export interface UpdateLeadDto {
   state?: string;
   country?: string;
   pincode?: string;
-  companySize?: string;
-  annualRevenue?: number;
-  employeeCount?: number;
   linkedin?: string;
   facebook?: string;
   instagram?: string;
