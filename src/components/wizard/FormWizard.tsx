@@ -106,7 +106,12 @@ export function FormWizard({
   );
 
   const handleSubmit = useCallback(async () => {
-    await onSubmit();
+    try {
+      await onSubmit();
+    } catch (error) {
+      console.error('Form submission error:', error);
+      throw error;
+    }
   }, [onSubmit]);
 
   const progress = ((currentStep + 1) / totalSteps) * 100;

@@ -296,7 +296,7 @@ export const LeadFormWizard = memo(function LeadFormWizard({
       }
 
       const submitData = getSubmitData();
-      onSubmit(submitData);
+      await onSubmit(submitData);
     } catch (err: any) {
       const fieldErrors: Record<string, string> = {};
       if (err.errors) {
@@ -308,6 +308,7 @@ export const LeadFormWizard = memo(function LeadFormWizard({
         });
       }
       setErrors(fieldErrors);
+      throw err;
     }
   };
 
@@ -464,7 +465,7 @@ export const LeadFormWizard = memo(function LeadFormWizard({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">City *</label>
+            <label className="text-sm font-medium">City</label>
             <Input
               placeholder="Enter city"
               value={formData.city ?? ''}
@@ -479,7 +480,7 @@ export const LeadFormWizard = memo(function LeadFormWizard({
             )}
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">State *</label>
+            <label className="text-sm font-medium">State</label>
             <Input
               placeholder="Enter state"
               value={formData.state ?? ''}
@@ -566,7 +567,7 @@ export const LeadFormWizard = memo(function LeadFormWizard({
                 {[
                   'Construction', 'Manufacturing', 'Technology', 'Healthcare',
                   'Hospitality', 'Retail', 'Education', 'Finance', 'RealEstate',
-                  'Infrastructure', 'Energy', 'Mining', 'Agriculture', 'Transportation', 'Other',
+                  'Infrastructure', 'Energy', 'Mining', 'Agriculture', 'Transportation', 'Logistics', 'Commercial', 'Other',
                 ].map((type) => (
                   <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
@@ -575,22 +576,11 @@ export const LeadFormWizard = memo(function LeadFormWizard({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Business Type</label>
-            <Select
-              value={formData.businessType}
-              onValueChange={(value) => handleInputChange('businessType', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select business type" />
-              </SelectTrigger>
-              <SelectContent>
-                {[
-                  'SoleProprietorship', 'Partnership', 'PrivateLimited',
-                  'PublicLimited', 'LLP', 'Government', 'NonProfit', 'Other',
-                ].map((type) => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="Enter business type"
+              value={formData.businessType ?? ''}
+              onChange={(e) => handleInputChange('businessType', e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">
