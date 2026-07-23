@@ -1,7 +1,8 @@
 'use client';
 
 import { memo } from 'react';
-import { Bell, Search, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, Search, Settings, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { componentTextSizes } from '@/lib/design-system';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useSidebarStore } from '@/store/useSidebarStore';
 
 interface TopbarProps {
   title: string;
@@ -22,11 +24,15 @@ interface TopbarProps {
 export const Topbar = memo(function Topbar({ title, subtitle, showBackButton, onBackClick }: TopbarProps) {
   const { logout } = useAuth();
   const { theme, setTheme, isMounted } = useTheme();
+  const toggleSidebar = useSidebarStore((state) => state.toggleSidebar);
 
   return (
     <header className="h-[56px] bg-navbar border-b border-border flex items-center justify-between pl-0 pr-4 md:pr-5 lg:pr-6 2xl:pr-8 sticky top-0 z-20 w-full">
       {/* Left side */}
       <div className="flex items-center gap-1 min-w-0 flex-shrink">
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-10 w-10 flex-shrink-0 lg:hidden">
+          <Menu className="h-5 w-5" />
+        </Button>
         {showBackButton && (
           <Button variant="ghost" size="icon" onClick={onBackClick} className="h-10 w-10 flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -79,9 +85,11 @@ export const Topbar = memo(function Topbar({ title, subtitle, showBackButton, on
         </Button>
 
         {/* Settings */}
-        <Button variant="ghost" size="icon" className="h-10 w-10 hidden sm:flex flex-shrink-0">
-          <Settings className="h-5 w-5" />
-        </Button>
+        <Link href="/settings">
+          <Button variant="ghost" size="icon" className="h-10 w-10 hidden sm:flex flex-shrink-0">
+            <Settings className="h-5 w-5" />
+          </Button>
+        </Link>
 
         {/* Profile */}
         <div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-border flex-shrink-0">

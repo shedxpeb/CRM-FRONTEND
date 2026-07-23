@@ -11,6 +11,7 @@ interface SidebarState {
   collapseSidebar: () => void;
   expandSidebar: () => void;
   toggleCollapse: () => void;
+  setSidebarOpen: (open: boolean) => void;
 }
 
 export const useSidebarStore = create<SidebarState>((set) => ({
@@ -20,6 +21,7 @@ export const useSidebarStore = create<SidebarState>((set) => ({
   collapseSidebar: () => set({ isCollapsed: true }),
   expandSidebar: () => set({ isCollapsed: false }),
   toggleCollapse: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
+  setSidebarOpen: (open) => set({ isOpen: open }),
 }));
 
 // Hook to compute reactive sidebar width in pixels

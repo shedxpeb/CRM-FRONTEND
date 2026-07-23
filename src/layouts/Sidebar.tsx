@@ -11,6 +11,7 @@ import {
 } from '@/store/useSidebarStore';
 import { useNavigationItems, type NavigationItem } from '@/features/settings/hooks/useNavigationItems';
 import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 
 interface SidebarProps {
   currentPath?: string;
@@ -70,7 +71,16 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
   const collapseSidebar = useSidebarStore((state) => state.collapseSidebar);
   const expandSidebar = useSidebarStore((state) => state.expandSidebar);
   const toggleSidebar = useSidebarStore((state) => state.toggleSidebar);
+  const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
   const { items: navigationItems } = useNavigationItems(userRole);
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  // Ensure sidebar is always open on desktop
+  useEffect(() => {
+    if (isDesktop && !isOpen) {
+      setSidebarOpen(true);
+    }
+  }, [isDesktop, isOpen, setSidebarOpen]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
