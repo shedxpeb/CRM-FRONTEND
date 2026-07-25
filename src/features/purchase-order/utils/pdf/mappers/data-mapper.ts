@@ -58,12 +58,15 @@ function mapProjectData(po: PurchaseOrder): ProjectData | undefined {
 }
 
 function mapPurchaseOrderData(po: PurchaseOrder): PurchaseOrderData {
+  const createdAtDate = new Date(po.createdAt);
+  const formattedDate = !isNaN(createdAtDate.getTime()) ? createdAtDate.toLocaleDateString() : 'Invalid Date';
+
   return {
     id: po.id,
     poNumber: po.poNumber,
     poNumberInt: po.poNumberInt,
     revision: 0,
-    date: new Date(po.createdAt).toLocaleDateString(),
+    date: formattedDate,
     status: po.status,
     expectedDeliveryDate: po.expectedDeliveryDate,
     paymentTerms: po.paymentTerms || 'Net 30',

@@ -253,22 +253,28 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                 <span>Due Date</span>
               </div>
               <p className="text-sm font-medium">
-                {new Date(task.dueDate).toLocaleDateString()}
+                {(() => {
+                  const date = new Date(task.dueDate);
+                  return !isNaN(date.getTime()) ? date.toLocaleDateString() : '-';
+                })()}
               </p>
             </div>
 
             {/* Start Date */}
-            {task.startDate && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>Start Date</span>
+            {task.startDate && (() => {
+              const date = new Date(task.startDate);
+              return !isNaN(date.getTime()) ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Start Date</span>
+                  </div>
+                  <p className="text-sm font-medium">
+                    {date.toLocaleDateString()}
+                  </p>
                 </div>
-                <p className="text-sm font-medium">
-                  {new Date(task.startDate).toLocaleDateString()}
-                </p>
-              </div>
-            )}
+              ) : null;
+            })()}
 
             {/* Progress */}
             <div className="space-y-1">

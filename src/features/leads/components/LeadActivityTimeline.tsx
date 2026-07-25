@@ -73,7 +73,7 @@ export const LeadActivityTimeline = memo(function LeadActivityTimeline({ activit
     if (minutes < 60) return `${minutes} min ago`;
     if (hours < 24) return `${hours} hr ago`;
     if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
+    return !isNaN(date.getTime()) ? date.toLocaleDateString() : 'Invalid Date';
   };
 
   return (

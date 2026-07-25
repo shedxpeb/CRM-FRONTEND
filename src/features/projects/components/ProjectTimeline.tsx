@@ -91,7 +91,9 @@ const getActivityColor = (type: string) => {
 };
 
 const formatDate = (date: Date) => {
-  return new Date(date).toLocaleDateString('en-IN', {
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return 'Invalid Date';
+  return parsedDate.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -102,7 +104,9 @@ const formatDate = (date: Date) => {
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return 'Invalid Date';
+  const diffMs = now.getTime() - parsedDate.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);

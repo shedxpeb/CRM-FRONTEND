@@ -9,7 +9,9 @@ export function formatCurrency(amount: number, currency: string = 'INR'): string
 
 export function formatDate(date?: string): string {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString('en-IN', {
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return '-';
+  return parsedDate.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -18,7 +20,9 @@ export function formatDate(date?: string): string {
 
 export function formatDateTime(date?: string): string {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString('en-IN', {
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return '-';
+  return parsedDate.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

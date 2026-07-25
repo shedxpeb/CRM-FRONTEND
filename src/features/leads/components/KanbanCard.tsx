@@ -121,12 +121,13 @@ export const KanbanCard = memo(function KanbanCard({ lead, onDragStart, onDragEn
           <div className={cn('flex items-center gap-1.5 text-muted-foreground', componentTextSizes.table.monospace)}>
             <Calendar className="h-2.5 w-2.5" />
             <span>
-              {lead.nextFollowUpDate
-                ? new Date(lead.nextFollowUpDate).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: 'short',
-                  })
-                : 'No date'}
+              {lead.nextFollowUpDate && (() => {
+                const date = new Date(lead.nextFollowUpDate);
+                return !isNaN(date.getTime()) ? date.toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                }) : 'Invalid Date';
+              })() || 'No date'}
             </span>
           </div>
           <div className="flex items-center gap-1">

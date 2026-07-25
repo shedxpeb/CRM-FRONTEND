@@ -7,7 +7,9 @@ interface Props {
 }
 
 function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('en-IN', {
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return 'Invalid Date';
+  return parsedDate.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

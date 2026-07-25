@@ -21,8 +21,14 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
     title: task?.title || '',
     description: task?.description || '',
     assignedUserId: task?.assignedUserId || '',
-    dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-    startDate: task?.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '',
+    dueDate: task?.dueDate ? (() => {
+      const date = new Date(task.dueDate);
+      return !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '';
+    })() : '',
+    startDate: task?.startDate ? (() => {
+      const date = new Date(task.startDate);
+      return !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '';
+    })() : '',
     priority: (task?.priority || 'Medium') as TaskPriority,
     linkedModule: (task?.linkedModule || 'General') as LinkedModule,
     linkedRecordId: task?.linkedRecordId || '',
@@ -38,13 +44,22 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.startDate && formData.dueDate) {
-      const start = new Date(formData.startDate);
-      const due = new Date(formData.dueDate);
-      if (start > due) {
-        alert('Start date must be before due date');
-        return;
-      }
+    const dueDate = new Date(formData.dueDate);
+    const startDate = formData.startDate ? new Date(formData.startDate) : undefined;
+
+    if (isNaN(dueDate.getTime())) {
+      alert('Invalid due date');
+      return;
+    }
+
+    if (startDate && isNaN(startDate.getTime())) {
+      alert('Invalid start date');
+      return;
+    }
+
+    if (startDate && startDate > dueDate) {
+      alert('Start date must be before due date');
+      return;
     }
 
     const selectedUser = users.find((u) => u.id === formData.assignedUserId);
@@ -53,8 +68,8 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
       title: formData.title,
       description: formData.description,
       assignedUserId: formData.assignedUserId,
-      dueDate: new Date(formData.dueDate),
-      startDate: formData.startDate ? new Date(formData.startDate) : undefined,
+      dueDate,
+      startDate,
       priority: formData.priority,
       linkedModule: formData.linkedModule,
       linkedRecordId: formData.linkedRecordId || undefined,

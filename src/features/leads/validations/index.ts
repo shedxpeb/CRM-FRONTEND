@@ -99,11 +99,6 @@ export const baseLeadSchema = z.object({
     'Approved', 'Rejected', 'Converted',
   ]).optional().default('New'),
 
-  remarks: z.string()
-    .max(1000, 'Remarks must be less than 1000 characters')
-    .optional()
-    .or(z.literal('')),
-
   nextFollowUpDate: z.any().optional(),
 
   siteLocation: z.string().optional().or(z.literal('')),

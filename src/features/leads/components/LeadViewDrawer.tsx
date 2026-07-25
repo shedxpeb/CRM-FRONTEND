@@ -155,7 +155,6 @@ export const LeadViewDrawer = function LeadViewDrawer({
                 <EntityViewField label="Lead Source" value={lead.source} />
                 <EntityViewField label="Assigned Employee" value={lead.assignedTo} />
                 <EntityViewField label="Last Follow-up" value={formatDrawerDate(lead.lastFollowUp)} />
-                <EntityViewField label="Remarks" value={lead.remarks} />
               </EntityViewFieldGrid>
             </EntityViewSection>
 

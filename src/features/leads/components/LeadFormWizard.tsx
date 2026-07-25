@@ -70,7 +70,6 @@ export const LeadFormWizard = memo(function LeadFormWizard({
     facebook: initialData?.facebook ?? '',
     instagram: initialData?.instagram ?? '',
     tags: initialData?.tags ?? [],
-    remarks: initialData?.remarks ?? '',
     projectTitle: initialData?.projectTitle ?? '',
     projectType: (initialData?.projectType ?? config.projectTypes[0] ?? 'Factory') as ProjectType,
     structureType: (initialData?.structureType ?? config.structureTypes[0] ?? 'PEB') as StructureType,
@@ -199,7 +198,6 @@ export const LeadFormWizard = memo(function LeadFormWizard({
       source,
       priority: formData.priority,
       status,
-      remarks: formData.remarks || undefined,
       nextFollowUpDate: formData.nextFollowUpDate
         ? (formData.nextFollowUpDate instanceof Date
             ? formData.nextFollowUpDate.toISOString()
@@ -696,7 +694,7 @@ export const LeadFormWizard = memo(function LeadFormWizard({
         </div>
 
         <div className="space-y-4">
-          <h4 className="text-sm font-medium">Notes & Remarks</h4>
+          <h4 className="text-sm font-medium">Notes</h4>
           <div className="space-y-2">
             <label className="text-sm font-medium">Customer Notes</label>
             <textarea
@@ -713,15 +711,6 @@ export const LeadFormWizard = memo(function LeadFormWizard({
               placeholder="Enter special requirements"
               value={formData.specialRequirement ?? ''}
               onChange={(e) => handleInputChange('specialRequirement', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Remarks</label>
-            <textarea
-              className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              placeholder="Enter remarks"
-              value={formData.remarks ?? ''}
-              onChange={(e) => handleInputChange('remarks', e.target.value)}
             />
           </div>
         </div>

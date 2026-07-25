@@ -54,7 +54,9 @@ function formatDate(value?: Date | string | null) {
 function projectToFormInitial(project: Project) {
   const toDateInput = (d?: Date | string) => {
     if (!d) return '';
-    return new Date(d).toISOString().split('T')[0];
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
   };
   return {
     projectName: project.projectName,

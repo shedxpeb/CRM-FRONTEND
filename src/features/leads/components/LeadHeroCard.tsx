@@ -36,7 +36,9 @@ function getPriorityVariant(priority: LeadPriority) {
 
 function formatDate(value?: Date | string | null) {
   if (!value) return '-';
-  return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 interface LeadHeroCardProps {
