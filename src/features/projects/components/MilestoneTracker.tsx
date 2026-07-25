@@ -12,7 +12,9 @@ interface MilestoneTrackerProps {
 
 // Move helper functions outside component to prevent recreation
 const formatDate = (date: Date) => {
-  return new Date(date).toLocaleDateString('en-IN', {
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return 'Invalid Date';
+  return parsedDate.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

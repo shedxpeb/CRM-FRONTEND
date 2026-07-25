@@ -63,8 +63,7 @@ export const LEAD_MODULE_DEFAULTS = {
     {
       key: 'budgetRange',
       label: 'Budget Range',
-      type: 'select' as const,
-      options: ['Under ₹10L', '₹10L – ₹50L', 'Above ₹50L'],
+      type: 'textarea' as const,
     },
   ],
 };

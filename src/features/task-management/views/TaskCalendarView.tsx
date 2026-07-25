@@ -19,22 +19,28 @@ export const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
   tasks,
   onTaskClick,
 }) => {
+  console.log('TaskCalendarView received tasks:', tasks);
+  console.log('TaskCalendarView tasks length:', tasks?.length);
   // Default to the month of the task due date nearest to today, so the calendar
   // never opens on an empty month when tasks exist elsewhere on the timeline.
   const [currentDate, setCurrentDate] = useState<Date>(() => {
     if (!tasks || tasks.length === 0) return new Date();
     const now = new Date().getTime();
-    let nearest = new Date(tasks[0].dueDate);
-    let nearestDiff = Math.abs(nearest.getTime() - now);
+    let nearest: Date | null = null;
+    let nearestDiff = Infinity;
+
     for (const t of tasks) {
+      if (!t.dueDate) continue;
       const d = new Date(t.dueDate);
+      if (isNaN(d.getTime())) continue; // Skip invalid dates
       const diff = Math.abs(d.getTime() - now);
       if (diff < nearestDiff) {
         nearest = d;
         nearestDiff = diff;
       }
     }
-    return nearest;
+
+    return nearest || new Date();
   });
   const [view, setView] = useState<CalendarView>('month');
 
@@ -63,7 +69,9 @@ export const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
 
   const getTasksForDate = (date: Date) => {
     return tasks.filter(task => {
+      if (!task.dueDate) return false;
       const taskDate = new Date(task.dueDate);
+      if (isNaN(taskDate.getTime())) return false; // Skip invalid dates
       return (
         taskDate.getDate() === date.getDate() &&
         taskDate.getMonth() === date.getMonth() &&
@@ -298,54 +306,73 @@ export const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
   };
 
   const renderTimelineView = () => {
-    const sortedTasks = [...tasks].sort((a, b) =>
-      new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-    );
+    console.log('Timeline view - all tasks:', tasks);
+    console.log('Timeline view - tasks with dueDate:', tasks.filter(t => t.dueDate));
+    const sortedTasks = [...tasks]
+      .filter(task => {
+        const hasDueDate = task.dueDate && !isNaN(new Date(task.dueDate).getTime());
+        console.log(`Task ${task.id} - dueDate: ${task.dueDate}, valid: ${hasDueDate}`);
+        return hasDueDate;
+      })
+      .sort((a, b) =>
+        new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+      );
+    console.log('Timeline view - sorted tasks:', sortedTasks);
 
     return (
       <div className="space-y-4">
-        {sortedTasks.map((task, index) => (
-          <div key={task.id} className="flex gap-4">
-            <div className="flex flex-col items-center">
-              <div className={cn('w-4 h-4 rounded-full ring-4 ring-white shadow-sm', getPriorityColor(task.priority))} />
-              {index < sortedTasks.length - 1 && (
-                <div className="w-0.5 h-full bg-gradient-to-b from-gray-200 to-transparent mt-2" />
-              )}
-            </div>
-            <Card
-              onClick={() => onTaskClick(task)}
-              className={cn(
-                'flex-1 cursor-pointer hover:shadow-lg transition-all duration-200 border-2',
-                getPriorityLightBg(task.priority)
-              )}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground font-medium">
-                        {new Date(task.dueDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
-                    <h3 className="font-semibold mb-2 text-gray-800">{task.title}</h3>
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="text-gray-600">{task.assignedUserName}</span>
-                      <Badge className={cn('text-white border-0', getPriorityColor(task.priority))}>{task.priority}</Badge>
-                      <Badge variant="outline" className="bg-white/50">{task.status}</Badge>
-                    </div>
-                  </div>
-                  {task.progress !== undefined && (
-                    <div className="text-right">
-                      <div className={cn('text-2xl font-bold', getPriorityColor(task.priority).replace('bg-', 'text-'))}>{task.progress}%</div>
-                      <div className="text-xs text-muted-foreground">Progress</div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+        {sortedTasks.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 bg-slate-50 rounded-2xl">
+            <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+            <p className="font-medium">No tasks with valid due dates to display</p>
           </div>
-        ))}
+        ) : (
+          sortedTasks.map((task, index) => (
+            <div key={task.id} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <div className={cn('w-4 h-4 rounded-full ring-4 ring-white shadow-sm', getPriorityColor(task.priority))} />
+                {index < sortedTasks.length - 1 && (
+                  <div className="w-0.5 h-full bg-gradient-to-b from-gray-200 to-transparent mt-2" />
+                )}
+              </div>
+              <Card
+                onClick={() => onTaskClick(task)}
+                className={cn(
+                  'flex-1 cursor-pointer hover:shadow-lg transition-all duration-200 border-2',
+                  getPriorityLightBg(task.priority)
+                )}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground font-medium">
+                          {(() => {
+                            const date = new Date(task.dueDate);
+                            return !isNaN(date.getTime()) ? date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '-';
+                          })()}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold mb-2 text-gray-800">{task.title}</h3>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-gray-600">{task.assignedUserName}</span>
+                        <Badge className={cn('text-white border-0', getPriorityColor(task.priority))}>{task.priority}</Badge>
+                        <Badge variant="outline" className="bg-white/50">{task.status}</Badge>
+                      </div>
+                    </div>
+                    {task.progress !== undefined && (
+                      <div className="text-right">
+                        <div className={cn('text-2xl font-bold', getPriorityColor(task.priority).replace('bg-', 'text-'))}>{task.progress}%</div>
+                        <div className="text-xs text-muted-foreground">Progress</div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ))
+        )}
       </div>
     );
   };

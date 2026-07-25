@@ -65,7 +65,11 @@ export function UsersRoles() {
     {
       key: 'lastLogin',
       label: 'Last Login',
-      render: (value: Date) => value ? new Date(value).toLocaleDateString() : 'Never',
+      render: (value: Date) => {
+        if (!value) return 'Never';
+        const date = new Date(value);
+        return !isNaN(date.getTime()) ? date.toLocaleDateString() : 'Never';
+      },
     },
   ];
 

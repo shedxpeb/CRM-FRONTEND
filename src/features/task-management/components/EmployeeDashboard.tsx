@@ -203,11 +203,14 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="truncate">{task.assignedUserName}</span>
-            {task.dueDate && (
-              <span className="whitespace-nowrap">
-                {new Date(task.dueDate).toLocaleDateString()}
-              </span>
-            )}
+            {task.dueDate && (() => {
+              const date = new Date(task.dueDate);
+              return !isNaN(date.getTime()) ? (
+                <span className="whitespace-nowrap">
+                  {date.toLocaleDateString()}
+                </span>
+              ) : null;
+            })()}
           </div>
 
           {task.progress !== undefined && task.progress > 0 && (

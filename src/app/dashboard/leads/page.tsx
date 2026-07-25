@@ -214,9 +214,11 @@ const baseColumns = [
     headerClassName: 'hidden lg:table-cell',
     render: (value: Date) => {
       if (!value) return '-';
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return '-';
       return (
         <span className="text-xs tabular-nums">
-          {new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          {date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
         </span>
       );
     },
@@ -228,9 +230,11 @@ const baseColumns = [
     headerClassName: 'hidden xl:table-cell',
     render: (value: Date) => {
       if (!value) return '-';
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return '-';
       return (
         <span className="text-xs tabular-nums">
-          {new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          {date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
         </span>
       );
     },
@@ -857,6 +861,13 @@ export default function LeadsPage() {
   }, [updateLeadMutation]);
 
   const handleStatusChange = useCallback(async (lead: Lead, status: LeadStatus) => {
+    // If status is being changed to Converted, open the convert to customer dialog instead
+    if (status === 'Converted') {
+      setSelectedLeadData(lead);
+      setIsConvertToCustomerDialogOpen(true);
+      return;
+    }
+
     try {
       await updateLeadMutation.mutateAsync({ id: lead.id, data: { status } });
       toast.success(`Status changed to ${status}`);
@@ -882,7 +893,13 @@ export default function LeadsPage() {
 
   const handleBulkStatusChange = useCallback(async (status: LeadStatus) => {
     if (selectedRows.size === 0) return;
-    
+
+    // Prevent bulk conversion to Converted status - requires individual conversion
+    if (status === 'Converted') {
+      toast.error('Please convert leads to customers individually using the "Convert to Customer" option in the row actions menu');
+      return;
+    }
+
     try {
       const ids = Array.from(selectedRows).map(String);
       await bulkStatusUpdateMutation.mutateAsync({ ids, status });

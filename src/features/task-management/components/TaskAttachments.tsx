@@ -197,7 +197,10 @@ export const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
                       <span>•</span>
                       <span>{attachment.uploadedByName}</span>
                       <span>•</span>
-                      <span>{attachment.uploadedAt.toLocaleDateString()}</span>
+                      <span>{(() => {
+                        const date = new Date(attachment.uploadedAt);
+                        return !isNaN(date.getTime()) ? date.toLocaleDateString() : '-';
+                      })()}</span>
                     </div>
                   </div>
 

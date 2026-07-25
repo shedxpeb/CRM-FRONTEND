@@ -174,11 +174,14 @@ export const TaskChecklist: React.FC<TaskChecklistProps> = ({
             </div>
 
             {/* Completion Info */}
-            {item.completed && item.completedAt && (
-              <div className="mt-2 text-[10px] text-muted-foreground">
-                Completed {item.completedAt.toLocaleDateString()}
-              </div>
-            )}
+            {item.completed && item.completedAt && (() => {
+              const date = new Date(item.completedAt);
+              return !isNaN(date.getTime()) ? (
+                <div className="mt-2 text-[10px] text-muted-foreground">
+                  Completed {date.toLocaleDateString()}
+                </div>
+              ) : null;
+            })()}
           </Card>
         ))}
       </div>

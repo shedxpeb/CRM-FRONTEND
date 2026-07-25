@@ -238,7 +238,7 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm">
-              {selectedDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              {selectedDate && !isNaN(selectedDate.getTime()) ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Invalid Date'}
             </DialogTitle>
           </DialogHeader>
           
