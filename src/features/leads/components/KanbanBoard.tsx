@@ -9,10 +9,11 @@ interface KanbanBoardProps {
   leads: Lead[];
   pipelineStages?: LeadStatus[];
   onLeadUpdate: (lead: Lead) => void;
+  onConvertToCustomer?: (lead: Lead) => void;
   onLeadsReorder?: (leads: Lead[]) => void;
 }
 
-export const KanbanBoard = memo(function KanbanBoard({ leads, pipelineStages, onLeadUpdate, onLeadsReorder }: KanbanBoardProps) {
+export const KanbanBoard = memo(function KanbanBoard({ leads, pipelineStages, onLeadUpdate, onConvertToCustomer, onLeadsReorder }: KanbanBoardProps) {
   const stages = (pipelineStages ?? DEFAULT_LEAD_CONFIGURATION.statuses) as LeadStatus[];
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
@@ -124,13 +125,17 @@ export const KanbanBoard = memo(function KanbanBoard({ leads, pipelineStages, on
       }
     } else {
       // Moving to different column
-      const updatedLead = {
-        ...draggedLead,
-        status: newStatus as LeadStatus,
-        updatedAt: new Date(),
-      };
+      if (newStatus === 'Converted' && onConvertToCustomer) {
+        onConvertToCustomer(draggedLead);
+      } else {
+        const updatedLead = {
+          ...draggedLead,
+          status: newStatus as LeadStatus,
+          updatedAt: new Date(),
+        };
 
-      onLeadUpdate(updatedLead);
+        onLeadUpdate(updatedLead);
+      }
     }
     
     setDraggedLead(null);

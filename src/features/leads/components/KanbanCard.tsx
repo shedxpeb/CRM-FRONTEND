@@ -7,6 +7,7 @@ import { Lead } from '@/types/leads';
 import { MapPin, Calendar, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { componentTextSizes } from '@/lib/design-system';
+import { getLeadStatusHex } from '@/features/leads/constants';
 
 interface KanbanCardProps {
   lead: Lead;
@@ -15,22 +16,6 @@ interface KanbanCardProps {
 }
 
 export const KanbanCard = memo(function KanbanCard({ lead, onDragStart, onDragEnd }: KanbanCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'New': return 'bg-blue-500';
-      case 'Contacted': return 'bg-yellow-500';
-      case 'Design Pending':
-      case 'BOQ Pending':
-      case 'Estimate Sent':
-      case 'Proposal Sent':
-      case 'Negotiation': return 'bg-purple-500';
-      case 'Approved':
-      case 'Converted': return 'bg-green-500';
-      case 'Rejected': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'Urgent': return 'text-red-600';
@@ -49,7 +34,7 @@ export const KanbanCard = memo(function KanbanCard({ lead, onDragStart, onDragEn
       }}
       onDragEnd={onDragEnd}
       className="cursor-grab active:cursor-grabbing hover:shadow-md transition-all border-l-4"
-      style={{ borderLeftColor: getStatusColor(lead.status) + '40' }}
+      style={{ borderLeftColor: getLeadStatusHex(lead.status) + '40' }}
     >
       <CardContent className="p-3 space-y-2">
         {/* Header */}

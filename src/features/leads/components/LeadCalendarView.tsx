@@ -8,32 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Checkbox } from '@/components/ui/checkbox';
 import { Lead, LeadStatus } from '@/types/leads';
 import { ChevronLeft, ChevronRight, Calendar, MapPin, Phone, Mail, X, MoreVertical, Trash2, UserPlus, Mail as MailIcon } from 'lucide-react';
+import { getLeadStatusColor } from '@/features/leads/constants';
 
 interface LeadCalendarViewProps {
   leads: Lead[];
   onLeadClick: (lead: Lead) => void;
+  onConvertToCustomer?: (lead: Lead) => void;
 }
 
-export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadClick }: LeadCalendarViewProps) {
+export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadClick, onConvertToCustomer }: LeadCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
-
-  const getStatusColor = (status: LeadStatus) => {
-    switch (status) {
-      case 'New': return 'bg-blue-500';
-      case 'Contacted': return 'bg-yellow-500';
-      case 'DesignPending':
-      case 'BOQPending': return 'bg-indigo-500';
-      case 'EstimateSent':
-      case 'ProposalSent': return 'bg-purple-500';
-      case 'Negotiation': return 'bg-orange-500';
-      case 'Approved':
-      case 'Converted': return 'bg-green-500';
-      case 'Rejected': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -193,7 +179,7 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
                     {dayLeads.slice(0, 5).map(lead => (
                       <div
                         key={lead.id}
-                        className={`h-2 w-2 rounded-full ${getStatusColor(lead.status)}`}
+                        className={`h-2 w-2 rounded-full ${getLeadStatusColor(lead.status)}`}
                     
                         title={`${lead.customerName} - ${lead.status}`}
                         onClick={(e) => {
@@ -214,7 +200,7 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
                       <div className="space-y-1 max-h-24 overflow-y-auto">
                         {dayLeads.slice(0, 5).map(lead => (
                           <div key={lead.id} className="flex items-center gap-1.5 text-[8px]">
-                            <div className={`h-1 w-1 rounded-full ${getStatusColor(lead.status)}`} />
+                            <div className={`h-1 w-1 rounded-full ${getLeadStatusColor(lead.status)}`} />
                             <span className="truncate">{lead.customerName}</span>
                           </div>
                         ))}
@@ -255,7 +241,15 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
                     <Trash2 className="h-4 w-4 mr-1" />
                     Delete
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const selectedLeadObjects = leads.filter(l => selectedLeads.has(l.id));
+                    if (selectedLeadObjects.length === 1) {
+                      onConvertToCustomer?.(selectedLeadObjects[0]);
+                    } else if (selectedLeadObjects.length > 1) {
+                      onConvertToCustomer?.(selectedLeadObjects[0]);
+                    }
+                    setSelectedLeads(new Set());
+                  }}>
                     <UserPlus className="h-4 w-4 mr-1" />
                     Convert to Customer
                   </Button>
@@ -302,7 +296,7 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
                     }}
                   >
                     <div className="flex items-center gap-2 mb-1 whitespace-nowrap">
-                      <div className={`h-2 w-2 rounded-full ${getStatusColor(lead.status)}`} />
+                      <div className={`h-2 w-2 rounded-full ${getLeadStatusColor(lead.status)}`} />
                       <span className="font-semibold text-sm">{lead.customerName}</span>
                       <Badge variant="outline" className="text-xs shrink-0">
                         {lead.status}

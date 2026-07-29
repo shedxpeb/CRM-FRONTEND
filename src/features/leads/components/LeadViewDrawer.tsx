@@ -8,6 +8,7 @@ import { LeadActivityTimeline } from './LeadActivityTimeline';
 import { LeadCustomFields } from './LeadCustomFields';
 import { useLeadConfiguration } from '@/features/leads/hooks/useLeads';
 import { useRouter } from 'next/navigation';
+import { getLeadStatusVariant, getLeadPriorityVariant } from '@/features/leads/constants';
 import {
   EntityViewDrawer,
   EntityViewHeader,
@@ -38,21 +39,6 @@ interface LeadViewDrawerProps {
   activities?: LeadActivity[];
 }
 
-function getStatusVariant(status: LeadStatus) {
-  if (status === 'New') return 'info';
-  if (status === 'Contacted') return 'warning';
-  if (status === 'Converted' || status === 'Approved') return 'success';
-  if (status === 'Rejected') return 'destructive';
-  return 'secondary';
-}
-
-function getPriorityVariant(priority: LeadPriority) {
-  if (priority === 'Urgent') return 'destructive';
-  if (priority === 'High') return 'warning';
-  if (priority === 'Medium') return 'info';
-  return 'secondary';
-}
-
 export const LeadViewDrawer = function LeadViewDrawer({
   lead,
   open,
@@ -80,8 +66,8 @@ export const LeadViewDrawer = function LeadViewDrawer({
 
       <EntityViewBody>
         <EntityViewBadges>
-          <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-          <Badge variant={getPriorityVariant(lead.priority)}>{lead.priority}</Badge>
+          <Badge variant={getLeadStatusVariant(lead.status)}>{lead.status}</Badge>
+          <Badge variant={getLeadPriorityVariant(lead.priority)}>{lead.priority}</Badge>
           {lead.customerId && <Badge variant="success">Converted</Badge>}
         </EntityViewBadges>
 

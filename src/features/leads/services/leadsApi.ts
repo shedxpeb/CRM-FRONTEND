@@ -97,6 +97,40 @@ export const leadsApi = {
       params: { mobile, email },
     }),
 
+  getProjectData: (id: string) =>
+    api.get<BackendResponse<{
+      id: string;
+      leadNumber: number;
+      customerName: string;
+      companyName: string;
+      customerId: string | null;
+      status: string;
+      isConverted: boolean;
+      projectTitle: string;
+      projectType: string;
+      structureType: string;
+      width: number | null;
+      length: number | null;
+      height: number | null;
+      baySpacing: number | null;
+      roofType: string | null;
+      craneRequired: boolean | null;
+      craneCapacity: number | null;
+      mezzanine: boolean | null;
+      mezzanineArea: number | null;
+      wallType: string | null;
+      insulationRequired: boolean | null;
+      addressLine1: string | null;
+      addressLine2: string | null;
+      city: string | null;
+      state: string | null;
+      pincode: string | null;
+      siteAddress: string | null;
+      siteLocation: string | null;
+      specialRequirement: string | null;
+      customerNotes: string | null;
+    }>>(`/lead/${id}/project-data`),
+
   updateWorkflow: (id: string, stage: string, notes?: string) =>
     api.post<BackendResponse<Lead>>(`/lead/${id}/workflow`, { stage, notes }),
 

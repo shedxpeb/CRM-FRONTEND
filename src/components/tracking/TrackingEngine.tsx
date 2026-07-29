@@ -32,14 +32,19 @@ interface TrackingEngineProps {
   entityId: string;
   className?: string;
   onStageAction?: (stage: string) => void;
+  onConvertToCustomer?: (entityId: string) => void;
   /** @deprecated kept for compatibility — TrackingEngine is always full tracking now */
   variant?: 'pipeline' | 'full';
 }
 
 type TabId = 'pipeline' | 'view' | 'activity' | 'comments' | 'files';
 
-function StageIcon({ isCurrent, isPast, isFinal }: { isCurrent: boolean; isPast: boolean; isFinal: boolean }) {
-  if (isFinal && isCurrent) return <XCircle className="w-4 h-4 text-red-500" />;
+function StageIcon({ isCurrent, isPast, isFinal, status }: { isCurrent: boolean; isPast: boolean; isFinal: boolean; status?: string }) {
+  const isRejected = status?.toLowerCase() === 'rejected';
+  const isConverted = status?.toLowerCase() === 'converted';
+  const isSuccessfulFinal = isFinal && isCurrent && !isRejected;
+
+  if (isSuccessfulFinal) return <CheckCircle2 className="w-4 h-4 text-green-500" />;
   if (isPast) return <CheckCircle2 className="w-4 h-4 text-green-500" />;
   if (isCurrent) return <Circle className="w-4 h-4 fill-primary/20 text-primary" />;
   return <Circle className="w-4 h-4 text-muted-foreground/30" />;
@@ -115,7 +120,7 @@ function RecordSnapshot({ details }: { details: StageDetails }) {
   );
 }
 
-function TrackingEngineComponent({ entityType, entityId, className, onStageAction }: TrackingEngineProps) {
+function TrackingEngineComponent({ entityType, entityId, className, onStageAction, onConvertToCustomer }: TrackingEngineProps) {
   const { data, isLoading, error } = useTrackingData(entityType, entityId);
   const changeStatus = useChangeStatus(entityType, entityId);
   const [tab, setTab] = useState<TabId>('pipeline');
@@ -152,6 +157,13 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
   const { pipeline, progress, currentStage, stageDetails, comments, attachments, currentStatus } = tracking;
 
   const handleMoveTo = async (status: string) => {
+    // Intercept Converted: open the conversion modal instead of direct status change
+    if (status === 'Converted' && onConvertToCustomer) {
+      setPendingStatus(null);
+      onConvertToCustomer(entityId);
+      return;
+    }
+
     setStatusError(null);
     try {
       await changeStatus.mutateAsync({ status });
@@ -183,9 +195,19 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
             <span className="text-sm font-semibold truncate">
               {currentStage?.label || currentStatus || 'Status not set'}
             </span>
-            {currentStage?.isFinal && (
+            {currentStage?.isFinal && currentStage?.status?.toLowerCase() === 'rejected' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">
+                REJECTED
+              </span>
+            )}
+            {currentStage?.isFinal && currentStage?.status?.toLowerCase() !== 'rejected' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">
+                COMPLETED
+              </span>
+            )}
+            {!currentStage?.isFinal && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                FINAL
+                IN PROGRESS
               </span>
             )}
             <span className="text-[11px] text-muted-foreground">
@@ -253,23 +275,27 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
           <div className="space-y-0 relative">
             {pipeline.map((stage, idx) => {
               const isLast = idx === pipeline.length - 1;
+              const isSuccessfulFinal = stage.isFinal && stage.isCurrent && stage.status?.toLowerCase() !== 'rejected';
+              const isRejectedCurrent = stage.isFinal && stage.isCurrent && stage.status?.toLowerCase() === 'rejected';
+              const allowedSet = new Set(transitions);
 
               return (
                 <div
                   key={stage.id}
                   className={cn(
                     'relative flex gap-3 pb-1 last:pb-0',
-                    !stage.isCurrent && 'cursor-pointer'
+                    !stage.isCurrent && allowedSet.has(stage.status) && 'cursor-pointer',
+                    !stage.isCurrent && !allowedSet.has(stage.status) && 'opacity-60'
                   )}
                   onClick={() => {
-                    if (!stage.isCurrent) setPendingStatus(stage.status);
+                    if (!stage.isCurrent && allowedSet.has(stage.status)) setPendingStatus(stage.status);
                   }}
                 >
                   {!isLast && (
                     <div
                       className={cn(
                         'absolute left-[13px] top-6 bottom-0 w-0.5',
-                        stage.isPast ? 'bg-green-400' : 'bg-border'
+                        stage.isPast || isSuccessfulFinal ? 'bg-green-400' : 'bg-border'
                       )}
                     />
                   )}
@@ -278,11 +304,13 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
                     className={cn(
                       'relative z-10 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center',
                       stage.isPast && 'bg-green-100 dark:bg-green-900/30',
-                      stage.isCurrent && 'bg-primary/10',
+                      isSuccessfulFinal && 'bg-green-100 dark:bg-green-900/30',
+                      isRejectedCurrent && 'bg-red-100 dark:bg-red-900/30',
+                      stage.isCurrent && !isSuccessfulFinal && !isRejectedCurrent && 'bg-primary/10',
                       !stage.isPast && !stage.isCurrent && 'bg-muted',
                     )}
                   >
-                    <StageIcon isCurrent={stage.isCurrent} isPast={stage.isPast} isFinal={stage.isFinal} />
+                    <StageIcon isCurrent={stage.isCurrent} isPast={stage.isPast} isFinal={stage.isFinal} status={stage.status} />
                   </div>
 
                   <div className="flex-1 min-w-0 py-1">
@@ -291,13 +319,25 @@ function TrackingEngineComponent({ entityType, entityId, className, onStageActio
                         className={cn(
                           'text-sm font-medium',
                           stage.isPast && 'text-green-600',
-                          stage.isCurrent && 'text-primary font-semibold',
+                          isSuccessfulFinal && 'text-green-600 font-semibold',
+                          isRejectedCurrent && 'text-red-600 font-semibold',
+                          stage.isCurrent && !isSuccessfulFinal && !isRejectedCurrent && 'text-primary font-semibold',
                           !stage.isPast && !stage.isCurrent && 'text-muted-foreground',
                         )}
                       >
                         {stage.label}
                       </span>
-                      {stage.isCurrent && (
+                      {isSuccessfulFinal && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                          Current
+                        </span>
+                      )}
+                      {isRejectedCurrent && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+                          Current
+                        </span>
+                      )}
+                      {stage.isCurrent && !isSuccessfulFinal && !isRejectedCurrent && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                           Current
                         </span>

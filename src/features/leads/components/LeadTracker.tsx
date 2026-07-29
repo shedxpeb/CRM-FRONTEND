@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Lead } from '@/types/leads';
+import { getLeadStatusVariant, getLeadPriorityVariant } from '@/features/leads/constants';
 import { 
   Clock,
   Calendar,
@@ -25,26 +26,6 @@ interface LeadTrackerProps {
 }
 
 export const LeadTracker = memo(function LeadTracker({ lead, open, onOpenChange }: LeadTrackerProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'New': return 'info';
-      case 'Contacted': return 'warning';
-      case 'Converted':
-      case 'Approved': return 'success';
-      case 'Rejected': return 'destructive';
-      default: return 'secondary';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Urgent': return 'destructive';
-      case 'High': return 'warning';
-      case 'Medium': return 'info';
-      default: return 'secondary';
-    }
-  };
-
   const getDaysInStatus = () => {
     if (!lead.createdAt) return 0;
     const now = new Date();
@@ -82,8 +63,8 @@ export const LeadTracker = memo(function LeadTracker({ lead, open, onOpenChange 
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-base">Current Status</h3>
                 <div className="flex gap-2">
-                  <Badge variant={getStatusColor(lead.status)}>{lead.status}</Badge>
-                  <Badge variant={getPriorityColor(lead.priority)}>{lead.priority}</Badge>
+                  <Badge variant={getLeadStatusVariant(lead.status)}>{lead.status}</Badge>
+                  <Badge variant={getLeadPriorityVariant(lead.priority)}>{lead.priority}</Badge>
                 </div>
               </div>
               

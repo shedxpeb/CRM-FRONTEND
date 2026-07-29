@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Lead } from '@/types/leads';
 import { KanbanCard } from './KanbanCard';
 import { Plus } from 'lucide-react';
+import { getLeadStatusColor } from '@/features/leads/constants';
 
 interface KanbanColumnProps {
   status: string;
@@ -45,21 +46,6 @@ export const KanbanColumn = memo(function KanbanColumn({
     e.stopPropagation();
     onDrop(e, status, index);
   };
-  const getColumnColor = (status: string) => {
-    switch (status) {
-      case 'New': return 'bg-blue-500';
-      case 'Contacted': return 'bg-yellow-500';
-      case 'Design Pending':
-      case 'BOQ Pending': return 'bg-indigo-500';
-      case 'Estimate Sent':
-      case 'Proposal Sent': return 'bg-purple-500';
-      case 'Negotiation': return 'bg-orange-500';
-      case 'Approved':
-      case 'Converted': return 'bg-green-500';
-      case 'Rejected': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
 
   return (
     <div
@@ -76,7 +62,7 @@ export const KanbanColumn = memo(function KanbanColumn({
         <CardHeader className="p-3 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className={`h-2.5 w-2.5 rounded-full ${getColumnColor(status)}`} />
+              <div className={`h-2.5 w-2.5 rounded-full ${getLeadStatusColor(status)}`} />
               <h3 className="font-semibold text-xs capitalize">{status}</h3>
               <Badge variant="secondary" className="text-xs px-1.5 py-0">
                 {count}

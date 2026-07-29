@@ -70,6 +70,20 @@ export function useCustomer(id: string) {
 }
 
 /**
+ * Fetch customer data optimized for project creation (subset of fields)
+ */
+export function useCustomerProjectData(id: string) {
+  return useQuery({
+    queryKey: ['customer-project-data', id],
+    queryFn: () => customersApi.getProjectData(id),
+    enabled: !!id,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
  * Create new customer
  */
 export function useCreateCustomer() {
