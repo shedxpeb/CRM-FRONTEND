@@ -10,8 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TrackingEngine } from '@/components/tracking/TrackingEngine';
 import { useLead, useUpdateLead, useLeadConfiguration } from '@/features/leads/hooks/useLeads';
+import { useLeadConversion } from '@/features/leads/hooks/useLeadConversion';
+import { getLeadStatusVariant, getLeadPriorityVariant } from '@/features/leads/constants';
+import { useQueryClient } from '@tanstack/react-query';
 import { ROUTES } from '@/core/routes';
 import { cn } from '@/lib/utils';
+import { toast } from '@/components/ui/toast';
 import {
   ArrowLeft,
   ChevronDown,
@@ -26,6 +30,7 @@ import {
   ExternalLink,
   Edit3,
   Pencil,
+  ArrowRightLeft,
 } from 'lucide-react';
 import type { Lead, LeadStatus, LeadPriority } from '@/types/leads';
 
@@ -33,21 +38,6 @@ const LeadForm = dynamic(() => import('@/features/leads/components/LeadForm').th
   loading: () => <div className="p-8 text-center text-sm text-muted-foreground">Loading form...</div>,
   ssr: false,
 });
-
-function getStatusVariant(status: LeadStatus) {
-  if (status === 'New') return 'info';
-  if (status === 'Contacted') return 'warning';
-  if (status === 'Converted' || status === 'Approved') return 'success';
-  if (status === 'Rejected') return 'destructive';
-  return 'secondary';
-}
-
-function getPriorityVariant(priority: LeadPriority) {
-  if (priority === 'Urgent') return 'destructive';
-  if (priority === 'High') return 'warning';
-  if (priority === 'Medium') return 'info';
-  return 'secondary';
-}
 
 function formatDate(value?: Date | string | null) {
   if (!value) return '-';
@@ -96,6 +86,8 @@ export default function LeadDetailsPage() {
   const lead = leadData?.data || null;
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { openConversionModal, ConversionDialog } = useLeadConversion();
 
   const handleBack = useCallback(() => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -153,8 +145,8 @@ export default function LeadDetailsPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-semibold truncate">LD-{String(lead.leadNumber).padStart(6, '0')}</h1>
-              <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-              <Badge variant={getPriorityVariant(lead.priority)}>{lead.priority} Priority</Badge>
+              <Badge variant={getLeadStatusVariant(lead.status)}>{lead.status}</Badge>
+              <Badge variant={getLeadPriorityVariant(lead.priority)}>{lead.priority} Priority</Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               {lead.customerName}{lead.companyName ? ` · ${lead.companyName}` : ''}{lead.city ? ` · ${lead.city}` : ''}
@@ -164,6 +156,12 @@ export default function LeadDetailsPage() {
             <Pencil className="w-3.5 h-3.5" />
             Edit
           </Button>
+          {!lead.customerId && lead.status !== 'Converted' && (
+            <Button variant="default" size="sm" onClick={() => openConversionModal(lead)} className="gap-1.5">
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              Convert to Customer
+            </Button>
+          )}
         </div>
 
         {/* ─── KPI CARDS ─────────────────────────────────── */}
@@ -196,7 +194,7 @@ export default function LeadDetailsPage() {
 
         {/* ─── FULL TRACKING (pipeline + activity + comments + files) ── */}
         <Section title="Tracking" defaultOpen={true}>
-          <TrackingEngine entityType="lead" entityId={leadId} />
+          <TrackingEngine entityType="lead" entityId={leadId} onConvertToCustomer={() => lead && openConversionModal(lead)} />
         </Section>
 
         {/* ─── OVERVIEW ──────────────────────────────────── */}
@@ -366,6 +364,9 @@ export default function LeadDetailsPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* ─── CONVERT TO CUSTOMER DIALOG ───────────────────── */}
+      {ConversionDialog}
     </MainLayout>
   );
 }

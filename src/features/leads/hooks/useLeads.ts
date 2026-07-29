@@ -80,6 +80,20 @@ export function useLead(id: string) {
 }
 
 /**
+ * Fetch lead data optimized for project creation (subset of fields)
+ */
+export function useLeadProjectData(id: string) {
+  return useQuery({
+    queryKey: ['lead-project-data', id],
+    queryFn: () => leadsApi.getProjectData(id),
+    enabled: !!id,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
  * Create new lead
  */
 export function useCreateLead() {

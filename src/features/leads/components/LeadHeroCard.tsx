@@ -18,21 +18,7 @@ import {
 import { Lead, LeadPriority, LeadStatus } from '@/types/leads';
 import { cn } from '@/lib/utils';
 import { componentTextSizes } from '@/lib/design-system';
-
-function getStatusVariant(status: LeadStatus) {
-  if (status === 'New') return 'info';
-  if (status === 'Contacted') return 'warning';
-  if (status === 'Converted' || status === 'Approved') return 'success';
-  if (status === 'Rejected') return 'destructive';
-  return 'secondary';
-}
-
-function getPriorityVariant(priority: LeadPriority) {
-  if (priority === 'Urgent') return 'destructive';
-  if (priority === 'High') return 'warning';
-  if (priority === 'Medium') return 'info';
-  return 'secondary';
-}
+import { getLeadStatusVariant, getLeadPriorityVariant } from '@/features/leads/constants';
 
 function formatDate(value?: Date | string | null) {
   if (!value) return '-';
@@ -61,7 +47,7 @@ export const LeadHeroCard = memo(function LeadHeroCard({ lead, compact = false }
         </div>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="text-sm font-semibold truncate">{lead.companyName}</span>
-          <Badge variant={getStatusVariant(lead.status)} className="text-xs flex-shrink-0">
+          <Badge variant={getLeadStatusVariant(lead.status)} className="text-xs flex-shrink-0">
             {lead.status}
           </Badge>
         </div>
@@ -101,8 +87,8 @@ export const LeadHeroCard = memo(function LeadHeroCard({ lead, compact = false }
               <h2 className={cn(componentTextSizes.pageHeader.title, 'font-bold')}>
                 {lead.companyName}
               </h2>
-              <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-              <Badge variant={getPriorityVariant(lead.priority)}>{lead.priority} Priority</Badge>
+              <Badge variant={getLeadStatusVariant(lead.status)}>{lead.status}</Badge>
+              <Badge variant={getLeadPriorityVariant(lead.priority)}>{lead.priority} Priority</Badge>
             </div>
 
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-2">

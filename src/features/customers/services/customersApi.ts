@@ -74,4 +74,32 @@ export const customersApi = {
 
   convertLeadToCustomer: (data: ConvertLeadToCustomerDto) =>
     api.post<BackendResponse<{ customer: Customer; lead: unknown; summary?: unknown }>>('/customer/convert-lead', data),
+
+  getProjectData: (id: string) =>
+    api.get<BackendResponse<{
+      id: string;
+      customerId: number;
+      customerName: string;
+      companyName: string;
+      mobile: string;
+      alternateMobile: string | null;
+      email: string;
+      gstNumber: string | null;
+      panNumber: string | null;
+      industry: string | null;
+      businessType: string | null;
+      website: string | null;
+      address: string;
+      city: string;
+      state: string;
+      country: string | null;
+      pincode: string | null;
+      assignedEmployee: string | null;
+      assignedEmployeeId: string | null;
+      source: string;
+      status: string;
+      notes: string | null;
+      customFields: Record<string, unknown> | null;
+      leadId: string | null;
+    }>>(`/customer/${id}/project-data`),
 };

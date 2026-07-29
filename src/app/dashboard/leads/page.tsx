@@ -26,10 +26,6 @@ const LeadRowActions = dynamic(() => import('@/features/leads/components/LeadRow
   loading: () => <div className="p-2">Loading...</div>,
   ssr: false
 });
-const LeadToCustomerConversionDialog = dynamic(() => import('@/features/leads/components/LeadToCustomerConversionDialog').then(mod => ({ default: mod.LeadToCustomerConversionDialog })), {
-  loading: () => <div className="p-8 text-center">Loading...</div>,
-  ssr: false
-});
 const LeadToProjectConversionDialog = dynamic(() => import('@/features/leads/components/LeadToProjectConversionDialog').then(mod => ({ default: mod.LeadToProjectConversionDialog })), {
   loading: () => <div className="p-8 text-center">Loading...</div>,
   ssr: false
@@ -44,6 +40,8 @@ const LeadCalendarView = dynamic(() => import('@/features/leads/components/LeadC
 });
 import { Lead, LeadStatus, LeadPriority } from '@/types/leads';
 import { useLeadConfiguration, useLeads, useKanbanLeads, useCalendarLeads, useDeleteLead, useCreateLead, useUpdateLead, useBulkStatusUpdate, useBulkDelete, useImportLeads } from '@/features/leads/hooks/useLeads';
+import { useLeadConversion } from '@/features/leads/hooks/useLeadConversion';
+import { getLeadStatusVariant, getLeadPriorityVariant } from '@/features/leads/constants';
 import { getLeadCustomFieldValue } from '@/features/leads/components/LeadCustomFields';
 import { leadsApi, ImportResult } from '@/features/leads/services/leadsApi';
 import { toast } from '@/components/ui/toast';
@@ -67,13 +65,7 @@ import {
 
 const statusBadge = (value: LeadStatus) => (
   <Badge
-    variant={
-      value === 'New' ? 'info' :
-      value === 'Contacted' ? 'warning' :
-      value === 'Converted' || value === 'Approved' ? 'success' :
-      value === 'Rejected' ? 'destructive' :
-      'secondary'
-    }
+    variant={getLeadStatusVariant(value)}
     className="text-[10px] sm:text-xs whitespace-nowrap"
   >
     {value}
@@ -82,12 +74,7 @@ const statusBadge = (value: LeadStatus) => (
 
 const priorityBadge = (value: LeadPriority) => (
   <Badge
-    variant={
-      value === 'Urgent' ? 'destructive' :
-      value === 'High' ? 'warning' :
-      value === 'Medium' ? 'info' :
-      'secondary'
-    }
+    variant={getLeadPriorityVariant(value)}
     className="text-[10px] sm:text-xs whitespace-nowrap"
   >
     {value}
@@ -251,6 +238,7 @@ export default function LeadsPage() {
   const bulkStatusUpdateMutation = useBulkStatusUpdate();
   const bulkDeleteMutation = useBulkDelete();
   const importLeadsMutation = useImportLeads();
+  const { openConversionModal, ConversionDialog } = useLeadConversion();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -264,7 +252,6 @@ export default function LeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedLeadData, setSelectedLeadData] = useState<Lead | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isConvertToCustomerDialogOpen, setIsConvertToCustomerDialogOpen] = useState(false);
   const [isConvertToProjectDialogOpen, setIsConvertToProjectDialogOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'calendar'>('table');
@@ -831,19 +818,6 @@ export default function LeadsPage() {
     setIsConvertToProjectDialogOpen(true);
   }, []);
 
-  const handleConvertToCustomer = useCallback((lead: Lead) => {
-    setSelectedLeadData(lead);
-    setIsConvertToCustomerDialogOpen(true);
-  }, []);
-
-  const handleCustomerCreated = useCallback((customer: any) => {
-    refetchLeads();
-    queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
-    queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
-    queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
-    toast.success(`Customer "${customer?.customerName}" created successfully`);
-  }, [refetchLeads, queryClient]);
-
   // Phase 1: Score/Status/Bulk handlers disabled - using backend data only
   const handleAddScore = useCallback(async (lead: Lead, score: number) => {
     try {
@@ -861,21 +835,36 @@ export default function LeadsPage() {
   }, [updateLeadMutation]);
 
   const handleStatusChange = useCallback(async (lead: Lead, status: LeadStatus) => {
-    // If status is being changed to Converted, open the convert to customer dialog instead
+    // If status is being changed to Converted, open the conversion modal instead
     if (status === 'Converted') {
-      setSelectedLeadData(lead);
-      setIsConvertToCustomerDialogOpen(true);
+      openConversionModal(lead);
       return;
     }
+
+    // Optimistic: update the lead in the list immediately
+    queryClient.setQueriesData({ queryKey: ['leads'] }, (old: any) => {
+      if (!old?.data?.rows) return old;
+      return {
+        ...old,
+        data: {
+          ...old.data,
+          rows: old.data.rows.map((r: any) =>
+            r.id === lead.id ? { ...r, status } : r,
+          ),
+        },
+      };
+    });
 
     try {
       await updateLeadMutation.mutateAsync({ id: lead.id, data: { status } });
       toast.success(`Status changed to ${status}`);
     } catch (error: any) {
+      // Rollback on error — React Query restores previous cache
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
       const msg = error?.response?.data?.message || error?.message || 'Failed to change status';
       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
-  }, [updateLeadMutation]);
+  }, [updateLeadMutation, openConversionModal, queryClient]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRows.size === 0) return;
@@ -1118,7 +1107,7 @@ export default function LeadsPage() {
                     onEdit={handleEditLeadFromRow}
                     onDelete={handleDeleteLead}
                     onConvert={handleConvertLead}
-                    onConvertToCustomer={handleConvertToCustomer}
+                    onConvertToCustomer={openConversionModal}
                     onView={handleRowClick}
                     onAddScore={handleAddScore}
                     onStatusChange={handleStatusChange}
@@ -1152,6 +1141,7 @@ export default function LeadsPage() {
                       toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
                     }
                   }}
+                  onConvertToCustomer={openConversionModal}
                 />
               )}
               {!isLoadingKanban && kanbanLeads.length === 0 && (
@@ -1180,6 +1170,7 @@ export default function LeadsPage() {
                 <LeadCalendarView
                   leads={calendarEvents}
                   onLeadClick={handleRowClick}
+                  onConvertToCustomer={openConversionModal}
                 />
               )}
               {!isLoadingCalendar && calendarEvents.length === 0 && (
@@ -1335,14 +1326,7 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {isConvertToCustomerDialogOpen && selectedLeadData ? (
-        <LeadToCustomerConversionDialog
-          open={isConvertToCustomerDialogOpen}
-          onOpenChange={setIsConvertToCustomerDialogOpen}
-          lead={selectedLeadData}
-          onCustomerCreated={handleCustomerCreated}
-        />
-      ) : null}
+      {ConversionDialog}
 
       {isConvertToProjectDialogOpen && selectedLeadData ? (
         <LeadToProjectConversionDialog
