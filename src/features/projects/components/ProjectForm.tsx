@@ -19,6 +19,7 @@ import { Lead } from '@/types/leads';
 import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
 import { ProjectCustomFields } from '@/features/projects/components/ProjectCustomFields';
 import { ProjectCustomFieldValues } from '@/features/projects/types';
+import { formatLeadLabel } from '@/lib/utils';
 import { Info, ArrowRight, AlertTriangle, Building2, Mail, Phone, MapPin, CreditCard, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -384,7 +385,7 @@ export const ProjectForm = memo(function ProjectForm({
               <Combobox
                 options={leads?.data?.rows?.map((lead: Lead) => ({
                   value: lead.id,
-                  label: `${lead.customerName || ''} - ${lead.companyName || ''}${lead.city ? ` (${lead.city})` : ''}`.trim() || `LD-${String(lead.leadNumber).padStart(6, '0')}`,
+                  label: formatLeadLabel(lead),
                 })) || []}
                 value={selectedLeadId}
                 onValueChange={(value) => {

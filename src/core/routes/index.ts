@@ -45,6 +45,7 @@ export const ROUTES = {
   financeBankAccount: (id: string) => `/dashboard/finance/bank-accounts/${id}`,
 
   documents: '/dashboard/documents',
+  documentsDashboard: '/dashboard/documents/dashboard',
   documentsDetail: (id: string) => `/dashboard/documents/${id}`,
   documentsEstimates: '/dashboard/documents/estimates',
   documentsProposals: '/dashboard/documents/proposals',

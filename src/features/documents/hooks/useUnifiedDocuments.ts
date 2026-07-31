@@ -28,7 +28,7 @@ export function useUnifiedDocuments() {
       ...(quotations ?? []).map(normalizeQuotation),
     ];
 
-    const apiItems = (apiDocuments as PaginatedData<Document> | undefined)?.data ?? [];
+    const apiItems = Array.isArray(apiDocuments) ? apiDocuments : (apiDocuments as PaginatedData<Document> | undefined)?.data ?? [];
     for (const doc of apiItems) {
       if (doc.documentType === 'Invoice') {
         list.push(normalizeApiDocument(doc));

@@ -69,7 +69,7 @@ export const LEAD_MODULE_DEFAULTS = {
 };
 
 export const CUSTOMER_MODULE_DEFAULTS = {
-  statuses: ['Active', 'Inactive', 'Prospect', 'Converted', 'Churned'],
+  statuses: ['Active', 'Inactive', 'Prospect', 'Converted', 'Churned', 'Rejected'],
   customerTypes: ['Pvt Ltd', 'LLP', 'Partnership', 'Proprietorship', 'Trust', 'Government', 'Other'],
   territories: ['North', 'South', 'East', 'West', 'Central', 'International'],
   sources: [

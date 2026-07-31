@@ -8,7 +8,8 @@ export type CustomerStatus =
   | 'Inactive'
   | 'Prospect'
   | 'Converted'
-  | 'Churned';
+  | 'Churned'
+  | 'Rejected';
 
 export type Industry =
   | 'Manufacturing'

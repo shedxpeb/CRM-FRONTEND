@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import dayjs from 'dayjs';
 
 /** Standard entity view drawer width: ~47.5% viewport on desktop */
 export const ENTITY_DRAWER_PANEL_CLASS =
@@ -225,16 +226,12 @@ export function EntityViewFooter({ onClose, children }: EntityViewFooterProps) {
 
 export function formatDrawerDate(value?: Date | string | null) {
   if (!value) return '-';
-  return new Date(value).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  return dayjs(value).isValid() ? dayjs(value).format('DD/MM/YYYY') : '-';
 }
 
 export function formatDrawerDateTime(value?: Date | string | null) {
   if (!value) return '-';
-  return new Date(value).toLocaleString('en-IN');
+  return dayjs(value).isValid() ? dayjs(value).format('DD/MM/YYYY HH:mm') : '-';
 }
 
 export function formatDrawerBool(value?: boolean) {

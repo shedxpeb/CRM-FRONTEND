@@ -14,6 +14,7 @@ import {
   Clock,
   Mail
 } from 'lucide-react';
+import dayjs from 'dayjs';
 
 interface LeadActivityTimelineProps {
   activities: LeadActivity[];
@@ -63,17 +64,19 @@ export const LeadActivityTimeline = memo(function LeadActivityTimeline({ activit
   };
 
   const formatTime = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
+    const now = dayjs();
+    const activityDate = dayjs(date);
+    if (!activityDate.isValid()) return '-';
+    
+    const diffMinutes = now.diff(activityDate, 'minute');
+    const diffHours = now.diff(activityDate, 'hour');
+    const diffDays = now.diff(activityDate, 'day');
 
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes} min ago`;
-    if (hours < 24) return `${hours} hr ago`;
-    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
-    return !isNaN(date.getTime()) ? date.toLocaleDateString() : 'Invalid Date';
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
+    if (diffHours < 24) return `${diffHours} hr ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return activityDate.format('DD/MM/YYYY');
   };
 
   return (

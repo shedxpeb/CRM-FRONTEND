@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, memo } from 'react';
+import dayjs from 'dayjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -97,6 +98,7 @@ export const LeadFormWizard = memo(function LeadFormWizard({
     source: (initialData?.source ?? config.sources[0] ?? 'Website') as LeadSource,
     priority: (initialData?.priority ?? config.priorities[1] ?? 'Medium') as LeadPriority,
     status: (initialData?.status ?? config.statuses[0] ?? 'New') as LeadStatus,
+    createdAt: initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     customFields: initialData?.customFields ?? {},
   });
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
@@ -198,12 +200,16 @@ export const LeadFormWizard = memo(function LeadFormWizard({
       source,
       priority: formData.priority,
       status,
+      currentDate: formData.createdAt
+        ? (formData.createdAt instanceof Date
+            ? formData.createdAt.toISOString()
+            : new Date(formData.createdAt).toISOString())
+        : new Date().toISOString(),
       nextFollowUpDate: formData.nextFollowUpDate
         ? (formData.nextFollowUpDate instanceof Date
             ? formData.nextFollowUpDate.toISOString()
             : new Date(formData.nextFollowUpDate).toISOString())
         : undefined,
-      assignedToId: formData.assignedToId || undefined,
       customFields: formData.customFields && Object.keys(formData.customFields).length > 0
         ? formData.customFields
         : undefined,
@@ -712,6 +718,67 @@ export const LeadFormWizard = memo(function LeadFormWizard({
               value={formData.specialRequirement ?? ''}
               onChange={(e) => handleInputChange('specialRequirement', e.target.value)}
             />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium">Business Details</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Lead Source</label>
+              <Select
+                value={formData.source || config.sources[0]}
+                onValueChange={(value) => handleInputChange('source', value as LeadSource)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {config.sources.map((source) => (
+                    <SelectItem key={source} value={source}>{source}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Priority</label>
+              <Select
+                value={formData.priority || config.priorities[1]}
+                onValueChange={(value) => handleInputChange('priority', value as LeadPriority)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {config.priorities.map((priority) => (
+                    <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Current Date *</label>
+              <Input
+                type="date"
+                value={formData.createdAt || ''}
+                onChange={(e) => handleInputChange('createdAt', e.target.value || undefined)}
+                className={errors.createdAt ? 'border-red-500' : ''}
+              />
+              {errors.createdAt && (
+                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.createdAt}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Next Follow-up Date</label>
+              <Input
+                type="date"
+                value={formData.nextFollowUpDate ? new Date(formData.nextFollowUpDate).toISOString().split('T')[0] : ''}
+                onChange={(e) => handleInputChange('nextFollowUpDate', e.target.value || undefined)}
+              />
+            </div>
           </div>
         </div>
 

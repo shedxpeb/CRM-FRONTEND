@@ -28,7 +28,8 @@ import {
   formatDrawerBool,
   getDrawerAgeDays,
 } from '@/components/drawer/EntityViewDrawer';
-import { ExternalLink, User, Target, Calendar, Clock, Ruler } from 'lucide-react';
+import { ExternalLink, User, Target, Clock, Ruler } from 'lucide-react';
+import dayjs from 'dayjs';
 
 interface LeadViewDrawerProps {
   lead: Lead | null;
@@ -60,7 +61,7 @@ export const LeadViewDrawer = function LeadViewDrawer({
     <EntityViewDrawer open={open} onOpenChange={onOpenChange}>
       <EntityViewHeader
         title={`Lead #${lead.leadNumber}`}
-        subtitle={`${lead.customerName} · ${lead.companyName}`}
+        subtitle={[lead.customerName, lead.companyName].filter(Boolean).join(' · ')}
         onClose={() => onOpenChange(false)}
       />
 
@@ -78,12 +79,6 @@ export const LeadViewDrawer = function LeadViewDrawer({
               value: lead.score ?? '-',
               icon: <Target className="h-4 w-4 text-blue-600" />,
               accentClassName: 'text-blue-600',
-            },
-            {
-              label: 'Next Follow-up',
-              value: formatDrawerDate(lead.nextFollowUpDate),
-              icon: <Calendar className="h-4 w-4 text-amber-600" />,
-              accentClassName: 'text-amber-600',
             },
             {
               label: 'Age',
@@ -139,8 +134,9 @@ export const LeadViewDrawer = function LeadViewDrawer({
             <EntityViewSection title="Business Details">
               <EntityViewFieldGrid>
                 <EntityViewField label="Lead Source" value={lead.source} />
-                <EntityViewField label="Assigned Employee" value={lead.assignedTo} />
-                <EntityViewField label="Last Follow-up" value={formatDrawerDate(lead.lastFollowUp)} />
+                <EntityViewField label="Priority" value={lead.priority} />
+                <EntityViewField label="Current Date" value={lead.createdAt && dayjs(lead.createdAt).isValid() ? dayjs(lead.createdAt).format('DD/MM/YYYY') : '-'} />
+                <EntityViewField label="Next Follow-up Date" value={formatDrawerDate(lead.nextFollowUpDate)} />
               </EntityViewFieldGrid>
             </EntityViewSection>
 

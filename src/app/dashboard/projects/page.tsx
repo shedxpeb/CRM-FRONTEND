@@ -92,7 +92,6 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
-  const [stageFilter, setStageFilter] = useState<ProjectStage | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<ProjectPriority | 'all'>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [healthFilter, setHealthFilter] = useState<string>('all');
@@ -101,7 +100,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, stageFilter, priorityFilter, cityFilter, healthFilter, pageSize]);
+  }, [debouncedSearch, statusFilter, priorityFilter, cityFilter, healthFilter, pageSize]);
 
   // Recover if page was clamped to 0 by an empty result set (pre-fix state)
   useEffect(() => {
@@ -113,7 +112,6 @@ export default function ProjectsPage() {
     pageSize,
     search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
     status: statusFilter === 'all' ? undefined : statusFilter,
-    stage: stageFilter === 'all' ? undefined : stageFilter,
     priority: priorityFilter === 'all' ? undefined : priorityFilter,
     city: cityFilter === 'all' ? undefined : cityFilter,
     healthStatus: healthFilter === 'all' ? undefined : (healthFilter as Project['healthStatus']),
@@ -256,13 +254,6 @@ export default function ProjectsPage() {
         options: [{ value: 'all', label: 'All Status' }, ...projectConfig.statuses.map((s) => ({ value: s, label: s }))],
       },
       {
-        key: 'stage',
-        label: 'Stage',
-        value: stageFilter,
-        onChange: (value: string) => setStageFilter(value as ProjectStage | 'all'),
-        options: [{ value: 'all', label: 'All Stages' }, ...projectConfig.stages.map((s) => ({ value: s, label: s }))],
-      },
-      {
         key: 'priority',
         label: 'Priority',
         value: priorityFilter,
@@ -293,12 +284,11 @@ export default function ProjectsPage() {
         ],
       },
     ],
-    [statusFilter, stageFilter, priorityFilter, cityFilter, healthFilter, projectFilterOptions, projectConfig]
+    [statusFilter, priorityFilter, cityFilter, healthFilter, projectFilterOptions, projectConfig]
   );
 
   const handleClearFilters = useCallback(() => {
     setStatusFilter('all');
-    setStageFilter('all');
     setPriorityFilter('all');
     setCityFilter('all');
     setHealthFilter('all');
@@ -332,18 +322,6 @@ export default function ProjectsPage() {
         sortable: true,
         render: (value) => (
           <Badge variant={getProjectStatusVariant(value as string)} className="text-[10px]">
-            {value}
-          </Badge>
-        ),
-      },
-      {
-        key: 'stage',
-        label: 'Stage',
-        sortable: true,
-        className: 'hidden md:table-cell',
-        headerClassName: 'hidden md:table-cell',
-        render: (value) => (
-          <Badge variant="outline" className="text-[10px]">
             {value}
           </Badge>
         ),
@@ -418,18 +396,24 @@ export default function ProjectsPage() {
 
   const settingsCustomColumnDefs = useMemo(
     () =>
-      projectConfig.customFields.map((field) => ({
-        key: field.key as keyof Project,
-        label: field.label,
-        sortable: true,
-        className: 'min-w-[100px] max-w-[130px] hidden 2xl:table-cell',
-        headerClassName: 'hidden 2xl:table-cell',
-        render: (_: unknown, row: Project) => (
-          <span className="text-xs truncate block">
-            {getProjectCustomFieldValue(row, field.key)?.toString() ?? '-'}
-          </span>
-        ),
-      })),
+      projectConfig.customFields
+        .filter(field => 
+          field.key !== 'siteAccessNotes' &&
+          field.key !== 'windZone' &&
+          field.key !== 'seismicZone'
+        )
+        .map((field) => ({
+          key: field.key as keyof Project,
+          label: field.label,
+          sortable: true,
+          className: 'min-w-[100px] max-w-[130px] hidden 2xl:table-cell',
+          headerClassName: 'hidden 2xl:table-cell',
+          render: (_: unknown, row: Project) => (
+            <span className="text-xs truncate block">
+              {getProjectCustomFieldValue(row, field.key)?.toString() ?? '-'}
+            </span>
+          ),
+        })),
     [projectConfig.customFields]
   );
 
@@ -506,7 +490,6 @@ export default function ProjectsPage() {
     try {
       const response = await projectsApi.export({
         status: statusFilter === 'all' ? undefined : statusFilter,
-        stage: stageFilter === 'all' ? undefined : stageFilter,
         priority: priorityFilter === 'all' ? undefined : priorityFilter,
         city: cityFilter === 'all' ? undefined : cityFilter,
         healthStatus: healthFilter === 'all' ? undefined : (healthFilter as Project['healthStatus']),
@@ -517,7 +500,6 @@ export default function ProjectsPage() {
         'Project Name',
         'Customer',
         'Status',
-        'Stage',
         'Priority',
         'Progress',
         'Manager',
@@ -533,7 +515,6 @@ export default function ProjectsPage() {
             `"${String(p.projectName || '').replace(/"/g, '""')}"`,
             `"${String(p.customerName || '').replace(/"/g, '""')}"`,
             p.status,
-            p.stage,
             p.priority,
             p.progress,
             `"${p.projectManager || ''}"`,
@@ -552,7 +533,7 @@ export default function ProjectsPage() {
     } catch {
       toast.error('Failed to export projects. Please try again.');
     }
-  }, [statusFilter, stageFilter, priorityFilter, cityFilter, healthFilter]);
+  }, [statusFilter, priorityFilter, cityFilter, healthFilter]);
 
   if (isLoading && !projectsResponse) {
     return (

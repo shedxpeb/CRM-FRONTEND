@@ -4,7 +4,7 @@ import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lead } from '@/types/leads';
-import { MapPin, Calendar, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { componentTextSizes } from '@/lib/design-system';
 import { getLeadStatusHex } from '@/features/leads/constants';
@@ -76,12 +76,6 @@ export const KanbanCard = memo(function KanbanCard({ lead, onDragStart, onDragEn
           )}
         </div>
 
-        {/* Location */}
-        <div className={cn('flex items-center gap-1.5 text-muted-foreground', componentTextSizes.table.monospace)}>
-          <MapPin className="h-2.5 w-2.5" />
-          <span>{lead.city}{lead.state ? `, ${lead.state}` : ''}</span>
-        </div>
-
         {/* Score & Value */}
         <div className="space-y-1.5 pt-1.5 border-t">
           <div className="flex items-center justify-between">
@@ -98,28 +92,6 @@ export const KanbanCard = memo(function KanbanCard({ lead, onDragStart, onDragEn
               className="bg-gradient-to-r from-orange-500 to-orange-600 h-1 rounded-full transition-all"
               style={{ width: `${(lead as Lead & { score?: number }).score || 0}%` }}
             />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-1.5 border-t">
-          <div className={cn('flex items-center gap-1.5 text-muted-foreground', componentTextSizes.table.monospace)}>
-            <Calendar className="h-2.5 w-2.5" />
-            <span>
-              {lead.nextFollowUpDate && (() => {
-                const date = new Date(lead.nextFollowUpDate);
-                return !isNaN(date.getTime()) ? date.toLocaleDateString('en-IN', {
-                  day: '2-digit',
-                  month: 'short',
-                }) : 'Invalid Date';
-              })() || 'No date'}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
-            <span className={cn('text-muted-foreground', componentTextSizes.table.monospace)}>
-              {lead.assignedTo || 'Unassigned'}
-            </span>
           </div>
         </div>
       </CardContent>

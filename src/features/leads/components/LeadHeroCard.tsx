@@ -6,10 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Building2,
-  MapPin,
   Phone,
   Mail,
-  Calendar,
   Ruler,
   User,
   Hash,
@@ -19,12 +17,11 @@ import { Lead, LeadPriority, LeadStatus } from '@/types/leads';
 import { cn } from '@/lib/utils';
 import { componentTextSizes } from '@/lib/design-system';
 import { getLeadStatusVariant, getLeadPriorityVariant } from '@/features/leads/constants';
+import dayjs from 'dayjs';
 
 function formatDate(value?: Date | string | null) {
   if (!value) return '-';
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return dayjs(value).isValid() ? dayjs(value).format('DD/MM/YYYY') : '-';
 }
 
 interface LeadHeroCardProps {
@@ -112,22 +109,15 @@ export const LeadHeroCard = memo(function LeadHeroCard({ lead, compact = false }
                 <Mail className="h-4 w-4" />
                 <span className="break-all">{lead.email}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                <span>{lead.city}, {lead.state}</span>
-              </div>
             </div>
 
             <p className="text-sm text-muted-foreground">
               Lead ID: <span className="font-mono font-medium text-foreground">#{lead.leadNumber}</span>
-              {lead.assignedTo && (
-                <> · Assigned to <span className="font-medium text-foreground">{lead.assignedTo}</span></>
-              )}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Project Type</p>
             <p className="text-sm font-semibold">{lead.projectType}</p>
@@ -139,13 +129,6 @@ export const LeadHeroCard = memo(function LeadHeroCard({ lead, compact = false }
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Area</p>
             <p className="text-sm font-semibold">{area !== undefined ? `${area} sqm` : '-'}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              Next Follow-up
-            </p>
-            <p className="text-sm font-semibold">{formatDate(lead.nextFollowUpDate)}</p>
           </div>
         </div>
       </div>

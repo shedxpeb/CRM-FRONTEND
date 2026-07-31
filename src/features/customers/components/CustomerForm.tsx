@@ -19,6 +19,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { useLeads } from '@/features/leads/hooks/useLeads';
 import { Lead } from '@/types/leads';
 import { smartPrefill } from '@/lib/smartPrefill';
+import { formatLeadLabel } from '@/lib/utils';
 import { useCustomerConfiguration } from '@/features/customers/hooks/useCustomers';
 import { CustomerCustomFields } from '@/features/customers/components/CustomerCustomFields';
 
@@ -263,7 +264,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <Combobox
                 options={availableLeads.map((lead: Lead) => ({
                   value: lead.id,
-                  label: `${lead.customerName} - ${lead.companyName} (${lead.city})`
+                  label: formatLeadLabel(lead)
                 }))}
                 value={selectedLeadId}
                 onValueChange={handleLeadSelect}
@@ -280,8 +281,10 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
                   <div>
                     <p className="text-sm font-medium text-blue-900">Lead Selected</p>
                     <p className="text-xs text-blue-700">
-                      {availableLeads.find((l: Lead) => l.id === selectedLeadId)?.customerName} - 
-                      {availableLeads.find((l: Lead) => l.id === selectedLeadId)?.companyName}
+                      {(() => {
+                        const lead = availableLeads.find((l: Lead) => l.id === selectedLeadId);
+                        return lead ? formatLeadLabel(lead) : '';
+                      })()}
                     </p>
                   </div>
                 </div>

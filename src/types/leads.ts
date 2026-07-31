@@ -159,8 +159,6 @@ export interface Lead {
   // Business Details
   source: LeadSource;
   priority: LeadPriority;
-  assignedTo?: string;
-  assignedToId?: string;
 
   // Status & Tracking
   status: LeadStatus;
@@ -210,7 +208,6 @@ export interface LeadFilter {
   industry?: Industry;
   businessType?: BusinessType;
   city?: string;
-  assignedEmployee?: string;
   source?: LeadSource;
   dateFrom?: Date;
   dateTo?: Date;
@@ -276,7 +273,6 @@ export interface CreateLeadDto {
   specialRequirement?: string;
   source: LeadSource;
   priority: LeadPriority;
-  assignedEmployeeId?: string;
   status?: LeadStatus;
   score?: number;
   remarks?: string;
@@ -334,7 +330,6 @@ export interface UpdateLeadDto {
   specialRequirement?: string;
   source?: LeadSource;
   priority?: LeadPriority;
-  assignedEmployeeId?: string;
   status?: LeadStatus;
   score?: number;
   remarks?: string;
