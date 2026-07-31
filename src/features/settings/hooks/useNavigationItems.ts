@@ -153,11 +153,10 @@ export function useNavigationItems(userRole: NavigationRole = 'owner') {
       tree.push({ ...documents, children: documentChildren.length > 0 ? documentChildren : undefined });
     }
 
-    // Purchase group: Vendors + Purchase Orders + Purchase Reports
+    // Purchase group: Vendors + Purchase Orders
     const purchaseChildren: NavigationItem[] = [
       { title: 'Vendors', href: '/purchase/vendors', icon: Truck, roles: ['owner', 'admin', 'employee'] },
       { title: 'Purchase Orders', href: '/purchase/orders', icon: ShoppingCart, roles: ['owner', 'admin', 'employee'] },
-      { title: 'Purchase Reports', href: '/purchase/reports', icon: BarChart3, roles: ['owner', 'admin'] },
     ];
     const filteredPurchaseChildren = purchaseChildren.filter((child) => child.roles.includes(userRole));
     if (filteredPurchaseChildren.length > 0) {

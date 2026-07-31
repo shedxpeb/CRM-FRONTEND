@@ -151,8 +151,6 @@ export const CustomerFormWizard = memo(function CustomerFormWizard({
         source: mapLeadSourceToCustomerSource(selectedLead.source) as any,
         industry: mapLeadIndustryToCustomerIndustry(selectedLead.industry) as any,
         businessType: mapLeadBusinessTypeToCustomerBusinessType(selectedLead.businessType) as any,
-        assignedEmployee: selectedLead.assignedTo || prev.assignedEmployee,
-        assignedEmployeeId: selectedLead.assignedToId || prev.assignedEmployeeId,
         notes: selectedLead.remarks ? `${prev.notes || ''}\n\nLead Notes: ${selectedLead.remarks}` : prev.notes,
         leadId: selectedLead.id,
       }));

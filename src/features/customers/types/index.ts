@@ -9,6 +9,7 @@ export type CustomerStatus =
   | 'Prospect'
   | 'Converted'
   | 'Churned'
+  | 'Archived'
   | 'Rejected';
 
 export type Industry =

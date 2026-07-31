@@ -187,7 +187,7 @@ export default function LeadDetailsPage() {
           <Card>
             <CardContent className="p-3">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Assigned To</p>
-              <p className="text-sm font-medium mt-0.5 truncate">{lead.assignedTo || lead.assignedToId || 'Unassigned'}</p>
+              <p className="text-sm font-medium mt-0.5 truncate">Unassigned</p>
             </CardContent>
           </Card>
         </div>
