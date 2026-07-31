@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, memo } from 'react';
+import dayjs from 'dayjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -91,6 +92,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     source: (initialData?.source ?? config.sources[0] ?? 'Website') as LeadSource,
     priority: (initialData?.priority ?? config.priorities[1] ?? 'Medium') as LeadPriority,
     status: (initialData?.status ?? config.statuses[0] ?? 'New') as LeadStatus,
+    createdAt: initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     customFields: initialData?.customFields ?? {},
   });
 
@@ -200,7 +202,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
             ? formData.nextFollowUpDate.toISOString()
             : new Date(formData.nextFollowUpDate).toISOString())
         : undefined,
-      assignedToId: formData.assignedToId || undefined,
       customFields: formData.customFields && Object.keys(formData.customFields).length > 0
         ? formData.customFields
         : undefined,
@@ -580,9 +581,9 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Project Title *</label>
+              <label className="text-sm font-medium">Project Name *</label>
               <Input
-                placeholder="Enter project title"
+                placeholder="Enter project name"
                 value={formData.projectTitle ?? ''}
                 onChange={(e) => handleInputChange('projectTitle', e.target.value)}
                 className={errors.projectTitle ? 'border-red-500' : ''}
@@ -1043,12 +1044,19 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Assigned Employee</label>
+              <label className="text-sm font-medium">Current Date *</label>
               <Input
-                placeholder="Select employee"
-                value={formData.assignedToId ?? ''}
-                onChange={(e) => handleInputChange('assignedToId', e.target.value)}
+                type="date"
+                value={formData.createdAt || ''}
+                onChange={(e) => handleInputChange('createdAt', e.target.value || undefined)}
+                className={errors.createdAt ? 'border-red-500' : ''}
               />
+              {errors.createdAt && (
+                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.createdAt}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Next Follow-up Date</label>

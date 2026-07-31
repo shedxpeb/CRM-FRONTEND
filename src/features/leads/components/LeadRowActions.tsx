@@ -157,7 +157,7 @@ export const LeadRowActions = memo(function LeadRowActions({
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDelete}
         isDeleting={isDeleting}
-        entityName={`${lead.customerName} (${lead.companyName})`}
+        entityName={lead.companyName ? `${lead.customerName} (${lead.companyName})` : lead.customerName}
       />
     </>
   );

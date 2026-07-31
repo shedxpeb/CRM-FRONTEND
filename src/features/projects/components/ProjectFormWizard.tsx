@@ -18,6 +18,7 @@ import { Lead } from '@/types/leads';
 import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
 import { ProjectCustomFields } from '@/features/projects/components/ProjectCustomFields';
 import { ProjectCustomFieldValues } from '@/features/projects/types';
+import { formatLeadLabel } from '@/lib/utils';
 import { Info, ArrowRight, AlertTriangle, Building2, Mail, Phone, MapPin, CreditCard, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { FormWizard, WizardStep } from '@/components/wizard/FormWizard';
@@ -223,6 +224,8 @@ export const ProjectFormWizard = memo(function ProjectFormWizard({
     lastAutoFilledCustomerId.current = customerId;
 
     const fieldMap: [string, string][] = [
+      ['projectTitle', 'projectName'],
+      ['projectType', 'projectType'],
       ['address', 'location'],
       ['city', 'city'],
       ['state', 'state'],
@@ -320,7 +323,7 @@ export const ProjectFormWizard = memo(function ProjectFormWizard({
             <Combobox
               options={leads?.data?.rows?.map((lead: Lead) => ({
                 value: lead.id,
-                label: `${lead.customerName || ''} - ${lead.companyName || ''}${lead.city ? ` (${lead.city})` : ''}`.trim() || `LD-${String(lead.leadNumber).padStart(6, '0')}`,
+                label: formatLeadLabel(lead),
               })) || []}
               value={selectedLeadId}
               onValueChange={(value) => {

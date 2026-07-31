@@ -1,7 +1,5 @@
-'use client';
-
-import { DocumentsDashboard } from '@/features/documents/pages/DocumentsDashboard';
+import { redirect } from 'next/navigation';
 
 export default function DocumentsPage() {
-  return <DocumentsDashboard />;
+  redirect('/dashboard/documents/dashboard');
 }

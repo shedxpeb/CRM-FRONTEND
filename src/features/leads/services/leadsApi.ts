@@ -14,7 +14,6 @@ export interface LeadsFilters {
   projectType?: string;
   structureType?: string;
   city?: string;
-  assignedEmployeeId?: string;
   dateFrom?: string;
   dateTo?: string;
 }

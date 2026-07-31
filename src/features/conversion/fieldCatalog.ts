@@ -197,7 +197,6 @@ export function buildCustomerFromLead(
   if (has('standard') || has('contact')) {
     payload.customerName = lead.customerName;
     payload.source = mapSource(lead.source || 'Website');
-    payload.assignedEmployeeId = lead.assignedToId;
     payload.status = 'Active';
   }
 

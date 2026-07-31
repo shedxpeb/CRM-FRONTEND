@@ -8,7 +8,9 @@ export type CustomerStatus =
   | 'Inactive'
   | 'Prospect'
   | 'Converted'
-  | 'Churned';
+  | 'Churned'
+  | 'Archived'
+  | 'Rejected';
 
 export type Industry =
   | 'Manufacturing'
@@ -99,6 +101,10 @@ export interface Customer {
   notes?: string;
   attachments?: string[];
 
+  // Project Details
+  projectTitle?: string;
+  projectType?: string;
+
   /** Settings-defined custom field values */
   customFields?: Record<string, string | number | boolean>;
 
@@ -182,6 +188,8 @@ export interface CreateCustomerDto {
   status?: CustomerStatus;
   notes?: string;
   leadId?: string; // Reference to the lead that was converted to this customer
+  projectTitle?: string;
+  projectType?: string;
 }
 
 /**
@@ -207,6 +215,8 @@ export interface UpdateCustomerDto {
   source?: CustomerSource;
   status?: CustomerStatus;
   notes?: string;
+  projectTitle?: string;
+  projectType?: string;
 }
 
 /**

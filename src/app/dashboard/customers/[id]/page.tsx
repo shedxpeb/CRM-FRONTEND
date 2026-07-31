@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrackingEngine } from '@/components/tracking/TrackingEngine';
 import { useCustomer } from '@/features/customers/hooks/useCustomers';
+import { getStatusVariant } from '@/features/customers/constants';
 import { ROUTES } from '@/core/routes';
 import {
   ArrowLeft, ChevronDown, ChevronRight, Building2, MapPin, Phone, Mail, User, ExternalLink, Pencil, Globe,
@@ -84,7 +85,7 @@ export default function CustomerDetailsPage() {
               {customer.customerId != null && (
                 <Badge variant="outline">CUS-{String(customer.customerId).padStart(6, '0')}</Badge>
               )}
-              <Badge>{customer.status}</Badge>
+              <Badge variant={getStatusVariant(customer.status)}>{customer.status}</Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               {customer.companyName}{customer.city ? ` · ${customer.city}` : ''}{customer.email ? ` · ${customer.email}` : ''}
@@ -101,7 +102,7 @@ export default function CustomerDetailsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card><CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Status</p>
-            <p className="text-sm font-medium mt-0.5">{customer.status}</p>
+            <Badge variant={getStatusVariant(customer.status)} className="mt-1">{customer.status}</Badge>
           </CardContent></Card>
           <Card><CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Mobile</p>

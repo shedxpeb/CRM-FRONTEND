@@ -17,6 +17,7 @@ import { AlertCircle, Info, X } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { useLeads } from '@/features/leads/hooks/useLeads';
 import { Lead } from '@/types/leads';
+import { formatLeadLabel } from '@/lib/utils';
 import { useCustomerConfiguration } from '@/features/customers/hooks/useCustomers';
 import { CustomerCustomFields } from '@/features/customers/components/CustomerCustomFields';
 import { FormWizard, WizardStep } from '@/components/wizard/FormWizard';
@@ -150,8 +151,6 @@ export const CustomerFormWizard = memo(function CustomerFormWizard({
         source: mapLeadSourceToCustomerSource(selectedLead.source) as any,
         industry: mapLeadIndustryToCustomerIndustry(selectedLead.industry) as any,
         businessType: mapLeadBusinessTypeToCustomerBusinessType(selectedLead.businessType) as any,
-        assignedEmployee: selectedLead.assignedTo || prev.assignedEmployee,
-        assignedEmployeeId: selectedLead.assignedToId || prev.assignedEmployeeId,
         notes: selectedLead.remarks ? `${prev.notes || ''}\n\nLead Notes: ${selectedLead.remarks}` : prev.notes,
         leadId: selectedLead.id,
       }));
@@ -254,7 +253,7 @@ export const CustomerFormWizard = memo(function CustomerFormWizard({
                 <Combobox
                   options={availableLeads.map((lead: Lead) => ({
                     value: lead.id,
-                    label: `${lead.customerName} - ${lead.companyName} (${lead.city})`
+                    label: formatLeadLabel(lead)
                   }))}
                   value={selectedLeadId}
                   onValueChange={handleLeadSelect}
@@ -271,8 +270,10 @@ export const CustomerFormWizard = memo(function CustomerFormWizard({
                     <div>
                       <p className="text-sm font-medium text-blue-900">Lead Selected</p>
                       <p className="text-xs text-blue-700">
-                        {availableLeads.find((l: Lead) => l.id === selectedLeadId)?.customerName} - 
-                        {availableLeads.find((l: Lead) => l.id === selectedLeadId)?.companyName}
+                        {(() => {
+                          const lead = availableLeads.find((l: Lead) => l.id === selectedLeadId);
+                          return lead ? formatLeadLabel(lead) : '';
+                        })()}
                       </p>
                     </div>
                   </div>

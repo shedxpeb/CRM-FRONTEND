@@ -18,6 +18,8 @@ export const CUSTOMER_STATUSES: {
   { value: 'Prospect', label: 'Prospect', variant: 'info' },
   { value: 'Converted', label: 'Converted', variant: 'default' },
   { value: 'Churned', label: 'Churned', variant: 'destructive' },
+  { value: 'Archived', label: 'Archived', variant: 'secondary' },
+  { value: 'Rejected', label: 'Rejected', variant: 'destructive' },
 ];
 
 /**

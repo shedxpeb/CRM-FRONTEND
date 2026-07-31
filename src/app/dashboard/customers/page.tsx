@@ -183,12 +183,12 @@ export default function CustomersPage() {
       render: (value) => <span className="text-xs truncate block">{value}</span>,
     },
     {
-      key: 'gstNumber',
-      label: 'GST',
+      key: 'projectTitle',
+      label: 'Project Name',
       className: 'hidden xl:table-cell',
       headerClassName: 'hidden xl:table-cell',
       render: (value) => (
-        <span className="text-xs font-mono">{value || '-'}</span>
+        <span className="text-xs truncate block">{value || '-'}</span>
       ),
     },
     {
@@ -204,18 +204,6 @@ export default function CustomersPage() {
       sortable: true,
       className: 'hidden lg:table-cell',
       headerClassName: 'hidden lg:table-cell',
-    },
-    {
-      key: 'totalProjects',
-      label: 'Projects',
-      sortable: true,
-      className: 'hidden xl:table-cell',
-      headerClassName: 'hidden xl:table-cell',
-      render: (_, row) => (
-        <span className="text-xs">
-          {row.activeProjects}/{row.totalProjects}
-        </span>
-      ),
     },
     {
       key: 'totalRevenue',
@@ -334,13 +322,14 @@ export default function CustomersPage() {
         state: stateFilter === 'all' ? undefined : stateFilter,
       });
       const rows = response?.data?.rows ?? [];
-      const headers = ['ID', 'Customer Name', 'Company Name', 'Mobile', 'Email', 'City', 'State', 'Status'];
+      const headers = ['ID', 'Customer Name', 'Company Name', 'Mobile', 'Email', 'Project Name', 'City', 'State', 'Status'];
       const csvRows = rows.map((c) => [
         c.customerId,
         c.customerName,
         c.companyName,
         c.mobile,
         c.email,
+        c.projectTitle || '-',
         c.city,
         c.state,
         c.status,
@@ -411,7 +400,7 @@ export default function CustomersPage() {
         }
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search by name, company, mobile, email, city, GST, or customer code..."
+        searchPlaceholder="Search by name, company, mobile, email, city, or customer code..."
         filters={filterConfigs}
         onClearFilters={handleClearFilters}
         filterMode="popover"

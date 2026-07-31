@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Lead, LeadStatus } from '@/types/leads';
-import { ChevronLeft, ChevronRight, Calendar, MapPin, Phone, Mail, X, MoreVertical, Trash2, UserPlus, Mail as MailIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Phone, Mail, X, MoreVertical, Trash2, UserPlus, Mail as MailIcon } from 'lucide-react';
 import { getLeadStatusColor } from '@/features/leads/constants';
+import dayjs from 'dayjs';
 
 interface LeadCalendarViewProps {
   leads: Lead[];
@@ -71,20 +72,20 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
     return days;
   }, [currentDate, daysInMonth, startingDayOfWeek]);
 
-  // Pre-compute leads grouped by next follow-up date
+  // Pre-compute leads grouped by creation date
   const leadsByDate = useMemo(() => {
     const grouped: Record<string, Lead[]> = {};
-    
+
     leads.forEach(lead => {
-      const date = lead.nextFollowUpDate || lead.createdAt;
-      if (!date) return;
-      const dateStr = new Date(date).toDateString();
+      const date = lead.createdAt;
+      if (!date || !dayjs(date).isValid()) return;
+      const dateStr = dayjs(date).format('YYYY-MM-DD');
       if (!grouped[dateStr]) {
         grouped[dateStr] = [];
       }
       grouped[dateStr].push(lead);
     });
-    
+
     return grouped;
   }, [leads]);
 
@@ -224,7 +225,7 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm">
-              {selectedDate && !isNaN(selectedDate.getTime()) ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Invalid Date'}
+              {selectedDate && dayjs(selectedDate).isValid() ? dayjs(selectedDate).format('dddd, MMMM D, YYYY') : 'Invalid Date'}
             </DialogTitle>
           </DialogHeader>
           
@@ -303,10 +304,6 @@ export const LeadCalendarView = memo(function LeadCalendarView({ leads, onLeadCl
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span>{lead.companyName || lead.customerName}</span>
-                      </div>
                       <div className="flex items-center gap-1">
                         <Phone className="h-3 w-3 shrink-0" />
                         <span>{lead.mobile || '-'}</span>

@@ -17,25 +17,13 @@ export function getLeadActivities(leadId: string, lead?: Lead): LeadActivity[] {
     },
   ];
 
-  if (lead?.assignedTo) {
-    activities.push({
-      id: `${leadId}-assigned`,
-      leadId,
-      type: 'assigned',
-      description: `Lead assigned to ${lead.assignedTo}`,
-      performedBy: 'System',
-      performedAt: lead.createdAt ? new Date(lead.createdAt) : new Date(),
-      metadata: { assignedTo: lead.assignedTo },
-    });
-  }
-
   if (lead?.lastFollowUp) {
     activities.push({
       id: `${leadId}-followup`,
       leadId,
       type: 'followup',
       description: 'Follow-up completed',
-      performedBy: lead.assignedTo || 'Sales Team',
+      performedBy: lead.updatedBy || 'Sales Team',
       performedAt: new Date(lead.lastFollowUp),
     });
   }
@@ -46,7 +34,7 @@ export function getLeadActivities(leadId: string, lead?: Lead): LeadActivity[] {
       leadId,
       type: 'converted',
       description: 'Lead converted to customer',
-      performedBy: lead.assignedTo || 'Sales Team',
+      performedBy: lead.updatedBy || 'Sales Team',
       performedAt: lead.convertedDate ? new Date(lead.convertedDate) : new Date(),
       metadata: { customerId: lead.customerId },
     });
@@ -58,7 +46,7 @@ export function getLeadActivities(leadId: string, lead?: Lead): LeadActivity[] {
       leadId,
       type: 'updated',
       description: 'Lead details updated',
-      performedBy: lead.updatedBy || lead.assignedTo || 'System',
+      performedBy: lead.updatedBy || 'System',
       performedAt: new Date(lead.updatedAt),
     });
   }

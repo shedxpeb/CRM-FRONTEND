@@ -1,11 +1,52 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, setAccessToken, setSessionData, clearSession, getTenantId } from '@/core/auth/session';
 import { assertEndpointAvailable, rememberUnavailableEndpoint } from './capabilities';
+import dayjs from 'dayjs';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 if (!API_BASE_URL) {
   throw new Error('Missing required environment variable: NEXT_PUBLIC_API_URL');
+}
+
+// Date field names that should be parsed as dates
+const DATE_FIELDS = [
+  'createdAt', 'updatedAt', 'deletedAt',
+  'lastFollowUp', 'nextFollowUpDate',
+  'convertedDate', 'performedAt', 'timestamp',
+  'date', 'dueDate', 'startDate', 'endDate',
+  'birthDate', 'joinDate', 'expiryDate'
+];
+
+// Recursively parse date strings in response data
+function parseDates(data: any): any {
+  if (data === null || data === undefined) {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(item => parseDates(item));
+  }
+
+  if (typeof data === 'object') {
+    const result: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      // Check if this is a date field and value is a string
+      if (DATE_FIELDS.includes(key) && typeof value === 'string') {
+        const parsed = dayjs(value);
+        if (parsed.isValid()) {
+          result[key] = parsed.toDate();
+        } else {
+          result[key] = value;
+        }
+      } else {
+        result[key] = parseDates(value);
+      }
+    }
+    return result;
+  }
+
+  return data;
 }
 
 export const apiClient: AxiosInstance = axios.create({
@@ -77,9 +118,15 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response interceptor - handle 401 with refresh
+// Response interceptor - handle 401 with refresh and date parsing
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Parse date strings in response data
+    if (response.data) {
+      response.data = parseDates(response.data);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 

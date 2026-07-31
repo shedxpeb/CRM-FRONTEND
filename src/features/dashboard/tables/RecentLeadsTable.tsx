@@ -40,10 +40,9 @@ export const RecentLeadsTable = memo(function RecentLeadsTable({
 
   // Filter and sort logic (ready for API integration)
   const filteredAndSortedLeads = leads
-    .filter(lead => 
+    .filter(lead =>
       lead.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.projectTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.assignedTo.toLowerCase().includes(searchQuery.toLowerCase())
+      lead.projectTitle.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
       const aValue = a[sortField];
@@ -146,9 +145,9 @@ export const RecentLeadsTable = memo(function RecentLeadsTable({
       <CardContent>
         <div className="space-y-2">
           {/* Table Header */}
-          <div className="hidden sm:grid grid-cols-5 gap-3 px-3 py-2 bg-gray-50 rounded-t-lg text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-            <div 
-              className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-gray-900" 
+          <div className="hidden sm:grid grid-cols-4 gap-3 px-3 py-2 bg-gray-50 rounded-t-lg text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
+            <div
+              className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-gray-900"
               onClick={() => handleSort('companyName')}
               role="button"
               tabIndex={0}
@@ -163,7 +162,6 @@ export const RecentLeadsTable = memo(function RecentLeadsTable({
               Company <ArrowUpDown className="h-3 w-3" />
             </div>
             <div>Project</div>
-            <div>Assigned To</div>
             <div>Status</div>
           </div>
 
@@ -172,14 +170,13 @@ export const RecentLeadsTable = memo(function RecentLeadsTable({
             {filteredAndSortedLeads.map((lead) => (
               <div
                 key={lead.id}
-                className="grid grid-cols-1 sm:grid-cols-5 gap-2 sm:gap-3 px-3 py-2 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors items-start sm:items-center"
+                className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3 px-3 py-2 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors items-start sm:items-center"
               >
                 <div className="col-span-2">
                   <div className="text-xs font-medium text-gray-900 truncate">{lead.companyName}</div>
                   <div className="text-[10px] text-gray-500">{lead.source}</div>
                 </div>
                 <div className="text-xs text-gray-600 truncate">{lead.projectTitle}</div>
-                <div className="text-xs text-gray-600 truncate">{lead.assignedTo}</div>
                 <Badge variant="secondary" className={STATUS_COLORS[lead.status as keyof typeof STATUS_COLORS] || 'bg-gray-100 text-gray-700'}>
                   {lead.status}
                 </Badge>

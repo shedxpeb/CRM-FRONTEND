@@ -19,6 +19,7 @@ import { Lead } from '@/types/leads';
 import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
 import { ProjectCustomFields } from '@/features/projects/components/ProjectCustomFields';
 import { ProjectCustomFieldValues } from '@/features/projects/types';
+import { formatLeadLabel } from '@/lib/utils';
 import { Info, ArrowRight, AlertTriangle, Building2, Mail, Phone, MapPin, CreditCard, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -276,6 +277,8 @@ export const ProjectForm = memo(function ProjectForm({
     lastAutoFilledCustomerId.current = customerId;
 
     const fieldMap: [string, string][] = [
+      ['projectTitle', 'projectName'],
+      ['projectType', 'projectType'],
       ['address', 'location'],
       ['city', 'city'],
       ['state', 'state'],
@@ -384,7 +387,7 @@ export const ProjectForm = memo(function ProjectForm({
               <Combobox
                 options={leads?.data?.rows?.map((lead: Lead) => ({
                   value: lead.id,
-                  label: `${lead.customerName || ''} - ${lead.companyName || ''}${lead.city ? ` (${lead.city})` : ''}`.trim() || `LD-${String(lead.leadNumber).padStart(6, '0')}`,
+                  label: formatLeadLabel(lead),
                 })) || []}
                 value={selectedLeadId}
                 onValueChange={(value) => {
@@ -502,6 +505,15 @@ export const ProjectForm = memo(function ProjectForm({
               <label className="text-sm font-medium">Project Name *</label>
               <Input {...register('projectName')} onBlur={() => markFieldEdited('projectName')} placeholder="Enter project name" />
               {errors.projectName && <p className="text-sm text-red-500">{errors.projectName.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Project Code *</label>
+              <Input 
+                {...register('projectCode')}
+                onBlur={() => markFieldEdited('projectCode')}
+                placeholder="e.g., PRJ-001"
+              />
+              {errors.projectCode && <p className="text-sm text-red-500">{errors.projectCode.message}</p>}
             </div>
           </div>
 

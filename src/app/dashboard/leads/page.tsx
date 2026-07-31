@@ -1,5 +1,7 @@
 'use client';
 
+import dayjs from 'dayjs';
+
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
@@ -117,14 +119,6 @@ const baseColumns = [
     render: (value: string) => <span className="text-xs">{value}</span>,
   },
   {
-    key: 'city' as const,
-    label: 'Location',
-    className: 'min-w-[120px] max-w-[150px]',
-    render: (_: unknown, row: Lead) => (
-      <span className="text-xs truncate block">{row.city}, {row.state}</span>
-    ),
-  },
-  {
     key: 'projectType' as const,
     label: 'Project',
     filterable: true,
@@ -168,15 +162,6 @@ const baseColumns = [
     ),
   },
   {
-    key: 'assignedTo' as const,
-    label: 'Assigned',
-    className: 'min-w-[110px] max-w-[140px] hidden xl:table-cell',
-    headerClassName: 'hidden xl:table-cell',
-    render: (value: string | undefined) => (
-      <span className="text-xs truncate block">{value || '-'}</span>
-    ),
-  },
-  {
     key: 'priority' as const,
     label: 'Priority',
     sortable: true,
@@ -195,33 +180,17 @@ const baseColumns = [
   },
   {
     key: 'createdAt' as const,
-    label: 'Created',
+    label: 'Date',
     sortable: true,
     className: 'min-w-[88px] whitespace-nowrap hidden lg:table-cell',
     headerClassName: 'hidden lg:table-cell',
-    render: (value: Date) => {
+    render: (value: Date | string | null | undefined) => {
       if (!value) return '-';
-      const date = new Date(value);
-      if (isNaN(date.getTime())) return '-';
+      const date = dayjs(value);
+      if (!date.isValid()) return '-';
       return (
         <span className="text-xs tabular-nums">
-          {date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-        </span>
-      );
-    },
-  },
-  {
-    key: 'nextFollowUpDate' as const,
-    label: 'Follow-up',
-    className: 'min-w-[88px] whitespace-nowrap hidden xl:table-cell',
-    headerClassName: 'hidden xl:table-cell',
-    render: (value: Date) => {
-      if (!value) return '-';
-      const date = new Date(value);
-      if (isNaN(date.getTime())) return '-';
-      return (
-        <span className="text-xs tabular-nums">
-          {date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          {date.format('DD/MM/YYYY')}
         </span>
       );
     },
@@ -242,11 +211,9 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [cityFilter, setCityFilter] = useState<string>('all');
   const [projectTypeFilter, setProjectTypeFilter] = useState<string>('all');
   const [structureTypeFilter, setStructureTypeFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [assignedToFilter, setAssignedToFilter] = useState<string>('all');
   const [kpiFilterMode, setKpiFilterMode] = useState<string>('none');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -274,7 +241,7 @@ export default function LeadsPage() {
   // Reset page to 1 when search, filters, or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, priorityFilter, cityFilter, projectTypeFilter, structureTypeFilter, sourceFilter, assignedToFilter, pageSize, sortBy, sortOrder]);
+  }, [debouncedSearch, statusFilter, priorityFilter, projectTypeFilter, structureTypeFilter, sourceFilter, pageSize, sortBy, sortOrder]);
 
   // Fetch leads from backend - only when in table view
   const { data: leadsResponse, isLoading: isLoadingLeads, error: leadsError, refetch: refetchLeads } = useLeads(
@@ -288,8 +255,6 @@ export default function LeadsPage() {
       source: sourceFilter === 'all' ? undefined : sourceFilter,
       projectType: projectTypeFilter === 'all' ? undefined : projectTypeFilter,
       structureType: structureTypeFilter === 'all' ? undefined : structureTypeFilter,
-      city: cityFilter === 'all' ? undefined : cityFilter,
-      assignedEmployeeId: assignedToFilter === 'all' ? undefined : assignedToFilter,
       sortBy,
       sortOrder,
     } : undefined
@@ -300,8 +265,6 @@ export default function LeadsPage() {
     viewMode === 'kanban' ? {
       search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
       priority: priorityFilter === 'all' ? undefined : priorityFilter,
-      city: cityFilter === 'all' ? undefined : cityFilter,
-      assignedEmployeeId: assignedToFilter === 'all' ? undefined : assignedToFilter,
     } : undefined
   );
 
@@ -311,8 +274,6 @@ export default function LeadsPage() {
       search: debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined,
       status: statusFilter === 'all' ? undefined : statusFilter,
       priority: priorityFilter === 'all' ? undefined : priorityFilter,
-      city: cityFilter === 'all' ? undefined : cityFilter,
-      assignedEmployeeId: assignedToFilter === 'all' ? undefined : assignedToFilter,
     } : undefined
   );
 
@@ -374,20 +335,14 @@ export default function LeadsPage() {
   }, [summary]);
 
   const leadFilterOptions = useMemo(() => {
-    const cities = new Set<string>();
-    const assignedToUsers = new Set<string>();
-    for (const lead of leads) {
-      if (lead.city) cities.add(lead.city);
-      if (lead.assignedTo) assignedToUsers.add(lead.assignedTo);
-    }
     return {
-      cities: [...cities].sort(),
+      cities: [] as string[],
       projectTypes: [...leadConfig.projectTypes].sort(),
       structureTypes: [...leadConfig.structureTypes].sort(),
       sources: [...leadConfig.sources].sort(),
-      assignedTo: [...assignedToUsers].sort(),
+      assignedTo: [] as string[],
     };
-  }, [leads, leadConfig]);
+  }, [leadConfig]);
 
   const customColumnDefs = useMemo(() => customColumns.map(col => ({
     key: col.key as any,
@@ -501,23 +456,7 @@ export default function LeadsPage() {
                 const XLSX = await import('xlsx');
                 const formatDate = (dateValue: string | Date | null | undefined) => {
                   if (!dateValue) return '';
-                  
-                  let date: Date;
-                  if (typeof dateValue === 'string') {
-                    const parts = dateValue.split('T')[0].split('-');
-                    if (parts.length === 3) {
-                      const [year, month, day] = parts;
-                      return `${day}-${month}-${year}`;
-                    }
-                    date = new Date(dateValue);
-                  } else {
-                    date = dateValue;
-                  }
-                  
-                  const day = String(date.getDate()).padStart(2, '0');
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const year = date.getFullYear();
-                  return `${day}-${month}-${year}`;
+                  return dayjs(dateValue).isValid() ? dayjs(dateValue).format('DD/MM/YYYY') : '';
                 };
                 
                 const headers = [
@@ -528,7 +467,7 @@ export default function LeadsPage() {
                   'Insulation Type', 'Insulation Thickness', 'Material Preference',
                   'Site Location', 'Site Address', 'Map Coordinates', 'Soil Notes',
                   'Customer Notes', 'Special Requirement', 'Status', 'Priority', 'Score', 
-                  'Assigned To', 'Source', 'Created Date', 'Next Follow-up', 'Remarks'
+                  'Source', 'Date', 'Remarks'
                 ];
                 
                 const customFieldKeys = Object.keys(leadConfig.customFields || {});
@@ -577,10 +516,8 @@ export default function LeadsPage() {
                     lead.status,
                     lead.priority,
                     lead.score || '',
-                    lead.assignedTo || '',
                     lead.source,
                     formatDate(lead.createdAt),
-                    formatDate(lead.nextFollowUpDate),
                     lead.remarks || '',
                   ];
                   
@@ -725,13 +662,6 @@ export default function LeadsPage() {
       ],
     },
     {
-      key: 'city',
-      label: 'City',
-      value: cityFilter,
-      onChange: setCityFilter,
-      options: [{ value: 'all', label: 'All Cities' }, ...leadFilterOptions.cities.map(c => ({ value: c, label: c }))],
-    },
-    {
       key: 'projectType',
       label: 'Project Type',
       value: projectTypeFilter,
@@ -745,23 +675,14 @@ export default function LeadsPage() {
       onChange: setStructureTypeFilter,
       options: [{ value: 'all', label: 'All Structures' }, ...leadFilterOptions.structureTypes.map(s => ({ value: s, label: s }))],
     },
-    {
-      key: 'assignedTo',
-      label: 'Assigned To',
-      value: assignedToFilter,
-      onChange: setAssignedToFilter,
-      options: [{ value: 'all', label: 'All Employees' }, ...leadFilterOptions.assignedTo.map(e => ({ value: e, label: e }))],
-    },
-  ], [statusFilter, priorityFilter, cityFilter, projectTypeFilter, structureTypeFilter, sourceFilter, assignedToFilter, quickDateFilter, leadFilterOptions, leadConfig.statuses, leadConfig.priorities, handleQuickDateFilterChange]);
+  ], [statusFilter, priorityFilter, projectTypeFilter, structureTypeFilter, sourceFilter, quickDateFilter, leadFilterOptions, leadConfig.statuses, leadConfig.priorities, handleQuickDateFilterChange]);
 
   const handleClearFilters = useCallback(() => {
     setStatusFilter('all');
     setPriorityFilter('all');
-    setCityFilter('all');
     setProjectTypeFilter('all');
     setStructureTypeFilter('all');
     setSourceFilter('all');
-    setAssignedToFilter('all');
     setKpiFilterMode('none');
     setSearchQuery('');
     setQuickDateFilter('all');

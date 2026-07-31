@@ -17,6 +17,7 @@ import {
  * Create Project Schema
  */
 export const createProjectSchema = z.object({
+  projectCode: z.string().min(2, 'Project code must be at least 2 characters').max(50, 'Project code must not exceed 50 characters'),
   projectName: z.string().min(3, 'Project name must be at least 3 characters'),
   customerId: z.string().min(1, 'Customer is required'),
   leadId: z.string().optional(),

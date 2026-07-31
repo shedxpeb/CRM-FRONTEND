@@ -62,8 +62,8 @@ export const baseLeadSchema = z.object({
   tags: z.array(z.string()).optional(),
 
   projectTitle: z.string()
-    .min(2, 'Project title must be at least 2 characters')
-    .max(200, 'Project title must be less than 200 characters'),
+    .min(2, 'Project name must be at least 2 characters')
+    .max(200, 'Project name must be less than 200 characters'),
 
   projectType: z.enum(['Factory', 'Warehouse', 'IndustrialShed', 'Commercial', 'Residential', 'ColdStorage', 'Other']),
 
@@ -91,7 +91,7 @@ export const baseLeadSchema = z.object({
 
   priority: z.enum(['Low', 'Medium', 'High', 'Urgent']),
 
-  assignedToId: z.string().optional().or(z.literal('')),
+  createdAt: z.string().min(1, 'Current Date is required'),
 
   status: z.enum([
     'New', 'Contacted', 'DesignPending', 'BOQPending',

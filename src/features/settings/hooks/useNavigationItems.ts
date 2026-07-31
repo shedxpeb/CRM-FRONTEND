@@ -45,7 +45,7 @@ export interface NavigationItem {
  * naturally under their parent (e.g. "Items", "Stock", "Operations").
  */
 const MODULE_NAV_MAP: Partial<
-  Record<ModuleName, { href: string; icon: LucideIcon; title?: string; roles: NavigationRole[] }>
+  Record<ModuleName, { href?: string; icon: LucideIcon; title?: string; roles: NavigationRole[] }>
 > = {
   leads: { href: '/dashboard/leads', icon: Users, roles: ['owner', 'admin', 'employee'] },
   customers: { href: '/dashboard/customers', icon: Building, roles: ['owner', 'admin', 'employee'] },
@@ -54,7 +54,7 @@ const MODULE_NAV_MAP: Partial<
   inventory: { href: '/dashboard/inventory', icon: Warehouse, title: 'Stock', roles: ['owner', 'admin'] },
   finance: { href: '/dashboard/finance', icon: DollarSign, title: 'Operations', roles: ['owner', 'admin'] },
   accounting: { href: '/dashboard/accounting', icon: Calculator, title: 'Accounting', roles: ['owner', 'admin'] },
-  documents: { href: '/dashboard/documents', icon: FileText, roles: ['owner', 'admin', 'employee'] },
+  documents: { icon: FileText, roles: ['owner', 'admin', 'employee'] },
 };
 
 const DASHBOARD_ITEM: NavigationItem = {
@@ -79,10 +79,10 @@ const SETTINGS_ITEM: NavigationItem = {
 };
 
 /**
- * Document sub-pages surfaced as Documents children. These reuse existing
- * routes — no new pages, no Invoice (Invoice stays in Finance).
+ * Document sub-pages surfaced as Documents children. Invoice stays in Finance.
  */
 const DOCUMENT_CHILDREN: NavigationItem[] = [
+  { title: 'Dashboard', href: '/dashboard/documents/dashboard', icon: LayoutDashboard, roles: ['owner', 'admin', 'employee'] },
   { title: 'Estimates', href: '/dashboard/documents/estimates', icon: FileSpreadsheet, roles: ['owner', 'admin', 'employee'] },
   { title: 'Proposals', href: '/dashboard/documents/proposals', icon: ScrollText, roles: ['owner', 'admin', 'employee'] },
   { title: 'Quotations', href: '/dashboard/documents/quotations', icon: ReceiptText, roles: ['owner', 'admin', 'employee'] },
@@ -153,11 +153,10 @@ export function useNavigationItems(userRole: NavigationRole = 'owner') {
       tree.push({ ...documents, children: documentChildren.length > 0 ? documentChildren : undefined });
     }
 
-    // Purchase group: Vendors + Purchase Orders + Purchase Reports
+    // Purchase group: Vendors + Purchase Orders
     const purchaseChildren: NavigationItem[] = [
       { title: 'Vendors', href: '/purchase/vendors', icon: Truck, roles: ['owner', 'admin', 'employee'] },
       { title: 'Purchase Orders', href: '/purchase/orders', icon: ShoppingCart, roles: ['owner', 'admin', 'employee'] },
-      { title: 'Purchase Reports', href: '/purchase/reports', icon: BarChart3, roles: ['owner', 'admin'] },
     ];
     const filteredPurchaseChildren = purchaseChildren.filter((child) => child.roles.includes(userRole));
     if (filteredPurchaseChildren.length > 0) {
