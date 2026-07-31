@@ -22,6 +22,7 @@ import { smartPrefill } from '@/lib/smartPrefill';
 import { formatLeadLabel } from '@/lib/utils';
 import { useCustomerConfiguration } from '@/features/customers/hooks/useCustomers';
 import { CustomerCustomFields } from '@/features/customers/components/CustomerCustomFields';
+import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
 
 interface CustomerFormProps {
   initialData?: Partial<Customer>;
@@ -70,6 +71,7 @@ function mapLeadBusinessTypeToCustomerBusinessType(leadBusinessType?: string): s
 
 export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, onCancel, isLoading, error, isEditMode = false }: CustomerFormProps) {
   const customerConfig = useCustomerConfiguration();
+  const projectConfig = useProjectConfiguration();
   // Load leads only for create-mode lead picker (never on edit)
   const { data: leadsResponse } = useLeads(
     isEditMode ? undefined : { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
@@ -105,13 +107,15 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
     source: 'Website',
     status: 'Prospect',
     notes: '',
+    projectTitle: '',
+    projectType: '',
     customFields: initialData?.customFields ?? {},
     ...initialData,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (field: keyof Customer, value: any) => {
+  const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (errors[field]) {
@@ -153,8 +157,6 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
         source: mapLeadSourceToCustomerSource(selectedLead.source) as any,
         industry: mapLeadIndustryToCustomerIndustry(selectedLead.industry) as any,
         businessType: mapLeadBusinessTypeToCustomerBusinessType(selectedLead.businessType) as any,
-        assignedEmployee: selectedLead.assignedTo || prev.assignedEmployee,
-        assignedEmployeeId: selectedLead.assignedToId || prev.assignedEmployeeId,
         notes: selectedLead.remarks ? `${prev.notes || ''}\n\nLead Notes: ${selectedLead.remarks}` : prev.notes,
         leadId: selectedLead.id,
       }));
@@ -429,6 +431,54 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               )}
 
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section: Project Details */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">Project Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Project Name *</label>
+            <Input
+              value={formData.projectTitle || ''}
+              onChange={(e) => handleChange('projectTitle', e.target.value)}
+              placeholder="Enter project name"
+              className={errors.projectTitle ? 'border-red-500' : ''}
+            />
+            {errors.projectTitle && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.projectTitle}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Project Type *</label>
+            <Select
+              value={formData.projectType}
+              onValueChange={(v) => handleChange('projectType', v)}
+            >
+              <SelectTrigger className={errors.projectType ? 'border-red-500' : ''}>
+                <SelectValue placeholder="Select project type" />
+              </SelectTrigger>
+              <SelectContent>
+                {projectConfig.projectTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.projectType && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.projectType}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

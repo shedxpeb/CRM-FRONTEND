@@ -197,11 +197,6 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
       source,
       priority: formData.priority,
       status,
-      currentDate: formData.createdAt
-        ? (formData.createdAt instanceof Date
-            ? formData.createdAt.toISOString()
-            : new Date(formData.createdAt).toISOString())
-        : new Date().toISOString(),
       nextFollowUpDate: formData.nextFollowUpDate
         ? (formData.nextFollowUpDate instanceof Date
             ? formData.nextFollowUpDate.toISOString()
@@ -586,9 +581,9 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Project Title *</label>
+              <label className="text-sm font-medium">Project Name *</label>
               <Input
-                placeholder="Enter project title"
+                placeholder="Enter project name"
                 value={formData.projectTitle ?? ''}
                 onChange={(e) => handleInputChange('projectTitle', e.target.value)}
                 className={errors.projectTitle ? 'border-red-500' : ''}

@@ -83,6 +83,12 @@ export const createCustomerSchema = z.object({
 
   leadId: z.string().optional(),
   customFields: z.record(z.string(), z.any()).optional(),
+
+  projectTitle: z.string()
+    .min(3, 'Project name must be at least 3 characters')
+    .max(200, 'Project name must be less than 200 characters'),
+
+  projectType: z.string().min(1, 'Project type is required'),
 });
 
 /**

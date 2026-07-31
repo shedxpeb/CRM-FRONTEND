@@ -224,6 +224,8 @@ export const ProjectFormWizard = memo(function ProjectFormWizard({
     lastAutoFilledCustomerId.current = customerId;
 
     const fieldMap: [string, string][] = [
+      ['projectTitle', 'projectName'],
+      ['projectType', 'projectType'],
       ['address', 'location'],
       ['city', 'city'],
       ['state', 'state'],

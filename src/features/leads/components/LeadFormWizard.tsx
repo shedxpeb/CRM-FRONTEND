@@ -200,11 +200,6 @@ export const LeadFormWizard = memo(function LeadFormWizard({
       source,
       priority: formData.priority,
       status,
-      currentDate: formData.createdAt
-        ? (formData.createdAt instanceof Date
-            ? formData.createdAt.toISOString()
-            : new Date(formData.createdAt).toISOString())
-        : new Date().toISOString(),
       nextFollowUpDate: formData.nextFollowUpDate
         ? (formData.nextFollowUpDate instanceof Date
             ? formData.nextFollowUpDate.toISOString()
