@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createProjectSchema, CreateProjectInput } from '@/features/projects/validations';
+import { createProjectSchema, updateProjectSchema, CreateProjectInput, UpdateProjectInput } from '@/features/projects/validations';
 import { customersApi } from '@/features/customers/services/customersApi';
 import { useCustomerProjectData } from '@/features/customers/hooks/useCustomers';
 import { useLeads } from '@/features/leads/hooks/useLeads';
@@ -322,20 +322,8 @@ export const ProjectForm = memo(function ProjectForm({
 
   const handleFormSubmit = (data: CreateProjectInput) => {
     if (isEditMode && initialData) {
-      const changed: Partial<CreateProjectInput> & { customFields?: ProjectCustomFieldValues } = {};
-      (Object.keys(data) as (keyof CreateProjectInput)[]).forEach((key) => {
-        const nextVal = data[key];
-        const prevVal = initialData[key];
-        if (String(nextVal ?? '') !== String(prevVal ?? '')) {
-          (changed as Record<string, unknown>)[key] = nextVal;
-        }
-      });
-      const prevCustom = JSON.stringify(initialData.customFields ?? {});
-      const nextCustom = JSON.stringify(customFields ?? {});
-      if (prevCustom !== nextCustom) {
-        changed.customFields = customFields;
-      }
-      onSubmit(changed);
+      // In edit mode, submit all data and let backend handle what needs to be updated
+      onSubmit({ ...data, customFields });
       return;
     }
     onSubmit({ ...data, customFields });

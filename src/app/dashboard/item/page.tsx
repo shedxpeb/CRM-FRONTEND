@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ROUTES } from '@/core/routes';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Package, Plus, Download } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 const ITEM_STATUSES: ItemStatus[] = ['Active', 'Inactive', 'Discontinued'];
 const ITEM_TYPE_CLASSES: ItemTypeClass[] = ['Structural', 'Cladding', 'Accessory', 'Service', 'Other'];
@@ -366,7 +367,14 @@ export default function ItemPage() {
             mode="create"
             onSubmit={(data: Partial<ItemMaster>) =>
               createMutation.mutate(data as CreateItemMasterDto, {
-                onSuccess: () => setIsCreateDialogOpen(false),
+                onSuccess: () => {
+                  setIsCreateDialogOpen(false);
+                  toast.success('Product created successfully');
+                },
+                onError: (error: any) => {
+                  const message = error?.response?.data?.message || error?.message || 'Failed to create product';
+                  toast.error(typeof message === 'string' ? message : JSON.stringify(message));
+                },
               })
             }
             onCancel={() => setIsCreateDialogOpen(false)}
@@ -385,7 +393,17 @@ export default function ItemPage() {
               onSubmit={(data: Partial<ItemMaster>) =>
                 updateMutation.mutate(
                   { id: selectedItem.id, data },
-                  { onSuccess: () => { setIsEditDialogOpen(false); setSelectedItemId(null); } }
+                  { 
+                    onSuccess: () => { 
+                      setIsEditDialogOpen(false); 
+                      setSelectedItemId(null);
+                      toast.success('Product updated successfully');
+                    },
+                    onError: (error: any) => {
+                      const message = error?.response?.data?.message || error?.message || 'Failed to update product';
+                      toast.error(typeof message === 'string' ? message : JSON.stringify(message));
+                    },
+                  }
                 )
               }
               onCancel={() => { setIsEditDialogOpen(false); setSelectedItemId(null); }}

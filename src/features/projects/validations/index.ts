@@ -65,8 +65,8 @@ export const updateProjectSchema = z.object({
   city: z.string().min(2).optional(),
   state: z.string().min(2).optional(),
   pincode: z.string().optional(),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   priority: z.enum(['Low', 'Medium', 'High', 'Urgent'] as const).optional(),
   projectManagerId: z.string().min(1).optional(),
   structureType: z.enum(['PEB Building', 'Conventional Steel', 'Hybrid', 'Pre-Engineered', 'Cold Storage'] as const).optional(),
@@ -96,7 +96,7 @@ export const updateProjectSchema = z.object({
 }).refine(
   (data) => {
     if (data.startDate && data.endDate) {
-      return data.endDate > data.startDate;
+      return new Date(data.endDate) > new Date(data.startDate);
     }
     return true;
   },

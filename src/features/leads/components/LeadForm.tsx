@@ -38,9 +38,10 @@ interface LeadFormProps {
   onSubmit: (data: Partial<Lead>) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  isEditMode?: boolean;
 }
 
-export const LeadForm = memo(function LeadForm({ initialData, existingLeads = [], configuration, onSubmit, onCancel, isLoading }: LeadFormProps) {
+export const LeadForm = memo(function LeadForm({ initialData, existingLeads = [], configuration, onSubmit, onCancel, isLoading, isEditMode = false }: LeadFormProps) {
   const config = configuration ?? DEFAULT_LEAD_CONFIGURATION;
   const [formData, setFormData] = useState<any>({
     customerName: initialData?.customerName ?? '',
@@ -217,8 +218,11 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
       return fullPayload;
     }
 
+    // In edit mode, exclude createdAt from the payload
+    const { createdAt, ...payloadWithoutCreatedAt } = fullPayload;
+
     const changed: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(fullPayload)) {
+    for (const [key, value] of Object.entries(payloadWithoutCreatedAt)) {
       const previous = (initialData as Record<string, unknown>)[key];
       let previousNormalized = previous;
       if (
@@ -1043,21 +1047,23 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Current Date *</label>
-              <Input
-                type="date"
-                value={formData.createdAt || ''}
-                onChange={(e) => handleInputChange('createdAt', e.target.value || undefined)}
-                className={errors.createdAt ? 'border-red-500' : ''}
-              />
-              {errors.createdAt && (
-                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.createdAt}
-                </p>
-              )}
-            </div>
+            {!isEditMode && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Current Date *</label>
+                <Input
+                  type="date"
+                  value={formData.createdAt || ''}
+                  onChange={(e) => handleInputChange('createdAt', e.target.value || undefined)}
+                  className={errors.createdAt ? 'border-red-500' : ''}
+                />
+                {errors.createdAt && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.createdAt}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium">Next Follow-up Date</label>
               <Input
