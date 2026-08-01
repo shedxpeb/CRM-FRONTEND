@@ -53,7 +53,7 @@ export function useItemMasters(query?: ItemMasterQuery) {
     queryFn: () => itemMasterApi.getAll(query),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
   });
 }
 

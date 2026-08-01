@@ -18,7 +18,6 @@ import { CategorySelector } from '@/features/item-master/components/CategorySele
 import { ItemCustomFields } from '@/features/item-master/components/ItemCustomFields';
 import { getCategoryById } from '@/features/item-master/data/categoryMasterData';
 import {
-  useCreateItemMaster,
   useItemConfiguration,
   useItemMasters,
 } from '@/features/item-master/hooks/useItemMaster';
@@ -84,7 +83,6 @@ export const ItemForm = memo(function ItemForm({
   onCancel,
   isSubmitting,
 }: ItemFormProps) {
-  const createMutation = useCreateItemMaster();
   const { data: existingItems = [] } = useItemMasters();
   const { customFields: customFieldDefinitions } = useItemConfiguration();
   const [errors, setErrors] = useState<FormErrors>({});
@@ -136,7 +134,7 @@ export const ItemForm = memo(function ItemForm({
     initialData?.customFields ?? {}
   );
 
-  const pending = createMutation.isPending || isSubmitting;
+  const pending = isSubmitting;
 
   useEffect(() => {
     if (mode !== 'create' || !formData.categoryId) return;
@@ -256,9 +254,7 @@ export const ItemForm = memo(function ItemForm({
     };
 
     if (mode === 'create') {
-      createMutation.mutate(submitData as CreateItemMasterDto, {
-        onSuccess: () => onSubmit(submitData),
-      });
+      onSubmit(submitData);
     } else {
       onSubmit(submitData);
     }

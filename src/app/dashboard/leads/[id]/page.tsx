@@ -361,6 +361,7 @@ export default function LeadDetailsPage() {
             onSubmit={handleEditLead}
             onCancel={() => setIsEditDialogOpen(false)}
             isLoading={updateLeadMutation.isPending}
+            isEditMode={true}
           />
         </DialogContent>
       </Dialog>

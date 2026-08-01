@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Customer } from '@/features/customers/types';
 import { getStatusVariant } from '@/features/customers/constants';
-import { createCustomerSchema } from '@/features/customers/validations';
+import { createCustomerSchema, updateCustomerSchema } from '@/features/customers/validations';
 import { X, AlertCircle, Info } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { useLeads } from '@/features/leads/hooks/useLeads';
@@ -84,6 +84,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
   const [selectedLeadId, setSelectedLeadId] = useState<string>(initialData?.leadId || '');
   const [showAutoFillNotice, setShowAutoFillNotice] = useState<boolean>(false);
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
   // Customer owns its data — lead link is reference-only (snapshot rule)
   const leadReferenceId = isEditMode ? initialData?.leadId : undefined;
@@ -117,6 +118,8 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
 
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Mark field as touched when user interacts with it
+    setTouchedFields((prev) => new Set([...prev, field]));
     // Clear error for this field when user starts typing
     if (errors[field]) {
       setErrors((prev) => {
@@ -173,6 +176,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
 
   const validateForm = () => {
     try {
+      // Use the same validation schema for both create and edit modes
       createCustomerSchema.parse(formData);
       setErrors({});
       return true;
@@ -183,7 +187,10 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
         issues.forEach((err: any) => {
           const key = err?.path?.[0];
           if (key && !fieldErrors[key]) {
-            fieldErrors[String(key)] = err.message || 'Invalid value';
+            // In edit mode, only show errors for touched fields or on submit
+            if (!isEditMode || touchedFields.has(key)) {
+              fieldErrors[String(key)] = err.message || 'Invalid value';
+            }
           }
         });
       }
@@ -197,6 +204,8 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Mark all fields as touched on submit to show all validation errors
+    setTouchedFields(new Set(Object.keys(formData)));
     if (!validateForm()) {
       // Scroll to first field error so users see why create is blocked
       requestAnimationFrame(() => {

@@ -31,6 +31,7 @@ import { ROUTES } from '@/core/routes';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import { EmptyState } from '@/components/states/EmptyState';
 import { Package, Plus, Download, Warehouse, AlertTriangle, DollarSign } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 const InventoryItemForm = dynamic(
   () => import('@/features/inventory/components/InventoryItemForm').then((m) => ({ default: m.InventoryItemForm })),
@@ -319,7 +320,12 @@ export default function InventoryPage() {
         onSuccess: (newItem) => {
           setIsCreateDialogOpen(false);
           refetch();
+          toast.success('Inventory created successfully');
           router.push(ROUTES.inventoryDetail(newItem.id));
+        },
+        onError: (error: any) => {
+          const message = error?.response?.data?.message || error?.message || 'Failed to create inventory';
+          toast.error(typeof message === 'string' ? message : JSON.stringify(message));
         },
       });
     },
@@ -335,6 +341,11 @@ export default function InventoryPage() {
           onSuccess: () => {
             setIsEditDialogOpen(false);
             refetch();
+            toast.success('Inventory updated successfully');
+          },
+          onError: (error: any) => {
+            const message = error?.response?.data?.message || error?.message || 'Failed to update inventory';
+            toast.error(typeof message === 'string' ? message : JSON.stringify(message));
           },
         }
       );

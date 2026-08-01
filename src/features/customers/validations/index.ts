@@ -20,33 +20,33 @@ export const createCustomerSchema = z.object({
     .regex(/^\+?[\d\s\-()]{7,15}$/, 'Mobile number is invalid (7-15 digits, optional +country code)'),
 
   alternateMobile: z.string()
-    .regex(/^\+?[\d\s\-()]{7,15}$/, 'Alternate mobile number is invalid')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || /^\+?[\d\s\-()]{7,15}$/.test(val), 'Alternate mobile number is invalid'),
 
   email: z.string()
-    .email('Invalid email address')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Invalid email address'),
 
   gstNumber: z.string()
-    .regex(/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/, 'Invalid GST number format')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/.test(val), 'Invalid GST number format'),
 
   panNumber: z.string()
-    .regex(/^[A-Z]{5}\d{4}[A-Z]{1}$/, 'Invalid PAN number format')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || /^[A-Z]{5}\d{4}[A-Z]{1}$/.test(val), 'Invalid PAN number format'),
 
   industry: z.string().min(1, 'Industry is required'),
 
   businessType: z.string().min(1, 'Business type is required'),
 
   website: z.string()
-    .url('Invalid website URL')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || /^https?:\/\/.+\..+/.test(val), 'Invalid website URL'),
 
   address: z.string()
     .min(2, 'Address is required')
@@ -61,34 +61,44 @@ export const createCustomerSchema = z.object({
     .max(50, 'State must be less than 50 characters'),
 
   country: z.string()
-    .max(50, 'Country must be less than 50 characters')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || val.length <= 50, 'Country must be less than 50 characters'),
 
   pincode: z.string()
-    .regex(/^\d{6}$/, 'Pincode must be 6 digits')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || /^\d{6}$/.test(val), 'Pincode must be 6 digits'),
 
-  assignedEmployeeId: z.string().optional(),
+  assignedEmployeeId: z.string()
+    .optional()
+    .nullable(),
 
   source: z.string().min(1, 'Source is required'),
 
   status: z.string().optional().default('Prospect'),
 
   notes: z.string()
-    .max(1000, 'Notes must be less than 1000 characters')
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine(val => !val || val === '' || val.length <= 1000, 'Notes must be less than 1000 characters'),
 
-  leadId: z.string().optional(),
-  customFields: z.record(z.string(), z.any()).optional(),
+  leadId: z.string()
+    .optional()
+    .nullable(),
+
+  customFields: z.record(z.string(), z.any())
+    .optional()
+    .nullable(),
 
   projectTitle: z.string()
-    .min(3, 'Project name must be at least 3 characters')
-    .max(200, 'Project name must be less than 200 characters'),
+    .optional()
+    .nullable()
+    .refine(val => !val || val === '' || (val.length >= 3 && val.length <= 200), 'Project name must be between 3 and 200 characters'),
 
-  projectType: z.string().min(1, 'Project type is required'),
+  projectType: z.string()
+    .optional()
+    .nullable(),
 });
 
 /**

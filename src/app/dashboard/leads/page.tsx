@@ -1180,6 +1180,7 @@ export default function LeadsPage() {
                 setSelectedLeadId(null);
               }}
               isLoading={updateLeadMutation.isPending}
+              isEditMode={true}
             />
           </DialogContent>
         </Dialog>

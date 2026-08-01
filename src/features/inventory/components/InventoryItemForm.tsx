@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, memo, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -49,77 +50,69 @@ const InventoryItemForm = memo(function InventoryItemForm({
   const inventoryConfig = useInventoryConfiguration();
   const isEdit = mode === 'edit';
 
-  const [formData, setFormData] = useState<Partial<InventoryItem>>({
-    itemCode: '',
-    itemMasterId: '',
-    itemName: '',
-    unit: undefined,
-    currentStock: 0,
-    reservedStock: 0,
-    issuedStock: 0,
-    incomingStock: 0,
-    outgoingStock: 0,
-    minimumStock: 0,
-    reorderLevel: 0,
-    reorderQuantity: 0,
-    safetyStock: 0,
-    binLocation: '',
-    purchaseRate: 0,
-    warehouseId: '',
-    status: 'In Stock',
-    customFields: {},
-    ...initialData,
+  const { register, handleSubmit, setValue, watch, formState: { errors, isValid, isDirty } } = useForm<Partial<InventoryItem>>({
+    defaultValues: {
+      itemCode: '',
+      itemMasterId: '',
+      itemName: '',
+      unit: undefined,
+      currentStock: 0,
+      reservedStock: 0,
+      issuedStock: 0,
+      incomingStock: 0,
+      outgoingStock: 0,
+      minimumStock: 0,
+      reorderLevel: 0,
+      reorderQuantity: 0,
+      safetyStock: 0,
+      binLocation: '',
+      purchaseRate: 0,
+      warehouseId: '',
+      status: 'In Stock',
+      customFields: {},
+      ...initialData,
+    },
+    mode: 'all',
   });
 
-  const handleChange = useCallback((field: keyof InventoryItem, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleCustomFieldChange = useCallback((key: string, value: string | number | boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      customFields: { ...prev.customFields, [key]: value },
-    }));
-  }, []);
+  const itemMasterId = watch('itemMasterId');
+  const warehouseId = watch('warehouseId');
 
   const handleMasterSelect = useCallback(
     (masterId: string) => {
       const master = itemMasters?.find((m) => m.id === masterId);
       if (!master) return;
-      setFormData((prev) => ({
-        ...prev,
-        itemMasterId: master.id,
-        itemCode: master.itemCode,
-        itemName: master.itemName,
-        unit: prev.unit ?? (master.unit as InventoryItem['unit']),
-        category: master.category,
-        brand: master.brand,
-        itemTypeClass: master.itemTypeClass,
-        purchaseRate: master.defaultRate ?? prev.purchaseRate,
-      }));
+      setValue('itemMasterId', master.id);
+      setValue('itemCode', master.itemCode);
+      setValue('itemName', master.itemName);
+      setValue('unit', watch('unit') ?? (master.unit as InventoryItem['unit']));
+      setValue('category', master.category);
+      setValue('brand', master.brand);
+      setValue('itemTypeClass', master.itemTypeClass);
+      setValue('purchaseRate', master.defaultRate ?? watch('purchaseRate'));
     },
-    [itemMasters]
+    [itemMasters, setValue, watch]
   );
 
   const handleWarehouseSelect = useCallback(
     (warehouseId: string) => {
       const wh = warehouses?.find((w) => w.id === warehouseId);
-      setFormData((prev) => ({
-        ...prev,
-        warehouseId,
-        warehouseName: wh?.name ?? prev.warehouseName,
-      }));
+      setValue('warehouseId', warehouseId);
+      setValue('warehouseName', wh?.name ?? watch('warehouseName'));
     },
-    [warehouses]
+    [warehouses, setValue, watch]
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const availableStock =
-      (formData.currentStock ?? 0) - (formData.reservedStock ?? 0) - (formData.issuedStock ?? 0);
-    const totalValue = (formData.currentStock ?? 0) * (formData.purchaseRate ?? 0);
+  const handleCustomFieldChange = useCallback((key: string, value: string | number | boolean) => {
+    const currentCustomFields = watch('customFields') || {};
+    setValue('customFields', { ...currentCustomFields, [key]: value });
+  }, [setValue, watch]);
+
+  const onFormSubmit = (data: Partial<InventoryItem>) => {
+    const availableStock = (data.currentStock ?? 0) - (data.reservedStock ?? 0) - (data.issuedStock ?? 0);
+    const totalValue = (data.currentStock ?? 0) * (data.purchaseRate ?? 0);
     onSubmit({
-      ...formData,
+      ...data,
       availableStock,
       totalValue,
       lastUpdated: new Date(),
@@ -127,7 +120,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-base">Item Reference</CardTitle>
@@ -137,7 +130,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
           {!isEdit ? (
             <div className="space-y-2">
               <label className="text-sm font-medium">Select Item Master *</label>
-              <Select value={formData.itemMasterId || ''} onValueChange={handleMasterSelect}>
+              <Select value={itemMasterId || ''} onValueChange={handleMasterSelect}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose item from catalog" />
                 </SelectTrigger>
@@ -152,12 +145,12 @@ const InventoryItemForm = memo(function InventoryItemForm({
             </div>
           ) : null}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ReadOnlyField label="Item Code" value={formData.itemCode} />
-            <ReadOnlyField label="Item Name" value={formData.itemName} />
-            <ReadOnlyField label="Category" value={formData.category} />
-            <ReadOnlyField label="Brand" value={formData.brand} />
-            <ReadOnlyField label="Item Type" value={formData.itemTypeClass} />
-            <ReadOnlyField label="Unit" value={formData.unit} />
+            <ReadOnlyField label="Item Code" value={watch('itemCode')} />
+            <ReadOnlyField label="Item Name" value={watch('itemName')} />
+            <ReadOnlyField label="Category" value={watch('category')} />
+            <ReadOnlyField label="Brand" value={watch('brand')} />
+            <ReadOnlyField label="Item Type" value={watch('itemTypeClass')} />
+            <ReadOnlyField label="Unit" value={watch('unit')} />
           </div>
         </CardContent>
       </Card>
@@ -173,9 +166,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.currentStock ?? 0}
-                onChange={(e) => handleChange('currentStock', Number(e.target.value))}
-                required
+                {...register('currentStock', { required: true, valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -183,8 +174,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.reservedStock ?? 0}
-                onChange={(e) => handleChange('reservedStock', Number(e.target.value))}
+                {...register('reservedStock', { valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -192,8 +182,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.issuedStock ?? 0}
-                onChange={(e) => handleChange('issuedStock', Number(e.target.value))}
+                {...register('issuedStock', { valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -201,8 +190,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.incomingStock ?? 0}
-                onChange={(e) => handleChange('incomingStock', Number(e.target.value))}
+                {...register('incomingStock', { valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -210,8 +198,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.outgoingStock ?? 0}
-                onChange={(e) => handleChange('outgoingStock', Number(e.target.value))}
+                {...register('outgoingStock', { valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -219,15 +206,14 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.purchaseRate ?? 0}
-                onChange={(e) => handleChange('purchaseRate', Number(e.target.value))}
+                {...register('purchaseRate', { valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Stock Status</label>
               <Select
-                value={formData.status}
-                onValueChange={(v) => handleChange('status', v as StockStatus)}
+                value={watch('status')}
+                onValueChange={(v) => setValue('status', v as StockStatus)}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -249,7 +235,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Warehouse *</label>
-              <Select value={formData.warehouseId || ''} onValueChange={handleWarehouseSelect}>
+              <Select value={warehouseId || ''} onValueChange={handleWarehouseSelect}>
                 <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
                 <SelectContent>
                   {(warehouses ?? []).map((wh) => (
@@ -263,8 +249,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
             <div className="space-y-2">
               <label className="text-sm font-medium">Bin Location</label>
               <Input
-                value={formData.binLocation || ''}
-                onChange={(e) => handleChange('binLocation', e.target.value)}
+                {...register('binLocation')}
                 placeholder="e.g., A-12-03"
               />
             </div>
@@ -273,9 +258,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.minimumStock ?? 0}
-                onChange={(e) => handleChange('minimumStock', Number(e.target.value))}
-                required
+                {...register('minimumStock', { required: true, valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -283,9 +266,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.reorderLevel ?? 0}
-                onChange={(e) => handleChange('reorderLevel', Number(e.target.value))}
-                required
+                {...register('reorderLevel', { required: true, valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -293,8 +274,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.reorderQuantity ?? 0}
-                onChange={(e) => handleChange('reorderQuantity', Number(e.target.value))}
+                {...register('reorderQuantity', { valueAsNumber: true })}
               />
             </div>
             <div className="space-y-2">
@@ -302,9 +282,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
               <Input
                 type="number"
                 step="0.01"
-                value={formData.safetyStock ?? 0}
-                onChange={(e) => handleChange('safetyStock', Number(e.target.value))}
-                required
+                {...register('safetyStock', { required: true, valueAsNumber: true })}
               />
             </div>
           </div>
@@ -314,7 +292,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
       <InventoryCustomFields
         mode="form"
         fields={inventoryConfig.customFields}
-        values={formData.customFields}
+        values={watch('customFields')}
         onChange={handleCustomFieldChange}
       />
 
@@ -323,7 +301,10 @@ const InventoryItemForm = memo(function InventoryItemForm({
           <X className="h-4 w-4 mr-1" />
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading || !formData.itemMasterId || !formData.warehouseId}>
+        <Button 
+          type="submit" 
+          disabled={isLoading || !itemMasterId || !warehouseId}
+        >
           {isLoading ? 'Saving...' : isEdit ? 'Update Inventory' : 'Create Inventory'}
         </Button>
       </div>
