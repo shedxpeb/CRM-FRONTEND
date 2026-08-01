@@ -12,6 +12,7 @@ import { useCustomersStats } from '@/features/customers/hooks/useCustomers';
 import { useInventoryStats } from '@/features/inventory/hooks/useInventory';
 import { useFinanceStats } from '@/features/finance/hooks/useFinance';
 import { useQuotationStats } from '@/features/documents/hooks/useQuotation';
+import { usePoStats } from '@/features/purchase-order/hooks/usePurchaseOrders';
 import { useQueryClient } from '@tanstack/react-query';
 import { BackendPendingError } from '@/core/api/capabilities';
 
@@ -23,6 +24,7 @@ const FALLBACK_DATA = {
   inventory: { totalValue: 0, monthly: 0, yearly: 0, change: 0 },
   finance: { revenue: 0, monthly: 0, yearly: 0, change: 0 },
   quotations: { total: 0, monthly: 0, yearly: 0, change: 0 },
+  purchaseOrders: { total: 0, monthly: 0, yearly: 0, change: 0 },
 };
 
 export interface DashboardRealData {
@@ -69,6 +71,12 @@ export interface DashboardRealData {
     yearly: number;
     change: number;
   };
+  purchaseOrders: {
+    total: number;
+    monthly: number;
+    yearly: number;
+    change: number;
+  };
 }
 
 function availabilityFor(error: unknown): 'available' | 'backend_pending' {
@@ -90,6 +98,7 @@ export function useDashboardRealData(enabled: boolean = true) {
   const inventoryStats = useInventoryStats(enabled);
   const financeStats = useFinanceStats(enabled);
   const quotationStats = useQuotationStats(enabled);
+  const poStats = usePoStats({ enabled });
 
   // CRM stats gate the shell; pending-module stats load in parallel without blocking
   const isLoading =
@@ -106,9 +115,10 @@ export function useDashboardRealData(enabled: boolean = true) {
     const cachedInventory = queryClient.getQueryData(['inventory', 'stats']);
     const cachedFinance = queryClient.getQueryData(['finance', 'stats']);
     const cachedQuotations = queryClient.getQueryData(['quotations', 'stats']);
+    const cachedPoStats = queryClient.getQueryData(['po-stats']);
 
     // If we have cached data, use it immediately
-    if (cachedLeads || cachedProjects || cachedCustomers || cachedInventory || cachedFinance || cachedQuotations) {
+    if (cachedLeads || cachedProjects || cachedCustomers || cachedInventory || cachedFinance || cachedQuotations || cachedPoStats) {
       return {
         availability: {
           inventory: availabilityFor(inventoryStats.error),
@@ -152,6 +162,12 @@ export function useDashboardRealData(enabled: boolean = true) {
           monthly: (cachedQuotations as any)?.monthly || 0,
           yearly: (cachedQuotations as any)?.yearly || 0,
           change: (cachedQuotations as any)?.changePercent || 0,
+        },
+        purchaseOrders: {
+          total: (cachedPoStats as any)?.total || 0,
+          monthly: (cachedPoStats as any)?.total || 0,
+          yearly: (cachedPoStats as any)?.total || 0,
+          change: 0,
         },
       };
     }
@@ -211,6 +227,12 @@ export function useDashboardRealData(enabled: boolean = true) {
       monthly: (quotationStats.data as any)?.monthly || 0,
       yearly: (quotationStats.data as any)?.yearly || 0,
       change: (quotationStats.data as any)?.changePercent || 0,
+    },
+    purchaseOrders: {
+      total: (poStats.data as any)?.total || 0,
+      monthly: (poStats.data as any)?.total || 0,
+      yearly: (poStats.data as any)?.total || 0,
+      change: 0,
     },
   };
 

@@ -90,6 +90,15 @@ export default function DashboardPage() {
   const financePending = dashboardData.availability.finance === 'backend_pending';
 
   // KPI Card Data
+  interface KPICardConfig {
+    label: string;
+    icon: any;
+    accent: 'blue' | 'emerald' | 'amber' | 'violet' | 'rose' | 'sky' | 'cyan' | 'indigo' | 'purple' | 'green';
+    periods: { monthly: KpiPeriodData; yearly: KpiPeriodData };
+    navigateTo?: string;
+    queryParams?: Record<string, string>;
+  }
+
   const kpiCards = useMemo(() => {
     try {
 
@@ -100,19 +109,19 @@ export default function DashboardPage() {
           accent: 'violet' as const,
           periods: {
             monthly: {
-              value: dashboardData.customers.monthly.toString(),
-              delta: formatChange(dashboardData.customers.change),
-              trend: getTrend(dashboardData.customers.change),
-              hint: 'New customers this month',
+              value: dashboardData.purchaseOrders.total.toString(),
+              delta: formatChange(dashboardData.purchaseOrders.change),
+              trend: getTrend(dashboardData.purchaseOrders.change),
+              hint: 'Total purchase orders',
             },
             yearly: {
-              value: dashboardData.customers.yearly.toString(),
-              delta: formatChange(dashboardData.customers.change),
-              trend: getTrend(dashboardData.customers.change),
-              hint: 'New customers YTD',
+              value: dashboardData.purchaseOrders.total.toString(),
+              delta: formatChange(dashboardData.purchaseOrders.change),
+              trend: getTrend(dashboardData.purchaseOrders.change),
+              hint: 'Total purchase orders YTD',
             },
           },
-          navigateTo: '/dashboard/customers',
+          navigateTo: '/purchase/orders',
         },
         {
           label: 'Total Sales',
@@ -153,6 +162,7 @@ export default function DashboardPage() {
             },
           },
           navigateTo: '/dashboard/projects',
+          queryParams: { status: 'Active' } as Record<string, string>,
         },
         {
           label: 'Total Leads',
@@ -160,99 +170,19 @@ export default function DashboardPage() {
           accent: 'sky' as const,
           periods: {
             monthly: {
-              value: dashboardData.leads.monthly.toString(),
+              value: dashboardData.leads.total.toString(),
               delta: formatChange(dashboardData.leads.change),
               trend: getTrend(dashboardData.leads.change),
-              hint: 'New leads this month',
+              hint: 'Total leads',
             },
             yearly: {
-              value: dashboardData.leads.yearly.toString(),
+              value: dashboardData.leads.total.toString(),
               delta: formatChange(dashboardData.leads.change),
               trend: getTrend(dashboardData.leads.change),
               hint: 'Total leads YTD',
             },
           },
           navigateTo: '/dashboard/leads',
-        },
-        {
-          label: 'Total Revenue',
-          icon: TrendingUp,
-          accent: 'green' as const,
-          periods: {
-            monthly: {
-              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.monthly),
-              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
-              trend: getTrend(dashboardData.finance.change),
-              hint: 'Total revenue this month',
-            },
-            yearly: {
-              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.yearly),
-              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
-              trend: getTrend(dashboardData.finance.change),
-              hint: 'Total revenue YTD',
-            },
-          },
-          navigateTo: '/dashboard/finance',
-        },
-        {
-          label: 'Total Turnover',
-          icon: BarChart3,
-          accent: 'amber' as const,
-          periods: {
-            monthly: {
-              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.monthly),
-              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
-              trend: getTrend(dashboardData.finance.change),
-              hint: 'Delivered this month',
-            },
-            yearly: {
-              value: financePending ? 'Backend pending' : formatCurrency(dashboardData.finance.yearly),
-              delta: financePending ? '—' : formatChange(dashboardData.finance.change),
-              trend: getTrend(dashboardData.finance.change),
-              hint: 'Total turnover YTD',
-            },
-          },
-          navigateTo: '/dashboard/finance',
-        },
-        {
-          label: 'Project Timeline',
-          icon: FolderKanban,
-          accent: 'rose' as const,
-          periods: {
-            monthly: {
-              value: dashboardData.projects.active.toString(),
-              delta: formatChange(dashboardData.projects.change),
-              trend: getTrend(dashboardData.projects.change),
-              hint: 'Projects past due',
-            },
-            yearly: {
-              value: dashboardData.projects.total.toString(),
-              delta: formatChange(dashboardData.projects.change),
-              trend: getTrend(dashboardData.projects.change),
-              hint: 'Total projects YTD',
-            },
-          },
-          navigateTo: '/dashboard/projects',
-        },
-        {
-          label: 'Overdue Projects',
-          icon: FileText,
-          accent: 'rose' as const,
-          periods: {
-            monthly: {
-              value: dashboardData.projects.total > 0 ? Math.max(0, Math.floor(dashboardData.projects.total * 0.1)).toString() : '0',
-              delta: formatChange(dashboardData.projects.change),
-              trend: getTrend(dashboardData.projects.change),
-              hint: 'Overdue right now',
-            },
-            yearly: {
-              value: dashboardData.projects.total.toString(),
-              delta: formatChange(dashboardData.projects.change),
-              trend: getTrend(dashboardData.projects.change),
-              hint: 'Total projects YTD',
-            },
-          },
-          navigateTo: '/dashboard/projects',
         },
       ];
     } catch (err) {
@@ -498,6 +428,7 @@ export default function DashboardPage() {
                 accent={kpi.accent}
                 periods={kpi.periods}
                 navigateTo={kpi.navigateTo}
+                queryParams={kpi.queryParams}
               />
             ))
               ) : (

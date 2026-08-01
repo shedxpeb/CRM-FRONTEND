@@ -27,6 +27,7 @@ interface ModernKPICardProps {
   periods: { monthly: KpiPeriodData; yearly: KpiPeriodData };
   onClick?: () => void;
   navigateTo?: string;
+  queryParams?: Record<string, string>;
 }
 
 const ACCENT: Record<NonNullable<ModernKPICardProps['accent']>, { bg: string; fg: string; ring: string; bar: string }> = {
@@ -48,7 +49,8 @@ export const ModernKPICard = memo(function ModernKPICard({
   accent = 'blue', 
   periods, 
   onClick,
-  navigateTo 
+  navigateTo,
+  queryParams 
 }: ModernKPICardProps) {
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const router = useRouter();
@@ -62,7 +64,10 @@ export const ModernKPICard = memo(function ModernKPICard({
       return;
     }
     if (navigateTo) {
-      router.push(navigateTo);
+      const url = queryParams 
+        ? `${navigateTo}?${new URLSearchParams(queryParams).toString()}`
+        : navigateTo;
+      router.push(url);
     }
   };
 
