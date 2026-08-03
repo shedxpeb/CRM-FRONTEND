@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/layouts/MainLayout';
 import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
@@ -51,6 +52,7 @@ function isReorderRequired(item: InventoryItem): boolean {
 
 export default function InventoryPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const inventoryConfig = useInventoryConfiguration();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,7 +100,7 @@ export default function InventoryPage() {
       const matchesBrand = brandFilter === 'all' || item.brand === brandFilter;
       const matchesWarehouse = warehouseFilter === 'all' || item.warehouseName === warehouseFilter;
       const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
-      const matchesType = itemTypeFilter === 'all' || item.itemTypeClass === itemTypeFilter;
+      const matchesItemType = itemTypeFilter === 'all' || item.itemTypeClass === itemTypeFilter;
       const matchesLowStock = lowStockFilter === 'all' || (lowStockFilter === 'yes' ? isLowStock(item) : !isLowStock(item));
       const matchesReorder = reorderFilter === 'all' || (reorderFilter === 'yes' ? isReorderRequired(item) : !isReorderRequired(item));
       const matchesSearch =
@@ -110,9 +112,9 @@ export default function InventoryPage() {
         item.brand?.toLowerCase().includes(q) ||
         item.status.toLowerCase().includes(q) ||
         item.binLocation?.toLowerCase().includes(q);
-      return matchesCategory && matchesBrand && matchesWarehouse && matchesStatus && matchesType && matchesLowStock && matchesReorder && matchesSearch;
+      return matchesCategory && matchesBrand && matchesWarehouse && matchesStatus && matchesItemType && matchesLowStock && matchesReorder && matchesSearch;
     });
-  }, [allItems, debouncedSearch, categoryFilter, brandFilter, warehouseFilter, statusFilter, itemTypeFilter, lowStockFilter, reorderFilter]);
+  }, [allItems, debouncedSearch, categoryFilter, brandFilter, warehouseFilter, statusFilter, itemTypeFilter, lowStockFilter, reorderFilter, searchQuery]);
 
   const selectedItem = useMemo(
     () => (selectedItemId ? allItems.find((i) => i.id === selectedItemId) ?? null : null),
@@ -317,11 +319,12 @@ export default function InventoryPage() {
   const handleCreate = useCallback(
     (data: Partial<InventoryItem>) => {
       createMutation.mutate(data as CreateInventoryItemDto, {
-        onSuccess: (newItem) => {
+        onSuccess: () => {
           setIsCreateDialogOpen(false);
-          refetch();
           toast.success('Inventory created successfully');
-          router.push(ROUTES.inventoryDetail(newItem.id));
+          // Force immediate refetch of inventory list
+          queryClient.invalidateQueries({ queryKey: ['inventory'] });
+          refetch();
         },
         onError: (error: any) => {
           const message = error?.response?.data?.message || error?.message || 'Failed to create inventory';
@@ -329,7 +332,7 @@ export default function InventoryPage() {
         },
       });
     },
-    [createMutation, refetch, router]
+    [createMutation, refetch, queryClient]
   );
 
   const handleEdit = useCallback(
