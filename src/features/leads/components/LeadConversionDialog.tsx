@@ -6,14 +6,11 @@ import { Button } from '@/components/ui/button';
 import { ConversionTypeSelector, ConversionType } from './ConversionTypeSelector';
 import { ConversionConfirmationDialog } from './ConversionConfirmationDialog';
 import { EstimateBuilder } from '@/features/documents/components/EstimateBuilder';
-import { ProposalBuilder } from '@/features/documents/components/ProposalBuilder';
 import { QuotationBuilder } from '@/features/documents/components/QuotationBuilder';
 import {
   Estimate,
-  Proposal,
   Quotation,
   CreateEstimateDto,
-  CreateProposalDto,
   CreateQuotationDto,
 } from '@/features/documents/types/peb-commercial';
 import { Lead } from '@/types/leads';
@@ -24,7 +21,6 @@ interface LeadConversionDialogProps {
   onOpenChange: (open: boolean) => void;
   lead: Lead;
   onEstimateCreated?: (estimate: Estimate) => void;
-  onProposalCreated?: (proposal: Proposal) => void;
   onQuotationCreated?: (quotation: Quotation) => void;
 }
 
@@ -76,15 +72,6 @@ export function LeadConversionDialog({
     setIsSaving(true);
     try {
       await rejectPendingDocument('estimates');
-    } catch (error) {
-      handleSaveFailure(error);
-    }
-  };
-
-  const handleProposalSave = async (_proposalDto: CreateProposalDto) => {
-    setIsSaving(true);
-    try {
-      await rejectPendingDocument('proposals');
     } catch (error) {
       handleSaveFailure(error);
     }
@@ -190,35 +177,6 @@ export function LeadConversionDialog({
         </div>
       )}
 
-      {step === 'build' && selectedType === 'proposal' && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 overflow-y-auto">
-          <div className="min-h-screen py-8 px-4">
-            <ProposalBuilder
-              estimate={{
-                id: lead.id,
-                estimateNumber: `EST-${lead.id}`,
-                version: 1,
-                customerId: lead.customerId || '',
-                customerName: lead.companyName || lead.customerName || 'Unknown',
-                leadId: lead.id,
-                leadNumber: String(lead.leadNumber),
-                status: 'Draft',
-                includePricing: false,
-                materialSelections: [],
-                scopeConfiguration: emptyScope,
-                technicalSpecifications: {},
-                inclusions: [],
-                exclusions: [],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              } as Estimate}
-              onSave={handleProposalSave}
-              onCancel={handleBuilderCancel}
-            />
-          </div>
-        </div>
-      )}
-
       {step === 'build' && selectedType === 'quotation' && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 overflow-y-auto">
           <div className="min-h-screen py-8 px-4">
@@ -236,7 +194,7 @@ export function LeadConversionDialog({
                 status: 'Draft',
                 materialSelections: [],
                 scopeConfiguration: emptyScope,
-                technicalSpecifications: {},
+                technicalSpecifications: {} as any,
                 inclusions: [],
                 exclusions: [],
                 proposalConfiguration: {
@@ -256,7 +214,7 @@ export function LeadConversionDialog({
                 includeCommercialSummary: false,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-              } as Proposal}
+              } as any}
               onSave={handleQuotationSave}
               onCancel={handleBuilderCancel}
             />

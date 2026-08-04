@@ -9,7 +9,6 @@ export { DocumentTable } from './components/DocumentTable';
 export { DocumentTotals } from './components/DocumentTotals';
 export { DocumentSignature } from './components/DocumentSignature';
 export { EstimatePDF } from './EstimatePDF';
-export { ProposalPDF } from './ProposalPDF';
 export { QuotationPDF } from './QuotationPDF';
 export { InvoicePDF } from './InvoicePDF';
 

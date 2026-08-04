@@ -5,11 +5,9 @@ import {
   getDocumentType,
   isApiDocument,
   isEstimate,
-  isProposal,
   isQuotation,
 } from '../utils/documentHelpers';
 import { EstimatePDF } from './EstimatePDF';
-import { ProposalPDF } from './ProposalPDF';
 import { QuotationPDF } from './QuotationPDF';
 import { InvoicePDF } from './InvoicePDF';
 
@@ -68,9 +66,6 @@ export function buildDocumentPdfElement(
 
   if (isEstimate(document)) {
     return <EstimatePDF estimate={document} {...common} />;
-  }
-  if (isProposal(document)) {
-    return <ProposalPDF proposal={document} {...common} />;
   }
   if (isQuotation(document)) {
     return <QuotationPDF quotation={document} {...common} />;

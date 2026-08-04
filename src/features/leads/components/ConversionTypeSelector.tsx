@@ -2,9 +2,9 @@
 
 import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, FileCheck, DollarSign, CheckCircle2 } from 'lucide-react';
+import { FileText, DollarSign, CheckCircle2 } from 'lucide-react';
 
-export type ConversionType = 'estimate' | 'proposal' | 'quotation';
+export type ConversionType = 'estimate' | 'quotation';
 
 interface ConversionTypeSelectorProps {
   selectedType: ConversionType | null;
@@ -21,12 +21,6 @@ export const ConversionTypeSelector = memo(function ConversionTypeSelector({
       title: 'Estimate',
       description: 'Material & scope estimates (no pricing)',
       icon: FileText,
-    },
-    {
-      type: 'proposal' as ConversionType,
-      title: 'Proposal',
-      description: 'Detailed proposal with deliverables and timeline',
-      icon: FileCheck,
     },
     {
       type: 'quotation' as ConversionType,
