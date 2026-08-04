@@ -47,7 +47,6 @@ export { DocumentRowActions } from './components/DocumentRowActions';
 // Pages
 export { DocumentsDashboard } from './pages/DocumentsDashboard';
 export { EstimatesPage } from './pages/EstimatesPage';
-export { ProposalsPage } from './pages/ProposalsPage';
 export { QuotationsPage } from './pages/QuotationsPage';
 export { TemplatesPage } from './pages/TemplatesPage';
 export { ApprovalsPage } from './pages/ApprovalsPage';
