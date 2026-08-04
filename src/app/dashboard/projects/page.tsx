@@ -87,14 +87,20 @@ export default function ProjectsPage() {
   const searchParams = useSearchParams();
   const customerId = searchParams.get('customerId');
   const shouldCreate = searchParams.get('create') === 'true';
+  const statusQueryParam = searchParams.get('status');
+  const healthQueryParam = searchParams.get('health');
   const projectConfig = useProjectConfiguration();
 
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>(
+    statusQueryParam && statusQueryParam !== 'all' ? (statusQueryParam as ProjectStatus) : 'all'
+  );
   const [priorityFilter, setPriorityFilter] = useState<ProjectPriority | 'all'>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
-  const [healthFilter, setHealthFilter] = useState<string>('all');
+  const [healthFilter, setHealthFilter] = useState<string>(
+    healthQueryParam && healthQueryParam !== 'all' ? healthQueryParam : 'all'
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(25);
 

@@ -45,8 +45,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
   isLoading,
   mode = initialData?.id ? 'edit' : 'create',
 }: InventoryItemFormProps) {
-  const { data: warehouses } = useWarehouses();
-  const { data: itemMasters } = useItemMasters();
+  const { data: itemMasters, isLoading: isLoadingItemMasters, error: itemMastersError } = useItemMasters();
   const inventoryConfig = useInventoryConfiguration();
   const isEdit = mode === 'edit';
 
@@ -55,7 +54,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
       itemCode: '',
       itemMasterId: '',
       itemName: '',
-      unit: undefined,
+      unit: 'Nos',
       currentStock: 0,
       reservedStock: 0,
       issuedStock: 0,
@@ -76,7 +75,6 @@ const InventoryItemForm = memo(function InventoryItemForm({
   });
 
   const itemMasterId = watch('itemMasterId');
-  const warehouseId = watch('warehouseId');
 
   const handleMasterSelect = useCallback(
     (masterId: string) => {
@@ -85,7 +83,24 @@ const InventoryItemForm = memo(function InventoryItemForm({
       setValue('itemMasterId', master.id);
       setValue('itemCode', master.itemCode);
       setValue('itemName', master.itemName);
-      setValue('unit', watch('unit') ?? (master.unit as InventoryItem['unit']));
+      
+      // Map Item Master unit to Inventory unit type
+      const unitMapping: Record<string, any> = {
+        'KG': 'Kg',
+        'MT': 'Ton',
+        'PCS': 'Nos',
+        'NOS': 'Nos',
+        'SQM': 'SqMeter',
+        'SQFT': 'SqMeter',
+        'M': 'Meter',
+        'FT': 'Meter',
+        'LTR': 'Liter',
+        'SET': 'Set',
+        'BUNDLE': 'Bundle',
+      };
+      const mappedUnit = unitMapping[master.unit] || 'Nos';
+      
+      setValue('unit', watch('unit') ?? mappedUnit);
       setValue('category', master.category);
       setValue('brand', master.brand);
       setValue('itemTypeClass', master.itemTypeClass);
@@ -94,29 +109,48 @@ const InventoryItemForm = memo(function InventoryItemForm({
     [itemMasters, setValue, watch]
   );
 
-  const handleWarehouseSelect = useCallback(
-    (warehouseId: string) => {
-      const wh = warehouses?.find((w) => w.id === warehouseId);
-      setValue('warehouseId', warehouseId);
-      setValue('warehouseName', wh?.name ?? watch('warehouseName'));
-    },
-    [warehouses, setValue, watch]
-  );
-
   const handleCustomFieldChange = useCallback((key: string, value: string | number | boolean) => {
     const currentCustomFields = watch('customFields') || {};
     setValue('customFields', { ...currentCustomFields, [key]: value });
   }, [setValue, watch]);
 
   const onFormSubmit = (data: Partial<InventoryItem>) => {
-    const availableStock = (data.currentStock ?? 0) - (data.reservedStock ?? 0) - (data.issuedStock ?? 0);
-    const totalValue = (data.currentStock ?? 0) * (data.purchaseRate ?? 0);
-    onSubmit({
-      ...data,
-      availableStock,
-      totalValue,
-      lastUpdated: new Date(),
-    });
+    // Map Item Master unit to Inventory unit type
+    const unitMapping: Record<string, any> = {
+      'KG': 'Kg',
+      'MT': 'Ton',
+      'PCS': 'Nos',
+      'NOS': 'Nos',
+      'SQM': 'SqMeter',
+      'SQFT': 'SqMeter',
+      'M': 'Meter',
+      'FT': 'Meter',
+      'LTR': 'Liter',
+      'SET': 'Set',
+      'BUNDLE': 'Bundle',
+    };
+    const mappedUnit = unitMapping[data.unit || ''] || 'Nos';
+    
+    // Only send fields that match CreateInventoryItemDto (backend doesn't accept reservedStock, issuedStock, incomingStock, outgoingStock)
+    const submitData = {
+      itemMasterId: data.itemMasterId || '',
+      itemCode: data.itemCode || '',
+      itemName: data.itemName || '',
+      unit: mappedUnit,
+      minimumStock: data.minimumStock ?? 0,
+      reorderLevel: data.reorderLevel ?? 0,
+      safetyStock: data.safetyStock ?? 0,
+      warehouseId: data.warehouseId || undefined,
+      warehouseName: data.warehouseName || '',
+      status: data.status || 'In Stock',
+      currentStock: data.currentStock ?? 0,
+      binLocation: data.binLocation,
+      reorderQuantity: data.reorderQuantity,
+      purchaseRate: data.purchaseRate,
+      customFields: data.customFields,
+    };
+    
+    onSubmit(submitData);
   };
 
   return (
@@ -130,18 +164,26 @@ const InventoryItemForm = memo(function InventoryItemForm({
           {!isEdit ? (
             <div className="space-y-2">
               <label className="text-sm font-medium">Select Item Master *</label>
-              <Select value={itemMasterId || ''} onValueChange={handleMasterSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose item from catalog" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(itemMasters ?? []).map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.itemCode} — {m.itemName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isLoadingItemMasters ? (
+                <div className="px-3 py-2 text-sm text-muted-foreground rounded-md border bg-muted/50">Loading items...</div>
+              ) : itemMastersError ? (
+                <div className="px-3 py-2 text-sm text-red-600 rounded-md border bg-red-50">Failed to load items</div>
+              ) : !itemMasters || itemMasters.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-muted-foreground rounded-md border bg-muted/50">No items available. Please create items in Item Master first.</div>
+              ) : (
+                <Select value={itemMasterId || ''} onValueChange={handleMasterSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose item from catalog" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(itemMasters ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.itemCode} — {m.itemName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           ) : null}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -235,16 +277,10 @@ const InventoryItemForm = memo(function InventoryItemForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Warehouse *</label>
-              <Select value={warehouseId || ''} onValueChange={handleWarehouseSelect}>
-                <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
-                <SelectContent>
-                  {(warehouses ?? []).map((wh) => (
-                    <SelectItem key={wh.id} value={wh.id}>
-                      {wh.name} ({wh.warehouseCode})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                {...register('warehouseName', { required: true })}
+                placeholder="Enter warehouse name"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Bin Location</label>
@@ -303,7 +339,7 @@ const InventoryItemForm = memo(function InventoryItemForm({
         </Button>
         <Button 
           type="submit" 
-          disabled={isLoading || !itemMasterId || !warehouseId}
+          disabled={isLoading || !itemMasterId || !watch('warehouseName')}
         >
           {isLoading ? 'Saving...' : isEdit ? 'Update Inventory' : 'Create Inventory'}
         </Button>
