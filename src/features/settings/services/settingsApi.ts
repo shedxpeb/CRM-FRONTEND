@@ -61,6 +61,7 @@ export const settingsApi = {
     return pending('settings-company');
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateCompany(_data: Partial<Company>): Promise<Company> {
     return pending('settings-company');
   },
@@ -69,14 +70,17 @@ export const settingsApi = {
     return pending('settings-branches');
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async createBranch(_data: Omit<Branch, 'id' | 'createdAt' | 'updatedAt'>): Promise<Branch> {
     return pending('settings-branches');
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateBranch(_id: string, _data: Partial<Branch>): Promise<Branch> {
     return pending('settings-branches');
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async deleteBranch(_id: string): Promise<void> {
     return pending('settings-branches');
   },
@@ -143,6 +147,7 @@ export const settingsApi = {
     return { ...DEFAULT_SYSTEM_PREFERENCES };
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateSystemPreferences(_data: Partial<SystemPreferences>): Promise<SystemPreferences> {
     return pending('settings-preferences');
   },
@@ -167,6 +172,7 @@ export const settingsApi = {
     return pending('settings-documents');
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateDocumentSettings(_data: Record<string, unknown>): Promise<Record<string, unknown>> {
     return pending('settings-documents');
   },
@@ -175,6 +181,7 @@ export const settingsApi = {
     return pending('settings-finance');
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateFinanceConfiguration(_data: Record<string, unknown>): Promise<Record<string, unknown>> {
     return pending('settings-finance');
   },
@@ -194,6 +201,7 @@ export const settingsApi = {
     };
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateProjectConfiguration(_data: Partial<ProjectConfiguration>): Promise<ProjectConfiguration> {
     return pending('settings-projects');
   },
@@ -202,6 +210,7 @@ export const settingsApi = {
     return pending('settings-security');
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateSecuritySettings(_data: Partial<SecuritySettings>): Promise<SecuritySettings> {
     return pending('settings-security');
   },

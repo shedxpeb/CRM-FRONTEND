@@ -37,16 +37,16 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   onTaskClick,
   onCreateTask,
 }) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const nextWeek = new Date(today);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-
   const employeeData = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
     // Filter tasks for current employee
     const myTasks = tasks.filter(task => task.assignedUserId === currentUserId);
 
@@ -236,7 +236,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         <div>
           <h2 className="text-2xl font-bold">Welcome back, {currentUserName}!</h2>
           <p className="text-muted-foreground">
-            Here's your task overview for today
+            Here&apos;s your task overview for today
           </p>
         </div>
         <Button onClick={onCreateTask}>
@@ -490,7 +490,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           {/* Today's Summary */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Today's Summary</CardTitle>
+              <CardTitle className="text-base font-semibold">Today&apos;s Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">

@@ -13,7 +13,7 @@ export interface Vendor {
   state?: string;
   pincode?: string;
   country?: string;
-  bankDetails?: any;
+  bankDetails?: Record<string, unknown>;
   paymentTerms?: string;
   creditLimit?: number;
   creditDays?: number;
@@ -21,7 +21,7 @@ export interface Vendor {
   status: string;
   notes?: string;
   attachments: string[];
-  customFields?: any;
+  customFields?: Record<string, unknown>;
   createdById?: string;
   createdBy?: string;
   updatedBy?: string;
@@ -53,17 +53,17 @@ export interface CreateVendorDto {
   state?: string;
   pincode?: string;
   country?: string;
-  bankDetails?: any;
+  bankDetails?: Record<string, unknown>;
   paymentTerms?: string;
   creditLimit?: number;
   creditDays?: number;
   status?: string;
   notes?: string;
   attachments?: string[];
-  customFields?: any;
+  customFields?: Record<string, unknown>;
 }
 
-export interface UpdateVendorDto extends Partial<CreateVendorDto> {}
+export type UpdateVendorDto = Partial<CreateVendorDto>;
 
 export interface VendorQuery {
   page?: number;

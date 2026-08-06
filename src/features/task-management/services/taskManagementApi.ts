@@ -44,7 +44,7 @@ interface PaginatedResponse<T> {
 export const taskManagementApi = guardModuleApi('task', {
   // Task CRUD
   async getAll(query?: TaskQuery): Promise<Task[]> {
-    const params: Record<string, any> = {};
+    const params: Record<string, string | number> = {};
     if (query?.page) params.page = query.page;
     if (query?.pageSize) params.pageSize = query.pageSize;
     if (query?.sortBy) params.sortBy = query.sortBy;

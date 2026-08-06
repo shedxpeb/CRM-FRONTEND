@@ -17,8 +17,8 @@ interface BackendResponse<T> {
   message?: string;
 }
 
-function buildParams(query?: VendorQuery): Record<string, any> {
-  const params: Record<string, any> = {};
+function buildParams(query?: VendorQuery): Record<string, string | number> {
+  const params: Record<string, string | number> = {};
   if (query?.page) params.page = query.page;
   if (query?.pageSize) params.limit = query.pageSize;
   if (query?.sortBy) params.sortBy = query.sortBy;
@@ -34,8 +34,9 @@ export const vendorApi = {
       const params = buildParams(query);
       const res = await api.get<BackendResponse<PaginatedVendorData>>('/vendor', { params });
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch vendors');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch vendors');
     }
   },
 
@@ -43,8 +44,9 @@ export const vendorApi = {
     try {
       const res = await api.get<BackendResponse<Vendor>>(`/vendor/${id}`);
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch vendor');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch vendor');
     }
   },
 
@@ -52,8 +54,9 @@ export const vendorApi = {
     try {
       const res = await api.post<BackendResponse<Vendor>>('/vendor', data);
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create vendor');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to create vendor');
     }
   },
 
@@ -61,16 +64,18 @@ export const vendorApi = {
     try {
       const res = await api.patch<BackendResponse<Vendor>>(`/vendor/${id}`, data);
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update vendor');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to update vendor');
     }
   },
 
   async delete(id: string): Promise<void> {
     try {
       await api.delete(`/vendor/${id}`);
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete vendor');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to delete vendor');
     }
   },
 
@@ -78,8 +83,9 @@ export const vendorApi = {
     try {
       const res = await api.get<BackendResponse<VendorStats>>('/vendor/stats');
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch vendor stats');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch vendor stats');
     }
   },
 
@@ -88,8 +94,9 @@ export const vendorApi = {
       const params = search ? { search } : {};
       const res = await api.get<BackendResponse<Vendor[]>>('/vendor/combobox', { params });
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch vendors');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch vendors');
     }
   },
 
@@ -97,8 +104,9 @@ export const vendorApi = {
     try {
       const res = await api.patch<BackendResponse<{ count: number }>>('/vendor/bulk/status', { ids, status });
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update vendor status');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to update vendor status');
     }
   },
 
@@ -106,8 +114,9 @@ export const vendorApi = {
     try {
       const res = await api.delete<BackendResponse<{ count: number }>>('/vendor/bulk', { data: { ids } });
       return res.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete vendors');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to delete vendors');
     }
   },
 };

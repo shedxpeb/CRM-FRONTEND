@@ -50,7 +50,6 @@ import {
 import { EntityRowActionsMenu } from '@/components/row-actions';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import { useBankAccounts, useExpenses, useInvoices, usePayments, useTransactions } from '@/features/finance/hooks/useFinance';
-import { Expense, Invoice, Payment, Transaction } from '@/features/finance/types';
 import { formatCurrency } from '@/features/finance/constants';
 import {
   AccountType,

@@ -61,7 +61,10 @@ function NestedMainLayout({
 }: MainLayoutProps) {
   const ctx = useContext(MainLayoutContext);
   const onBackClickRef = useRef(onBackClick);
-  onBackClickRef.current = onBackClick;
+
+  useEffect(() => {
+    onBackClickRef.current = onBackClick;
+  }, [onBackClick]);
 
   useEffect(() => {
     if (!ctx) return;

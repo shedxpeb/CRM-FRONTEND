@@ -6,10 +6,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { taskManagementApi } from '../services/taskManagementApi';
 import {
-  Task,
-  EmployeePerformanceStats,
-  SalaryAdjustment,
-  EmployeeSalaryLedger,
   CreateTaskDto,
   UpdateTaskDto,
   CompleteTaskDto,
@@ -17,8 +13,6 @@ import {
   CreateSalaryAdjustmentDto,
   UpdateSalaryAdjustmentDto,
   TaskQuery,
-  TaskStats,
-  DashboardTaskKPIs,
   SalaryAdjustmentQuery,
   TaskNotification,
 } from '../types';

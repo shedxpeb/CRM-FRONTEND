@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Task, TaskStatus, TaskPriority } from '../types';
+import { Task } from '../types';
 import { cn } from '@/lib/utils';
 import {
   Users,
@@ -17,7 +17,6 @@ import {
   BarChart3,
   PieChart,
   Calendar,
-  Target,
   Award,
   ArrowRight,
   Filter,

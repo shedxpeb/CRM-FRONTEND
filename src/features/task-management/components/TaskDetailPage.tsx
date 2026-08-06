@@ -5,12 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Clock, 
-  User, 
-  Tag, 
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  User,
   Link as LinkIcon,
   DollarSign,
   TrendingUp,
@@ -94,17 +93,11 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
   }, [trackingInterval]);
 
   // Create object URLs for image preview - temporary for display only
-  const [beforeUrls, setBeforeUrls] = useState<string[]>([]);
-  const [afterUrls, setAfterUrls] = useState<string[]>([]);
-
   useEffect(() => {
     // Convert File[] to object URLs for preview
     const newBeforeUrls = task.completionProof?.beforeImages?.map(file => URL.createObjectURL(file)) || [];
     const newAfterUrls = task.completionProof?.afterImages?.map(file => URL.createObjectURL(file)) || [];
     
-    setBeforeUrls(newBeforeUrls);
-    setAfterUrls(newAfterUrls);
-
     // Cleanup on unmount
     return () => {
       newBeforeUrls.forEach(url => URL.revokeObjectURL(url));

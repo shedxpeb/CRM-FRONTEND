@@ -20,7 +20,6 @@ import {
   Search,
   Bell,
   Settings,
-  MoreVertical,
 } from 'lucide-react';
 
 interface TaskDashboardProps {
@@ -36,16 +35,16 @@ export const TaskDashboard: React.FC<TaskDashboardProps> = ({
   onTaskClick,
   onCreateTask,
 }) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const nextWeek = new Date(today);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-
   const dashboardData = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
     const myTasks = currentUserId 
       ? tasks.filter(task => task.assignedUserId === currentUserId)
       : tasks;
@@ -456,7 +455,7 @@ export const TaskDashboard: React.FC<TaskDashboardProps> = ({
           {/* Today's Tasks Summary */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Today's Summary</CardTitle>
+              <CardTitle className="text-base font-semibold">Today&apos;s Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
