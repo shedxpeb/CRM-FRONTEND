@@ -18,6 +18,7 @@ import {
   useApprovePurchaseOrder,
   useRejectPurchaseOrder,
   useSendPurchaseOrder,
+  useReceiveItems,
   useDeletePurchaseOrder,
 } from '@/features/purchase-order/hooks/usePurchaseOrders';
 import { PurchaseOrder, PurchaseOrderQuery } from '@/features/purchase-order/types/purchase-order.types';
@@ -69,6 +70,7 @@ export default function PurchaseOrdersPage() {
   const approveMutation = useApprovePurchaseOrder();
   const rejectMutation = useRejectPurchaseOrder();
   const sendMutation = useSendPurchaseOrder();
+  const receiveMutation = useReceiveItems();
   const deleteMutation = useDeletePurchaseOrder();
 
   const handleCreate = useCallback(
@@ -204,9 +206,19 @@ export default function PurchaseOrdersPage() {
       try {
         if (status === 'Approved') {
           await approveMutation.mutateAsync(po.id);
-        } else if (status === 'Cancelled') {
-          await rejectMutation.mutateAsync({ id: po.id, data: { reason: 'Cancelled' } });
+        } else if (status === 'Rejected' || status === 'Cancelled') {
+          await rejectMutation.mutateAsync({ id: po.id, data: { reason: status } });
+        } else if (status === 'Sent') {
+          await sendMutation.mutateAsync(po.id);
+        } else if (status === 'Partially Received' || status === 'Fully Received') {
+          // For receive statuses, we need to receive all items
+          const items = (po.items || []).map((item) => ({
+            itemId: item.id,
+            receivedQuantity: item.quantity,
+          }));
+          await receiveMutation.mutateAsync({ id: po.id, items });
         } else {
+          // Draft, Closed, and other statuses use generic update
           await updateMutation.mutateAsync({ id: po.id, data: { status } });
         }
         toast.success(`Status changed to ${status}`);
@@ -214,7 +226,7 @@ export default function PurchaseOrdersPage() {
         toast.error(error.message || 'Failed to change status');
       }
     },
-    [approveMutation, rejectMutation, updateMutation]
+    [approveMutation, rejectMutation, sendMutation, receiveMutation, updateMutation]
   );
 
   const columns: Column<PurchaseOrder>[] = useMemo(() => [

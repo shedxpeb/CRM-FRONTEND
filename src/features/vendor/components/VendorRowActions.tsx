@@ -11,7 +11,6 @@ import {
   CheckCircle,
   GitBranch,
   Mail,
-  Phone,
 } from 'lucide-react';
 import { DeleteCustomerDialog } from '@/components/dialog/DangerConfirmationDialog';
 
@@ -77,12 +76,6 @@ export const VendorRowActions = memo(function VendorRowActions({
               icon: Mail,
               onClick: () => onSendEmail?.(vendor),
               hidden: !onSendEmail || !vendor.email,
-            },
-            {
-              key: 'call',
-              label: 'Call',
-              icon: Phone,
-              onClick: () => window.open(`tel:${vendor.phone}`),
             },
           ],
           workflow: [

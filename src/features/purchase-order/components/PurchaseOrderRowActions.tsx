@@ -18,7 +18,6 @@ import {
   FileText,
   EyeOff,
   Printer,
-  ExternalLink,
 } from 'lucide-react';
 import { DeleteCustomerDialog } from '@/components/dialog/DangerConfirmationDialog';
 
@@ -159,15 +158,6 @@ export const PurchaseOrderRowActions = memo(function PurchaseOrderRowActions({
               icon: MessageCircle,
               onClick: () => onSendWhatsApp?.(purchaseOrder),
               hidden: !onSendWhatsApp || isDraft,
-            },
-            {
-              key: 'copy-link',
-              label: 'Copy Link',
-              icon: ExternalLink,
-              onClick: () => {
-                const url = `${window.location.origin}/purchase/orders/${purchaseOrder.id}`;
-                navigator.clipboard.writeText(url);
-              },
             },
           ],
           utility: [
