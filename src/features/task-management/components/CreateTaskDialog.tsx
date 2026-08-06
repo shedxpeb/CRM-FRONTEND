@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { ImageUpload } from './ImageUpload';
 import { TaskChecklist } from './TaskChecklist';
 import { CreateTaskDto, TaskPriority, TaskCategory, LinkedModule, ChecklistItem } from '../types';

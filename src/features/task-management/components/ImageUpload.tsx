@@ -87,7 +87,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     onImagesChange(newImages);
   };
 
-  const handleReplace = (index: number) => {
+  const handleReplace = () => {
     if (disabled) return;
     fileInputRef.current?.click();
   };
@@ -179,7 +179,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-white hover:bg-white/20"
-                      onClick={() => handleReplace(index)}
+                      onClick={() => handleReplace()}
                     >
                       <Upload className="h-4 w-4" />
                     </Button>

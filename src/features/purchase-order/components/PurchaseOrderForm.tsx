@@ -252,36 +252,56 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
   const otherCharges = watch('otherCharges') || 0;
 
   const calculateTotals = () => {
+    // Helper function to round to 2 decimal places for currency calculations
+    const roundTo2 = (value: number) => Math.round(value * 100) / 100;
+
     let subtotal = 0;
     let totalTax = 0;
 
     items.forEach((item: any) => {
-      const itemTotal = item.quantity * item.rate;
+      const quantity = Number(item.quantity) || 0;
+      const rate = Number(item.rate) || 0;
+      const itemTotal = roundTo2(quantity * rate);
+      
+      const discountValue = Number(item.discount) || 0;
       const discountAmount = item.discountType === 'Percentage'
-        ? (itemTotal * (item.discount || 0)) / 100
-        : (item.discount || 0);
-      const afterDiscount = itemTotal - discountAmount;
-      const gstAmount = item.gstRate ? (afterDiscount * item.gstRate) / 100 : 0;
+        ? roundTo2((itemTotal * discountValue) / 100)
+        : discountValue;
+      const afterDiscount = roundTo2(itemTotal - discountAmount);
+      
+      const gstRate = Number(item.gstRate) || 0;
+      const gstAmount = gstRate ? roundTo2((afterDiscount * gstRate) / 100) : 0;
 
-      subtotal += afterDiscount;
-      totalTax += gstAmount;
+      subtotal = roundTo2(subtotal + afterDiscount);
+      totalTax = roundTo2(totalTax + gstAmount);
     });
 
-    const discountAmount = discountType === 'Percentage' ? (subtotal * discount) / 100 : discount;
-    const afterDiscount = subtotal - discountAmount;
-    const grandTotal = afterDiscount + totalTax + freight + packingCharges + shippingCharges + otherCharges;
-    const roundOff = Math.round(grandTotal) - grandTotal;
+    const discountValue = Number(discount) || 0;
+    const discountAmount = discountType === 'Percentage' 
+      ? roundTo2((subtotal * discountValue) / 100) 
+      : discountValue;
+    const afterDiscount = roundTo2(subtotal - discountAmount);
+    
+    const freightValue = Number(freight) || 0;
+    const packingValue = Number(packingCharges) || 0;
+    const shippingValue = Number(shippingCharges) || 0;
+    const otherValue = Number(otherCharges) || 0;
+    
+    const grandTotal = roundTo2(
+      afterDiscount + totalTax + freightValue + packingValue + shippingValue + otherValue
+    );
+    const roundOff = roundTo2(Math.round(grandTotal) - grandTotal);
 
     return {
       subtotal,
       totalTax,
       discountAmount,
-      freight,
-      packingCharges,
-      shippingCharges,
-      otherCharges,
+      freight: freightValue,
+      packingCharges: packingValue,
+      shippingCharges: shippingValue,
+      otherCharges: otherValue,
       roundOff,
-      grandTotal: grandTotal + roundOff,
+      grandTotal: roundTo2(grandTotal + roundOff),
     };
   };
 
@@ -415,7 +435,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Email</Label>
-                      <Input {...register('shipTo.email')} type="email" placeholder="Email" />
+                      <Input {...register('shipTo.email')} placeholder="Email" />
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -468,7 +488,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Email</Label>
-                      <Input {...register('supplier.email')} type="email" placeholder="Email" />
+                      <Input {...register('supplier.email')} placeholder="Email" />
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -533,6 +553,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       <Label className="text-xs">Quantity *</Label>
                       <Input
                         type="number"
+                        step="0.001"
                         {...register(`items.${index}.quantity`, { valueAsNumber: true })}
                       />
                       {errors.items?.[index]?.quantity && (
@@ -559,6 +580,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       <Label className="text-xs">Rate *</Label>
                       <Input
                         type="number"
+                        step="0.01"
                         {...register(`items.${index}.rate`, { valueAsNumber: true })}
                       />
                       {errors.items?.[index]?.rate && (
@@ -569,6 +591,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       <Label className="text-xs">GST Rate %</Label>
                       <Input
                         type="number"
+                        step="0.01"
                         {...register(`items.${index}.gstRate`, { valueAsNumber: true })}
                       />
                     </div>
@@ -579,6 +602,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       <Label className="text-xs">Discount</Label>
                       <Input
                         type="number"
+                        step="0.01"
                         {...register(`items.${index}.discount`, { valueAsNumber: true })}
                       />
                     </div>
@@ -615,7 +639,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="discount">Header Discount</Label>
-                <Input id="discount" type="number" {...register('discount', { valueAsNumber: true })} />
+                <Input id="discount" type="number" step="0.01" {...register('discount', { valueAsNumber: true })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="discountType">Discount Type</Label>
@@ -637,22 +661,22 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="freight">Freight</Label>
-                <Input id="freight" type="number" {...register('freight', { valueAsNumber: true })} />
+                <Input id="freight" type="number" step="0.01" {...register('freight', { valueAsNumber: true })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="packingCharges">Packing Charges</Label>
-                <Input id="packingCharges" type="number" {...register('packingCharges', { valueAsNumber: true })} />
+                <Input id="packingCharges" type="number" step="0.01" {...register('packingCharges', { valueAsNumber: true })} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="shippingCharges">Shipping Charges</Label>
-                <Input id="shippingCharges" type="number" {...register('shippingCharges', { valueAsNumber: true })} />
+                <Input id="shippingCharges" type="number" step="0.01" {...register('shippingCharges', { valueAsNumber: true })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="otherCharges">Other Charges</Label>
-                <Input id="otherCharges" type="number" {...register('otherCharges', { valueAsNumber: true })} />
+                <Input id="otherCharges" type="number" step="0.01" {...register('otherCharges', { valueAsNumber: true })} />
               </div>
             </div>
 

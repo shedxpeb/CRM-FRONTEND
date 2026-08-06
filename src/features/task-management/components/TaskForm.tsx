@@ -62,8 +62,6 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
       return;
     }
 
-    const selectedUser = users.find((u) => u.id === formData.assignedUserId);
-
     const dto: CreateTaskDto = {
       title: formData.title,
       description: formData.description,

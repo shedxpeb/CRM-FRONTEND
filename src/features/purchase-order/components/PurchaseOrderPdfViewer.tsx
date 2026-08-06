@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download, ExternalLink, Printer, RefreshCw } from 'lucide-react';
+import { Download, Printer, RefreshCw } from 'lucide-react';
 import { fetchPdfBlob, getPdfUrl } from '../utils/format';
 import { toast } from '@/components/ui/toast';
 
@@ -93,11 +93,6 @@ export function PurchaseOrderPdfViewer({ poId, poNumber, open, onOpenChange }: P
     }
   }, []);
 
-  const handleOpenInNewTab = useCallback(() => {
-    const url = getPdfUrl(poId);
-    window.open(url, '_blank');
-  }, [poId]);
-
   const handleRetry = useCallback(() => {
     setError(null);
     setLoading(true);
@@ -132,15 +127,6 @@ export function PurchaseOrderPdfViewer({ poId, poNumber, open, onOpenChange }: P
             <DialogDescription>Purchase order PDF document</DialogDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenInNewTab}
-              disabled={loading || !!error}
-            >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open
-            </Button>
             <Button
               variant="outline"
               size="sm"

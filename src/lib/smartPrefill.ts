@@ -17,12 +17,12 @@ export interface Mapping {
  * @returns             An object containing only the fields that should be updated.
  */
 export function smartPrefill(
-  currentData: Record<string, any>,
-  source: Record<string, any>,
+  currentData: Record<string, unknown>,
+  source: Record<string, unknown>,
   mapping: Mapping,
   editedFields: Set<string>
-): Record<string, any> {
-  const result: Record<string, any> = {};
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
   for (const [srcKey, destKey] of Object.entries(mapping)) {
     // Skip fields the user has already edited
     if (editedFields.has(destKey)) continue;

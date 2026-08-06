@@ -11,9 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { TaskStatus, TaskPriority, LinkedModule, TaskCategory } from '../types';
 import {
-  Filter,
   X,
-  Calendar as CalendarIcon,
   Search,
   SlidersHorizontal,
   Check,
@@ -59,7 +57,6 @@ export const TaskFilterPanel: React.FC<TaskFilterPanelProps> = ({
   employees,
 }) => {
   const [filters, setFilters] = useState<TaskFilters>(currentFilters);
-  const [activeFilterCount, setActiveFilterCount] = useState(0);
 
   const updateFilter = (key: keyof TaskFilters, value: unknown) => {
     setFilters(prev => ({ ...prev, [key]: value }));

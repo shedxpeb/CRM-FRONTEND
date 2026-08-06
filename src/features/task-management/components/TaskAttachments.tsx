@@ -4,7 +4,6 @@ import React, { useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash2, FileText, FileImage, FileArchive, File } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Attachment, AttachmentType } from '../types';

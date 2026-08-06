@@ -64,10 +64,6 @@ export const TaskComments: React.FC<TaskCommentsProps> = ({
     return isAdmin || comment.userId === currentUserId;
   };
 
-  const canViewInternal = () => {
-    return isAdmin;
-  };
-
   const filteredComments = isAdmin 
     ? comments 
     : comments.filter(c => !c.isInternal);

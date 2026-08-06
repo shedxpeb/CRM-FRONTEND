@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ZoomIn, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface BeforeAfterGalleryProps {
   beforeImages: File[];

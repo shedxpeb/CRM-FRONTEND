@@ -117,7 +117,7 @@ export const TaskChecklist: React.FC<TaskChecklistProps> = ({
 
       {/* Checklist Items */}
       <div className="space-y-2">
-        {items.map((item, index) => (
+        {items.map((item) => (
           <Card key={item.id} className="p-3">
             <div className="flex items-start gap-3">
               {/* Drag Handle */}

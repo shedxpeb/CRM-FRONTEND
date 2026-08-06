@@ -222,7 +222,7 @@ export interface TaskActivity {
   performedBy: string;
   performedByName: string;
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ─── Notification Types ───────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ export interface TaskNotification {
   taskTitle: string;
   isRead: boolean;
   createdAt: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ─── Employee Performance Stats ─────────────────────────────────────────────────

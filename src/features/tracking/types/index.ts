@@ -11,7 +11,7 @@ export interface StatusPipeline {
   allowedTransitions: string[];
   color?: string;
   icon?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface StatusHistory {
@@ -24,7 +24,7 @@ export interface StatusHistory {
   changedById?: string | null;
   reason?: string | null;
   changedAt: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface StatusInfo {
@@ -67,8 +67,8 @@ export interface TimelineEntry {
   entityLabel?: string;
   /** @deprecated internal only — UI must not render */
   userId?: string | null;
-  metadata?: any;
-  data?: any;
+  metadata?: Record<string, unknown>;
+  data?: Record<string, unknown>;
   children?: TimelineEntry[];
   icon?: string;
 }
@@ -117,7 +117,7 @@ export interface ApprovalRequest {
   comment?: string | null;
   requestedAt: string;
   respondedAt?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Notification {
@@ -152,8 +152,8 @@ export interface PipelineStage {
 export interface StageDetails {
   stage: string;
   title: string;
-  fields?: Record<string, any>;
-  entity?: Record<string, any> | null;
+  fields?: Record<string, unknown>;
+  entity?: Record<string, unknown> | null;
 }
 
 export interface TrackingData {
