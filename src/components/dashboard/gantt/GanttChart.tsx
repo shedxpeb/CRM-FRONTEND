@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Scissors } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { projects, type GanttPhase, type Phase, type Task } from "@/features/dashboard/data/projectMockData";
+import { useDashboardGantt } from "@/features/dashboard/hooks/useDashboardGantt";
+import type { GanttProject } from "@/features/dashboard/services/dashboardApi";
+import type { GanttPhase, GanttTask } from "@/features/dashboard/data/projectTypes";
 import { GanttHeader } from "./GanttHeader";
 import { GanttTable } from "./GanttTable";
 import { GanttTimeline } from "./GanttTimeline";
@@ -16,7 +15,9 @@ const PHASE_COLORS: Record<string, string> = {
   "Procurement": "bg-orange-500",
   "Fabrication": "bg-purple-500",
   "Shipping": "bg-cyan-500",
+  "Dispatch": "bg-cyan-500",
   "Erection": "bg-green-500",
+  "Installation": "bg-green-500",
   "Site Execution": "bg-green-500",
   "Handover": "bg-red-500",
 };
@@ -27,103 +28,85 @@ const TASK_COLORS: Record<string, string> = {
   "Procurement": "bg-orange-400",
   "Fabrication": "bg-purple-400",
   "Shipping": "bg-cyan-400",
+  "Dispatch": "bg-cyan-400",
   "Erection": "bg-green-400",
+  "Installation": "bg-green-400",
   "Site Execution": "bg-green-400",
   "Handover": "bg-red-400",
 };
+
+interface GanttData {
+  phases: GanttPhase[];
+  totalPhases: number;
+  totalTasks: number;
+  startDate: Date | null;
+  endDate: Date | null;
+  totalDays: number;
+}
 
 interface Props {
   selectedProjectId?: string;
 }
 
-// Helper function to convert ISO date to "DD Mon" format
-function formatGanttDate(isoDate: string): string {
-  const date = new Date(isoDate);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  return `${day} ${month}`;
+const DAY_MS = 86400000;
+
+function durationDays(start: Date, end: Date) {
+  return Math.max(1, Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1);
 }
 
-// Helper function to calculate duration in days
-function calculateDuration(start: string, end: string): string {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return `${diffDays} days`;
-}
-
-// Transform project phases to Gantt format
-function transformProjectToGanttData(projectId?: string) {
-  if (!projectId) {
-    // Return default detailed Gantt data if no project selected
-    return null;
+// Transform an aggregated GanttProject into the local gantt phase/task shape
+function toGanttData(project: GanttProject | undefined): GanttData {
+  if (!project) {
+    return {
+      phases: [],
+      totalPhases: 0,
+      totalTasks: 0,
+      startDate: null,
+      endDate: null,
+      totalDays: 0,
+    };
   }
 
-  const selectedProject = projects.find(p => p.id === projectId);
-  if (!selectedProject) {
-    return null;
-  }
-
-  const ganttPhases: GanttPhase[] = selectedProject.phases.map((phase, index) => {
+  const phases: GanttPhase[] = project.phases.map((phase) => {
     const color = PHASE_COLORS[phase.name] || "bg-gray-500";
     const taskColor = TASK_COLORS[phase.name] || "bg-gray-400";
-    
-    // Transform tasks if they exist, otherwise create placeholder tasks
-    const tasks: GanttPhase["tasks"] = phase.tasks.length > 0 
-      ? phase.tasks.map((task, taskIndex) => ({
-          id: `${index + 1}.${taskIndex + 1}`,
-          name: task.name,
-          duration: calculateDuration(task.start, task.end),
-          start: formatGanttDate(task.start),
-          end: formatGanttDate(task.end),
-          phase: phase.name,
-          color: taskColor,
-        }))
-      : [
-          {
-            id: `${index + 1}.1`,
-            name: `${phase.name} Task 1`,
-            duration: calculateDuration(phase.start, phase.end),
-            start: formatGanttDate(phase.start),
-            end: formatGanttDate(phase.end),
-            phase: phase.name,
-            color: taskColor,
-          }
-        ];
+
+    const tasks: GanttTask[] = phase.tasks.map((t) => ({
+      id: t.id,
+      name: t.name,
+      startDate: t.startDate,
+      endDate: t.endDate,
+      phase: phase.name,
+      color: taskColor,
+      durationDays: durationDays(t.startDate, t.endDate),
+      progress: t.progress,
+      description: t.description,
+      owner: t.owner,
+      priority: t.priority,
+      status: t.status,
+    }));
 
     return {
       name: phase.name,
-      duration: calculateDuration(phase.start, phase.end),
-      start: formatGanttDate(phase.start),
-      end: formatGanttDate(phase.end),
-      color: color,
-      tasks: tasks,
+      startDate: phase.startDate,
+      endDate: phase.endDate,
+      color,
+      tasks,
     };
   });
 
-  // Calculate overall stats
-  const totalPhases = ganttPhases.length;
-  const totalTasks = ganttPhases.reduce((sum, phase) => sum + phase.tasks.length, 0);
-  
-  // Find earliest start and latest end
-  const allDates = ganttPhases.flatMap(phase => [
-    new Date(selectedProject.phases.find(p => p.name === phase.name)?.start || phase.start),
-    new Date(selectedProject.phases.find(p => p.name === phase.name)?.end || phase.end)
-  ]);
-  const startDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-  const endDate = new Date(Math.max(...allDates.map(d => d.getTime())));
-  
-  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const allStarts = phases.flatMap((ph) => [ph.startDate, ...ph.tasks.map((t) => t.startDate)]);
+  const allEnds = phases.flatMap((ph) => [ph.endDate, ...ph.tasks.map((t) => t.endDate)]);
+  const startDate = allStarts.length > 0 ? new Date(Math.min(...allStarts.map((d) => d.getTime()))) : null;
+  const endDate = allEnds.length > 0 ? new Date(Math.max(...allEnds.map((d) => d.getTime()))) : null;
 
   return {
-    phases: ganttPhases,
-    totalPhases,
-    totalTasks,
-    startDate: formatGanttDate(startDate.toISOString()),
-    endDate: formatGanttDate(endDate.toISOString()),
-    totalDays,
+    phases,
+    totalPhases: phases.length,
+    totalTasks: phases.reduce((sum, ph) => sum + ph.tasks.length, 0),
+    startDate,
+    endDate,
+    totalDays: startDate && endDate ? durationDays(startDate, endDate) : 0,
   };
 }
 
@@ -132,18 +115,10 @@ export function GanttChart({ selectedProjectId }: Props) {
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(true);
 
-  // Compute Gantt data from selected project - fully controlled
-  const ganttData = useMemo(() => {
-    const data = transformProjectToGanttData(selectedProjectId);
-    return data || {
-      phases: [],
-      totalPhases: 0,
-      totalTasks: 0,
-      startDate: "",
-      endDate: "",
-      totalDays: 0,
-    };
-  }, [selectedProjectId]);
+  const { data, isLoading } = useDashboardGantt(Boolean(selectedProjectId), selectedProjectId);
+  const selectedProject = data?.projects.find((p) => p.id === selectedProjectId);
+
+  const ganttData = useMemo(() => toGanttData(selectedProject), [selectedProject]);
 
   const togglePhase = (e: React.MouseEvent, phaseName: string) => {
     e.stopPropagation();
@@ -162,6 +137,45 @@ export function GanttChart({ selectedProjectId }: Props) {
     setShowTimeline(prev => !prev);
   };
 
+  if (!selectedProjectId) {
+    return (
+      <Card>
+        <CardContent className="p-4 sm:p-5">
+          <div className="text-sm font-semibold">Detailed project Gantt chart</div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Select a project from the timeline above to view its phased Gantt chart with tasks.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-4 sm:p-5">
+          <div className="text-sm font-semibold">Detailed project Gantt chart</div>
+          <p className="mt-2 text-xs text-muted-foreground">Loading Gantt chart…</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (ganttData.phases.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-4 sm:p-5">
+          <div className="text-sm font-semibold">Detailed project Gantt chart</div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {selectedProject
+              ? `No tasks scheduled for “${selectedProject.projectName}” yet. The Gantt chart will appear here once tasks with start/due dates are created.`
+              : 'No tasks scheduled for this project yet.'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardContent className="p-4 sm:p-5">
@@ -176,8 +190,7 @@ export function GanttChart({ selectedProjectId }: Props) {
             {/* Header Row - Sticky */}
             <div className="flex border-b border-border">
               <div className="w-full sm:w-[350px] flex-shrink-0 border-r border-border">
-                <div className="grid grid-cols-[40px_1fr_60px_60px_60px] gap-2 px-3 py-2 bg-muted/30">
-                  <div className="text-[10px] font-semibold text-muted-foreground text-center">ID</div>
+                <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-3 py-2 bg-muted/30">
                   <div className="text-[10px] font-semibold text-muted-foreground">TASK</div>
                   <div className="text-[10px] font-semibold text-muted-foreground text-center">DURATION</div>
                   <div className="text-[10px] font-semibold text-muted-foreground text-center">START</div>

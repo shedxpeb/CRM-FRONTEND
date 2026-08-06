@@ -111,7 +111,7 @@ export interface RecentLead {
 // Filter Types
 // ============================================================================
 
-export type DateRange = 'today' | 'this_week' | 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'last_year' | 'all_time';
+export type DateRange = 'today' | 'yesterday' | 'last_7_days' | 'last_30_days' | 'this_week' | 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'last_year' | 'all_time' | 'custom';
 
 export type ComparisonMode = 'none' | 'previous_period' | 'previous_year';
 

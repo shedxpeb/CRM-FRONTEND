@@ -6,25 +6,34 @@ import {
   AlertTriangle,
   Clock,
   CircleDot,
+  XCircle,
   ArrowDownRight,
   ArrowUpRight,
   ChevronDown,
 } from "lucide-react";
-import { projectStatusCounts, type ProjectStatus } from "@/features/dashboard/data/projectMockData";
+import type { ProjectStatus } from "@/features/dashboard/data/projectTypes";
+
+export interface StatusBucket {
+  count: number;
+  prev: number;
+  share: number;
+}
 
 const STATUS: Record<ProjectStatus, { bar: string; chip: string; fill: string; Icon: typeof CheckCircle2 }> = {
   "On Track":  { bar: "bg-blue-500",    chip: "bg-blue-50 text-blue-700",       fill: "bg-blue-500",    Icon: CircleDot },
   "At Risk":   { bar: "bg-amber-500",   chip: "bg-amber-50 text-amber-700",     fill: "bg-amber-500",   Icon: AlertTriangle },
   "Overdue":   { bar: "bg-rose-500",    chip: "bg-rose-50 text-rose-700",       fill: "bg-rose-500",    Icon: Clock },
   "Completed": { bar: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700", fill: "bg-emerald-500", Icon: CheckCircle2 },
+  "Cancelled": { bar: "bg-slate-500",   chip: "bg-slate-100 text-slate-600",    fill: "bg-slate-500",   Icon: XCircle },
 };
 
 interface Props {
+  data: Record<ProjectStatus, StatusBucket>;
   onSelect?: (status: ProjectStatus) => void;
 }
 
-export const ProjectStatusGrid = memo(function ProjectStatusGrid({ onSelect }: Props) {
-  const order: ProjectStatus[] = ["On Track", "At Risk", "Overdue", "Completed"];
+export const ProjectStatusGrid = memo(function ProjectStatusGrid({ data, onSelect }: Props) {
+  const order: ProjectStatus[] = ["On Track", "At Risk", "Overdue", "Completed", "Cancelled"];
   const [isOpen, setIsOpen] = useState(true);
   
   return (
@@ -49,7 +58,7 @@ export const ProjectStatusGrid = memo(function ProjectStatusGrid({ onSelect }: P
                       )}
                     >
                       <span className={cn("h-1.5 w-1.5 rounded-full", s.fill)} />
-                      {projectStatusCounts[st].count} {st}
+                      {data[st].count} {st}
                     </span>
                   );
                 })}
@@ -69,13 +78,13 @@ export const ProjectStatusGrid = memo(function ProjectStatusGrid({ onSelect }: P
                 Click a status to filter the timeline below.
               </p>
               
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
                 {order.map((st) => {
                   const s = STATUS[st];
-                  const data = projectStatusCounts[st];
-                  const diff = data.count - data.prev;
+                  const bucket = data[st];
+                  const diff = bucket.count - bucket.prev;
                   const TrendIcon = diff < 0 ? ArrowDownRight : ArrowUpRight;
-                  const trendGood = (st === "Overdue" || st === "At Risk") ? diff <= 0 : diff >= 0;
+                  const trendGood = (st === "Overdue" || st === "At Risk" || st === "Cancelled") ? diff <= 0 : diff >= 0;
                   return (
                     <button
                       key={st}
@@ -98,10 +107,10 @@ export const ProjectStatusGrid = memo(function ProjectStatusGrid({ onSelect }: P
                           {diff === 0 ? "0" : (diff > 0 ? `+${diff}` : diff)}
                         </span>
                       </div>
-                      <div className="mt-2 text-2xl font-semibold tracking-tight">{data.count}</div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">{data.share}% of portfolio</div>
+                      <div className="mt-2 text-2xl font-semibold tracking-tight">{bucket.count}</div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">{bucket.share}% of portfolio</div>
                       <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-border">
-                        <div className={cn("h-full", s.fill)} style={{ width: `${data.share}%` }} />
+                        <div className={cn("h-full", s.fill)} style={{ width: `${bucket.share}%` }} />
                       </div>
                     </button>
                   );

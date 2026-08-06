@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
@@ -30,6 +30,32 @@ import { PO_UNITS } from '../constants';
 import { formatCurrency } from '../utils/format';
 import { Plus, Trash2 } from 'lucide-react';
 
+const shipToSchema = z.object({
+  name: z.string().optional(),
+  companyName: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  pincode: z.string().optional(),
+  country: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  gstNumber: z.string().optional(),
+});
+
+const supplierSchema = z.object({
+  name: z.string().optional(),
+  companyName: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  pincode: z.string().optional(),
+  country: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  gstNumber: z.string().optional(),
+});
+
 const poItemSchema = z.object({
   itemCode: z.string().min(1, 'Item code is required'),
   itemName: z.string().min(1, 'Item name is required'),
@@ -49,6 +75,7 @@ const purchaseOrderSchema = z.object({
   paymentTerms: z.string().optional(),
   expectedDeliveryDate: z.string().optional(),
   status: z.string().optional(),
+  currency: z.string().optional(),
   discount: z.number().min(0).optional(),
   discountType: z.string().optional(),
   freight: z.number().min(0).optional(),
@@ -58,6 +85,8 @@ const purchaseOrderSchema = z.object({
   notes: z.string().optional(),
   terms: z.string().optional(),
   internalNotes: z.string().optional(),
+  shipTo: shipToSchema.optional(),
+  supplier: supplierSchema.optional(),
   items: z.array(poItemSchema).min(1, 'At least one item is required'),
 }).refine((data) => {
   if (data.discount && !data.discountType) {
@@ -92,17 +121,127 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
     formState: { errors },
     setValue,
     watch,
+    control,
+    reset,
+    getValues,
   } = useForm<PurchaseOrderFormData>({
     resolver: zodResolver(purchaseOrderSchema),
-    defaultValues: initialData ? {
-      ...initialData,
-      items: initialData.items || [],
-    } : {
+    defaultValues: {
       status: 'Draft',
       discountType: 'Amount',
       items: [{ itemCode: '', itemName: '', quantity: 1, unit: 'PCS', rate: 0, discountType: 'Amount' }],
     },
   });
+
+  const { fields: itemFields, append: addItem, remove: removeItem } = useFieldArray({
+    control,
+    name: 'items',
+  });
+
+  // Reset form when initialData changes (for edit mode)
+  useEffect(() => {
+    console.log('PurchaseOrderForm - initialData changed:', initialData);
+    if (initialData) {
+      const mappedItems = (initialData.items || []).map((item: any) => ({
+        itemCode: item.itemCode || '',
+        itemName: item.itemName || '',
+        quantity: item.quantity || 1,
+        unit: item.unit || 'PCS',
+        rate: item.rate || 0,
+        gstRate: item.gstRate,
+        discount: item.discount,
+        discountType: item.discountType || 'Amount',
+        hsnCode: item.hsnCode,
+      }));
+
+      const formData = {
+        vendorId: initialData.vendorId || '',
+        projectId: initialData.projectId || '',
+        warehouseId: initialData.warehouseId || '',
+        paymentTerms: initialData.paymentTerms || '',
+        expectedDeliveryDate: initialData.expectedDeliveryDate || '',
+        status: initialData.status || 'Draft',
+        currency: initialData.currency || 'INR',
+        discount: initialData.discount || 0,
+        discountType: initialData.discountType || 'Amount',
+        freight: initialData.freight || 0,
+        packingCharges: initialData.packingCharges || 0,
+        shippingCharges: initialData.shippingCharges || 0,
+        otherCharges: initialData.otherCharges || 0,
+        notes: initialData.notes || '',
+        terms: initialData.terms || '',
+        internalNotes: initialData.internalNotes || '',
+        items: mappedItems,
+        shipTo: initialData.shipToName ? {
+          name: initialData.shipToName,
+          companyName: initialData.shipToCompanyName,
+          address: initialData.shipToAddress,
+          city: initialData.shipToCity,
+          state: initialData.shipToState,
+          pincode: initialData.shipToPincode,
+          country: initialData.shipToCountry,
+          phone: initialData.shipToPhone,
+          email: initialData.shipToEmail,
+          gstNumber: initialData.shipToGstNumber,
+        } : undefined,
+        supplier: initialData.supplierName ? {
+          name: initialData.supplierName,
+          companyName: initialData.supplierCompanyName,
+          address: initialData.supplierAddress,
+          city: initialData.supplierCity,
+          state: initialData.supplierState,
+          pincode: initialData.supplierPincode,
+          country: initialData.supplierCountry,
+          phone: initialData.supplierPhone,
+          email: initialData.supplierEmail,
+          gstNumber: initialData.supplierGstNumber,
+        } : undefined,
+      };
+
+      console.log('PurchaseOrderForm - resetting form with data:', formData);
+      reset(formData);
+    } else {
+      console.log('PurchaseOrderForm - initialData is null/undefined, resetting to defaults');
+      reset({
+        status: 'Draft',
+        discountType: 'Amount',
+        items: [{ itemCode: '', itemName: '', quantity: 1, unit: 'PCS', rate: 0, discountType: 'Amount' }],
+      });
+    }
+  }, [initialData, reset]);
+
+  const handleAddItem = () => {
+    addItem({ itemCode: '', itemName: '', quantity: 1, unit: 'PCS', rate: 0, discountType: 'Amount' });
+  };
+
+  const vendorId = watch('vendorId');
+  
+  // Fetch vendor details for auto-fill
+  const { data: selectedVendor } = useQuery({
+    queryKey: ['vendor-detail', vendorId],
+    queryFn: () => vendorApi.getById(vendorId),
+    enabled: !!vendorId && open,
+  });
+
+  // Auto-fill supplier fields when vendor changes
+  useEffect(() => {
+    if (selectedVendor && !initialData) {
+      console.log('Auto-filling supplier from vendor:', selectedVendor);
+      setValue('supplier.name', selectedVendor.contactPerson || '');
+      setValue('supplier.companyName', selectedVendor.companyName || '');
+      setValue('supplier.address', selectedVendor.address || '');
+      setValue('supplier.city', selectedVendor.city || '');
+      setValue('supplier.state', selectedVendor.state || '');
+      setValue('supplier.pincode', selectedVendor.pincode || '');
+      setValue('supplier.country', selectedVendor.country || 'India');
+      setValue('supplier.phone', selectedVendor.phone || '');
+      setValue('supplier.email', selectedVendor.email || '');
+      setValue('supplier.gstNumber', selectedVendor.gstNumber || '');
+    }
+  }, [selectedVendor, initialData, setValue]);
+
+  // Note: Ship To auto-fill from Organization is handled by the backend service
+  // The backend defaults Ship To fields from Organization data when creating a PO
 
   const items = watch('items') || [];
   const discount = watch('discount') || 0;
@@ -111,20 +250,6 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
   const packingCharges = watch('packingCharges') || 0;
   const shippingCharges = watch('shippingCharges') || 0;
   const otherCharges = watch('otherCharges') || 0;
-
-  const addItem = () => {
-    setValue('items', [...items, { itemCode: '', itemName: '', quantity: 1, unit: 'PCS', rate: 0, discountType: 'Amount' }]);
-  };
-
-  const removeItem = (index: number) => {
-    setValue('items', items.filter((_, i) => i !== index));
-  };
-
-  const updateItem = (index: number, field: string, value: any) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setValue('items', newItems);
-  };
 
   const calculateTotals = () => {
     let subtotal = 0;
@@ -163,6 +288,11 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
   const totals = calculateTotals();
 
   const onFormSubmit = async (data: PurchaseOrderFormData) => {
+    console.log('=== FORM SUBMISSION START ===');
+    console.log('Form submitting with data:', JSON.stringify(data, null, 2));
+    console.log('Initial data:', JSON.stringify(initialData, null, 2));
+    console.log('Current form values:', JSON.stringify(getValues(), null, 2));
+    console.log('=== FORM SUBMISSION END ===');
     try {
       await onSubmit(data);
     } catch (error) {
@@ -238,19 +368,131 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
             </div>
           </div>
 
+          {/* Ship To & Supplier */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Ship To & Supplier</h3>
+            <div className="grid grid-cols-2 gap-6">
+              {/* Ship To */}
+              <div className="space-y-3 border rounded-lg p-4">
+                <h4 className="font-semibold text-sm">SHIP TO</h4>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Name</Label>
+                    <Input {...register('shipTo.name')} placeholder="Contact Name" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Company Name</Label>
+                    <Input {...register('shipTo.companyName')} placeholder="Company Name" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Address</Label>
+                    <Input {...register('shipTo.address')} placeholder="Street Address" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">City</Label>
+                      <Input {...register('shipTo.city')} placeholder="City" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">State</Label>
+                      <Input {...register('shipTo.state')} placeholder="State" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Pincode</Label>
+                      <Input {...register('shipTo.pincode')} placeholder="Pincode" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Country</Label>
+                      <Input {...register('shipTo.country')} placeholder="Country" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Phone</Label>
+                      <Input {...register('shipTo.phone')} placeholder="Phone" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Email</Label>
+                      <Input {...register('shipTo.email')} type="email" placeholder="Email" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">GST Number</Label>
+                    <Input {...register('shipTo.gstNumber')} placeholder="GST Number" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Supplier */}
+              <div className="space-y-3 border rounded-lg p-4">
+                <h4 className="font-semibold text-sm">SUPPLIER</h4>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Name</Label>
+                    <Input {...register('supplier.name')} placeholder="Contact Person" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Company Name</Label>
+                    <Input {...register('supplier.companyName')} placeholder="Company Name" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Address</Label>
+                    <Input {...register('supplier.address')} placeholder="Street Address" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">City</Label>
+                      <Input {...register('supplier.city')} placeholder="City" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">State</Label>
+                      <Input {...register('supplier.state')} placeholder="State" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Pincode</Label>
+                      <Input {...register('supplier.pincode')} placeholder="Pincode" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Country</Label>
+                      <Input {...register('supplier.country')} placeholder="Country" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Phone</Label>
+                      <Input {...register('supplier.phone')} placeholder="Phone" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Email</Label>
+                      <Input {...register('supplier.email')} type="email" placeholder="Email" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">GST Number</Label>
+                    <Input {...register('supplier.gstNumber')} placeholder="GST Number" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Items</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addItem}>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Item
               </Button>
             </div>
 
             <div className="space-y-4">
-              {items.map((item, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-3">
+              {itemFields.map((item, index) => (
+                <div key={item.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <span className="text-sm font-medium">Item {index + 1}</span>
                     <Button
@@ -267,18 +509,22 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                     <div className="space-y-1">
                       <Label className="text-xs">Item Code *</Label>
                       <Input
-                        value={item.itemCode}
-                        onChange={(e) => updateItem(index, 'itemCode', e.target.value)}
+                        {...register(`items.${index}.itemCode`)}
                         placeholder="Item Code"
                       />
+                      {errors.items?.[index]?.itemCode && (
+                        <p className="text-sm text-red-500">{errors.items[index]?.itemCode?.message}</p>
+                      )}
                     </div>
                     <div className="space-y-1 col-span-2">
                       <Label className="text-xs">Item Name *</Label>
                       <Input
-                        value={item.itemName}
-                        onChange={(e) => updateItem(index, 'itemName', e.target.value)}
+                        {...register(`items.${index}.itemName`)}
                         placeholder="Item Name"
                       />
+                      {errors.items?.[index]?.itemName && (
+                        <p className="text-sm text-red-500">{errors.items[index]?.itemName?.message}</p>
+                      )}
                     </div>
                   </div>
 
@@ -287,15 +533,17 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       <Label className="text-xs">Quantity *</Label>
                       <Input
                         type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        {...register(`items.${index}.quantity`, { valueAsNumber: true })}
                       />
+                      {errors.items?.[index]?.quantity && (
+                        <p className="text-sm text-red-500">{errors.items[index]?.quantity?.message}</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Unit *</Label>
                       <Select
-                        value={item.unit || 'PCS'}
-                        onValueChange={(value) => updateItem(index, 'unit', value)}
+                        value={watch(`items.${index}.unit`) || 'PCS'}
+                        onValueChange={(value) => setValue(`items.${index}.unit`, value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -311,16 +559,17 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       <Label className="text-xs">Rate *</Label>
                       <Input
                         type="number"
-                        value={item.rate}
-                        onChange={(e) => updateItem(index, 'rate', parseFloat(e.target.value) || 0)}
+                        {...register(`items.${index}.rate`, { valueAsNumber: true })}
                       />
+                      {errors.items?.[index]?.rate && (
+                        <p className="text-sm text-red-500">{errors.items[index]?.rate?.message}</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">GST Rate %</Label>
                       <Input
                         type="number"
-                        value={item.gstRate || ''}
-                        onChange={(e) => updateItem(index, 'gstRate', parseFloat(e.target.value) || undefined)}
+                        {...register(`items.${index}.gstRate`, { valueAsNumber: true })}
                       />
                     </div>
                   </div>
@@ -330,15 +579,14 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                       <Label className="text-xs">Discount</Label>
                       <Input
                         type="number"
-                        value={item.discount || ''}
-                        onChange={(e) => updateItem(index, 'discount', parseFloat(e.target.value) || undefined)}
+                        {...register(`items.${index}.discount`, { valueAsNumber: true })}
                       />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Discount Type</Label>
                       <Select
-                        value={item.discountType || 'Amount'}
-                        onValueChange={(value) => updateItem(index, 'discountType', value)}
+                        value={watch(`items.${index}.discountType`) || 'Amount'}
+                        onValueChange={(value) => setValue(`items.${index}.discountType`, value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -352,8 +600,7 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
                     <div className="space-y-1">
                       <Label className="text-xs">HSN Code</Label>
                       <Input
-                        value={item.hsnCode || ''}
-                        onChange={(e) => updateItem(index, 'hsnCode', e.target.value)}
+                        {...register(`items.${index}.hsnCode`)}
                       />
                     </div>
                   </div>

@@ -1,9 +1,9 @@
 /**
  * Recent Status Updates Hook
- * Uses a single paginated projects list — no per-project activity N+1.
+ * Derived from the aggregated dashboard activities feed (project status changes).
  */
 import { useMemo } from 'react';
-import { useProjects } from '@/features/projects/hooks/useProjects';
+import { useDashboardOverview } from './useDashboardOverview';
 
 export interface StatusUpdate {
   id: string;
@@ -17,35 +17,34 @@ export interface StatusUpdate {
 }
 
 /**
- * Recent project status snapshot for the dashboard widget.
- * One list request only (pageSize = limit).
+ * Recent project status updates for the dashboard widget.
+ * Project-specific rows only; other entity activity is ignored.
  */
 export function useRecentStatusUpdates(limit: number = 10, enabled: boolean = true) {
-  const {
-    data: projectsData,
-    isLoading,
-    error,
-  } = useProjects(
-    enabled
-      ? { page: 1, pageSize: limit, sortBy: 'createdAt', sortOrder: 'desc' }
-      : undefined
-  );
+  const { data, isLoading, error } = useDashboardOverview({
+    enabled,
+    dateRange: 'all_time',
+  });
 
-  const data = useMemo<StatusUpdate[]>(() => {
-    const rows = projectsData?.data?.rows ?? [];
-    return rows.map((project) => ({
-      id: `${project.id}-status`,
-      projectId: project.id,
-      projectCode: project.projectCode,
-      projectName: project.projectName,
-      currentStatus: project.status,
-      performedBy: project.projectManager || 'System',
-      performedAt: new Date(project.updatedAt ?? project.createdAt ?? Date.now()),
-    }));
-  }, [projectsData?.data?.rows]);
+  const items = useMemo<StatusUpdate[]>(() => {
+    const activities = data?.activities ?? [];
+    return activities
+      .filter((a) => a.entityType === 'project')
+      .slice(0, limit)
+      .map((a) => ({
+        id: a.id,
+        projectId: a.entityId,
+        projectCode: a.projectCode || '',
+        projectName: a.projectName || a.entityName,
+        currentStatus: a.currentStatus || '',
+        previousStatus: a.previousStatus || undefined,
+        performedBy: a.user || 'System',
+        performedAt: a.timestamp,
+      }));
+  }, [data?.activities, limit]);
 
   return {
-    data,
+    data: items,
     isLoading,
     error,
   };

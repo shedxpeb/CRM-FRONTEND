@@ -4,8 +4,8 @@ import { Scissors } from "lucide-react";
 interface GanttData {
   totalPhases: number;
   totalTasks: number;
-  startDate: string;
-  endDate: string;
+  startDate: Date | null;
+  endDate: Date | null;
   totalDays: number;
 }
 
@@ -13,6 +13,11 @@ interface Props {
   ganttData: GanttData;
   showTimeline: boolean;
   onToggleTimeline: () => void;
+}
+
+function fmtDate(date: Date | null) {
+  if (!date) return "—";
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export function GanttHeader({ ganttData, showTimeline, onToggleTimeline }: Props) {
@@ -23,7 +28,7 @@ export function GanttHeader({ ganttData, showTimeline, onToggleTimeline }: Props
           Detailed project Gantt chart
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          {ganttData.totalPhases} phases · {ganttData.totalTasks} tasks · {ganttData.startDate} → {ganttData.endDate} ({ganttData.totalDays} days)
+          {ganttData.totalPhases} phases · {ganttData.totalTasks} tasks · {fmtDate(ganttData.startDate)} → {fmtDate(ganttData.endDate)} ({ganttData.totalDays} days)
         </div>
       </div>
       <Button 

@@ -6,20 +6,14 @@ import type { NextRequest } from 'next/server';
  * The sessionId cookie is a UX hint for redirects; AuthGate enforces real session state.
  */
 const protectedPrefixes = ['/dashboard', '/settings'];
-const publicAuthRoutes = ['/login', '/register', '/forgot-password', '/reset-password'];
 
-function isSafeRedirect(path: string | null): path is string {
-  return !!path && path.startsWith('/') && !path.startsWith('//') && !path.includes('\\');
-}
-
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasRefreshHint =
     !!request.cookies.get('refreshToken')?.value ||
     !!request.cookies.get('sessionId')?.value;
 
   const isProtected = protectedPrefixes.some((r) => pathname === r || pathname.startsWith(`${r}/`));
-  const isPublicAuth = publicAuthRoutes.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 
   if (pathname === '/') {
     return NextResponse.redirect(new URL(hasRefreshHint ? '/dashboard' : '/login', request.url));
@@ -31,13 +25,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Do not bounce auth pages solely on sessionId — AuthContext clears stale markers via silentRefresh
-  if (isPublicAuth && hasRefreshHint && pathname === '/login') {
-    const redirect = request.nextUrl.searchParams.get('redirect');
-    const target = isSafeRedirect(redirect) ? redirect : '/dashboard';
-    return NextResponse.redirect(new URL(target, request.url));
-  }
-
+  // Never bounce auth pages on cookie hints: the HttpOnly refreshToken cookie cannot be
+  // cleared client-side, so a stale hint would bounce /login -> /dashboard -> /login forever
+  // (ERR_TOO_MANY_REDIRECTS) whenever the session is invalid or the API is temporarily down.
+  // AuthContext/AuthGate own the real session check and redirect; the login page bounces
+  // already-authenticated users to /dashboard via the client-side `isAuthenticated` effect.
   return NextResponse.next();
 }
 

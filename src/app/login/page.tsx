@@ -3,13 +3,15 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ROUTES } from '@/core/routes';
 import { useAuth } from '@/features/auth/AuthContext';
 import { loginSchema } from '@/features/auth/validations';
 import { FormInput } from '@/components/form/FormInput';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const router = useRouter();
+  const { login, isAuthenticated } = useAuth();
   const [apiError, setApiError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const form = useForm({
@@ -25,6 +27,12 @@ export default function LoginPage() {
       setApiError('Your session has expired. Please sign in again.');
     }
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace(ROUTES.dashboard);
+    }
+  }, [isAuthenticated, router]);
 
   const onSubmit = async (data: any) => {
     setSubmitting(true);

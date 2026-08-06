@@ -41,6 +41,31 @@ export interface PurchaseOrder {
   sentAt?: string;
   receivedDate?: string;
   customFields?: any;
+  
+  // Ship To snapshot fields
+  shipToName?: string;
+  shipToCompanyName?: string;
+  shipToAddress?: string;
+  shipToCity?: string;
+  shipToState?: string;
+  shipToPincode?: string;
+  shipToCountry?: string;
+  shipToPhone?: string;
+  shipToEmail?: string;
+  shipToGstNumber?: string;
+  
+  // Supplier snapshot fields
+  supplierName?: string;
+  supplierCompanyName?: string;
+  supplierAddress?: string;
+  supplierCity?: string;
+  supplierState?: string;
+  supplierPincode?: string;
+  supplierCountry?: string;
+  supplierPhone?: string;
+  supplierEmail?: string;
+  supplierGstNumber?: string;
+  
   createdById?: string;
   createdBy?: string;
   updatedBy?: string;
@@ -112,6 +137,32 @@ export interface CreatePurchaseOrderItemDto {
   hsnCode?: string;
 }
 
+export interface ShipToDto {
+  name?: string;
+  companyName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  gstNumber?: string;
+}
+
+export interface SupplierDto {
+  name?: string;
+  companyName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  gstNumber?: string;
+}
+
 export interface CreatePurchaseOrderDto {
   vendorId: string;
   projectId?: string;
@@ -128,6 +179,8 @@ export interface CreatePurchaseOrderDto {
   notes?: string;
   terms?: string;
   internalNotes?: string;
+  shipTo?: ShipToDto;
+  supplier?: SupplierDto;
   items: CreatePurchaseOrderItemDto[];
   customFields?: any;
 }

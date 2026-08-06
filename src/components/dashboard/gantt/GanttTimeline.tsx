@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import type { GanttPhase } from "@/features/dashboard/data/projectMockData";
+import type { GanttPhase } from "@/features/dashboard/data/projectTypes";
 
 interface Props {
   phases: GanttPhase[];
@@ -9,56 +9,48 @@ interface Props {
   onHoverTask: (taskId: string | null) => void;
   phaseColors: Record<string, string>;
   taskColors: Record<string, string>;
-  startDate: string;
-  endDate: string;
+  startDate: Date | null;
+  endDate: Date | null;
   totalDays: number;
-}
-
-// Helper function to convert "DD Mon" format to date
-function parseDate(dateStr: string): Date {
-  const months: Record<string, number> = {
-    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-  };
-  const [day, month] = dateStr.split(' ');
-  const year = 2026; // Fixed year for demo
-  return new Date(year, months[month], parseInt(day));
 }
 
 // Helper function to get month array between two dates
 function getMonthsBetween(startDate: Date, endDate: Date): string[] {
   const months: string[] = [];
   const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-  
+
   const current = new Date(startDate);
   current.setDate(1); // Set to first day of month
-  
+
   while (current <= endDate) {
     months.push(`${monthNames[current.getMonth()]} '${current.getFullYear().toString().slice(-2)}`);
     current.setMonth(current.getMonth() + 1);
   }
-  
+
   return months;
 }
 
 // Helper function to calculate position and width
 function calculateBarPosition(
-  taskStart: string,
-  taskEnd: string,
+  taskStart: Date,
+  taskEnd: Date,
   timelineStart: Date,
   timelineEnd: Date
 ): { left: number; width: number } {
-  const start = parseDate(taskStart);
-  const end = parseDate(taskEnd);
-  
   const totalTimeline = timelineEnd.getTime() - timelineStart.getTime();
-  const taskStartOffset = start.getTime() - timelineStart.getTime();
-  const taskDuration = end.getTime() - start.getTime();
-  
+  if (totalTimeline <= 0) return { left: 0, width: 100 };
+
+  const taskStartOffset = taskStart.getTime() - timelineStart.getTime();
+  const taskDuration = taskEnd.getTime() - taskStart.getTime();
+
   const left = (taskStartOffset / totalTimeline) * 100;
   const width = (taskDuration / totalTimeline) * 100;
-  
+
   return { left: Math.max(0, left), width: Math.max(1, width) };
+}
+
+function fmtRange(start: Date, end: Date) {
+  return `${start.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
 }
 
 export function GanttTimeline({
@@ -72,11 +64,11 @@ export function GanttTimeline({
   endDate,
   totalDays,
 }: Props) {
-  const timelineStart = parseDate(startDate);
-  const timelineEnd = parseDate(endDate);
-  
+  const timelineStart = startDate ?? new Date();
+  const timelineEnd = endDate ?? timelineStart;
+
   const months = useMemo(() => getMonthsBetween(timelineStart, timelineEnd), [timelineStart, timelineEnd]);
-  
+
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number; direction: 'left' | 'right' } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -87,17 +79,17 @@ export function GanttTimeline({
       const rect = tooltip.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
+
       // Calculate position based on available space
       let x = rect.right + 8;
       let direction: 'left' | 'right' = 'right';
-      
+
       // Flip to left if not enough space on right
       if (x + 200 > viewportWidth) {
         x = rect.left - 208;
         direction = 'left';
       }
-      
+
       // Adjust y to stay within viewport
       let y = rect.top;
       if (y + 100 > viewportHeight) {
@@ -106,21 +98,21 @@ export function GanttTimeline({
       if (y < 0) {
         y = 8;
       }
-      
+
       setTooltipPosition({ x, y, direction });
     } else {
       setTooltipPosition(null);
     }
   }, [hoveredTask]);
-  
+
   return (
     <div className="flex-1">
       <div className="min-w-[600px]">
         {/* Timeline Rows */}
         {phases.map((phase) => {
           const isCollapsed = collapsedPhases.has(phase.name);
-          const phasePosition = calculateBarPosition(phase.start, phase.end, timelineStart, timelineEnd);
-          
+          const phasePosition = calculateBarPosition(phase.startDate, phase.endDate, timelineStart, timelineEnd);
+
           return (
             <div key={phase.name}>
               {/* Phase Bar */}
@@ -140,8 +132,8 @@ export function GanttTimeline({
               {!isCollapsed && (
                 <div className="ml-4">
                   {phase.tasks.map((task) => {
-                    const taskPosition = calculateBarPosition(task.start, task.end, timelineStart, timelineEnd);
-                    
+                    const taskPosition = calculateBarPosition(task.startDate, task.endDate, timelineStart, timelineEnd);
+
                     return (
                       <div
                         key={task.id}
@@ -169,7 +161,7 @@ export function GanttTimeline({
           );
         })}
       </div>
-      
+
       {/* Fixed positioned tooltip */}
       {hoveredTask && tooltipPosition && (
         <div
@@ -186,8 +178,8 @@ export function GanttTimeline({
             return (
               <>
                 <div className="font-semibold">{task.name}</div>
-                <div>{task.duration}</div>
-                <div>{task.start} - {task.end}</div>
+                <div>{task.durationDays} days · {task.progress}% complete</div>
+                <div>{fmtRange(task.startDate, task.endDate)}</div>
               </>
             );
           })()}

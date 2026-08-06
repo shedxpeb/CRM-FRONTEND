@@ -60,6 +60,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
 
   const { data: po, isLoading } = usePurchaseOrder(id);
   const updateMutation = useUpdatePurchaseOrder();
+
+  // Log PO data when it loads
+  if (po) {
+    console.log('Loaded PO data:', JSON.stringify(po, null, 2));
+  }
   const approveMutation = useApprovePurchaseOrder();
   const rejectMutation = useRejectPurchaseOrder();
   const sendMutation = useSendPurchaseOrder();
@@ -83,11 +88,16 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   const handleEdit = useCallback(
     async (formData: any) => {
       if (!po) return;
+      console.log('=== EDIT HANDLER START ===');
+      console.log('PO ID:', po.id);
+      console.log('Edit form data:', JSON.stringify(formData, null, 2));
+      console.log('=== EDIT HANDLER END ===');
       try {
         await updateMutation.mutateAsync({ id: po.id, data: formData });
         setShowEditForm(false);
         toast.success('Purchase Order updated successfully');
       } catch (error: any) {
+        console.error('Update error:', error);
         toast.error(error.message || 'Failed to update purchase order');
       }
     },
@@ -315,6 +325,57 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
               )}
             </CardContent>
           </Card>
+
+          {/* Ship To & Supplier */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Ship To</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <DetailField label="Name" value={po.shipToName} />
+                <DetailField label="Company Name" value={po.shipToCompanyName} />
+                <DetailField label="Address" value={po.shipToAddress} />
+                <div className="grid grid-cols-2 gap-4">
+                  <DetailField label="City" value={po.shipToCity} />
+                  <DetailField label="State" value={po.shipToState} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <DetailField label="Pincode" value={po.shipToPincode} />
+                  <DetailField label="Country" value={po.shipToCountry} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <DetailField label="Phone" value={po.shipToPhone} />
+                  <DetailField label="Email" value={po.shipToEmail} />
+                </div>
+                <DetailField label="GST Number" value={po.shipToGstNumber} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Supplier</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <DetailField label="Name" value={po.supplierName} />
+                <DetailField label="Company Name" value={po.supplierCompanyName} />
+                <DetailField label="Address" value={po.supplierAddress} />
+                <div className="grid grid-cols-2 gap-4">
+                  <DetailField label="City" value={po.supplierCity} />
+                  <DetailField label="State" value={po.supplierState} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <DetailField label="Pincode" value={po.supplierPincode} />
+                  <DetailField label="Country" value={po.supplierCountry} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <DetailField label="Phone" value={po.supplierPhone} />
+                  <DetailField label="Email" value={po.supplierEmail} />
+                </div>
+                <DetailField label="GST Number" value={po.supplierGstNumber} />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="items" className="space-y-4">
@@ -472,6 +533,7 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
       </Tabs>
 
       <PurchaseOrderForm
+        key={po?.id}
         open={showEditForm}
         onOpenChange={setShowEditForm}
         onSubmit={handleEdit}

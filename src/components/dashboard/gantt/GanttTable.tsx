@@ -1,6 +1,14 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { GanttPhase } from "@/features/dashboard/data/projectMockData";
+import type { GanttPhase } from "@/features/dashboard/data/projectTypes";
+
+function fmtDate(date: Date) {
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
+function durationDays(start: Date, end: Date) {
+  return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+}
 
 interface Props {
   phases: GanttPhase[];
@@ -31,11 +39,11 @@ export function GanttTable({
           <div key={phase.name}>
             {/* Phase Row */}
             <div
-              className="grid grid-cols-[40px_1fr_60px_60px_60px] gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 items-center border-b border-border/50"
+              className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 items-center border-b border-border/50"
               style={{ height: '36px' }}
               onClick={(e) => onTogglePhase(e, phase.name)}
             >
-              <div className="flex items-center gap-2 col-span-2">
+              <div className="flex items-center gap-2">
                 {isCollapsed ? (
                   <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                 ) : (
@@ -44,9 +52,9 @@ export function GanttTable({
                 <div className={cn("h-2 w-2 rounded-full flex-shrink-0", phaseColors[phase.name] || "bg-gray-500")} />
                 <span className="text-[11px] font-semibold truncate">{phase.name}</span>
               </div>
-              <div className="text-[10px] text-muted-foreground text-center">{phase.duration}</div>
-              <div className="text-[10px] text-muted-foreground text-center">{phase.start}</div>
-              <div className="text-[10px] text-muted-foreground text-center">{phase.end}</div>
+              <div className="text-[10px] text-muted-foreground text-center">{durationDays(phase.startDate, phase.endDate)}d</div>
+              <div className="text-[10px] text-muted-foreground text-center">{fmtDate(phase.startDate)}</div>
+              <div className="text-[10px] text-muted-foreground text-center">{fmtDate(phase.endDate)}</div>
             </div>
 
             {/* Task Rows */}
@@ -55,16 +63,15 @@ export function GanttTable({
                 {phase.tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="grid grid-cols-[40px_1fr_60px_60px_60px] gap-2 px-3 py-1.5 hover:bg-muted/30 items-center border-b border-border/30"
+                    className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-3 py-1.5 hover:bg-muted/30 items-center border-b border-border/30"
                     style={{ height: '24px' }}
                     onMouseEnter={() => onHoverTask(task.id)}
                     onMouseLeave={() => onHoverTask(null)}
                   >
-                    <div className="text-[10px] text-muted-foreground text-center">{task.id}</div>
                     <div className="text-[10px] truncate">{task.name}</div>
-                    <div className="text-[10px] text-muted-foreground text-center">{task.duration}</div>
-                    <div className="text-[10px] text-muted-foreground text-center">{task.start}</div>
-                    <div className="text-[10px] text-muted-foreground text-center">{task.end}</div>
+                    <div className="text-[10px] text-muted-foreground text-center">{task.durationDays}d</div>
+                    <div className="text-[10px] text-muted-foreground text-center">{fmtDate(task.startDate)}</div>
+                    <div className="text-[10px] text-muted-foreground text-center">{fmtDate(task.endDate)}</div>
                   </div>
                 ))}
               </div>

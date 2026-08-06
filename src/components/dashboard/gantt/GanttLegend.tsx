@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { GanttPhase } from "@/features/dashboard/data/projectMockData";
+import type { GanttPhase } from "@/features/dashboard/data/projectTypes";
 
 interface Props {
   phases: GanttPhase[];

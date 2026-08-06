@@ -1,17 +1,56 @@
 import { useEffect, useMemo, useState, memo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, AlertTriangle, Clock, CircleDot } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Clock, CircleDot, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { projects, TODAY, type ProjectStatus } from "@/features/dashboard/data/projectMockData";
+import type { ProjectStatus } from "@/features/dashboard/data/projectTypes";
 
-const RANGE_START = new Date("2026-01-01");
-const RANGE_END = new Date("2026-09-30");
-const RANGE_MS = RANGE_END.getTime() - RANGE_START.getTime();
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function pct(date: Date) {
-  return Math.max(0, Math.min(100, ((date.getTime() - RANGE_START.getTime()) / RANGE_MS) * 100));
+export interface TimelineRow {
+  id: string;
+  customer: string;
+  type: string;
+  start: string;
+  end: string;
+  progress: number;
+  status: ProjectStatus;
+}
+
+interface Range {
+  start: Date;
+  end: Date;
+  months: string[];
+  ms: number;
+}
+
+function buildRange(projects: TimelineRow[]): Range {
+  if (projects.length === 0) {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear(), 11, 31);
+    return { start, end, months: monthNames(start, end), ms: end.getTime() - start.getTime() };
+  }
+  const times = projects.flatMap((pr) => [new Date(pr.start).getTime(), new Date(pr.end).getTime()]);
+  const start = new Date(Math.min(...times));
+  const end = new Date(Math.max(...times));
+  const rangeStart = new Date(start.getFullYear(), start.getMonth(), 1);
+  const rangeEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+  return { start: rangeStart, end: rangeEnd, months: monthNames(rangeStart, rangeEnd), ms: rangeEnd.getTime() - rangeStart.getTime() };
+}
+
+function monthNames(start: Date, end: Date): string[] {
+  const months: string[] = [];
+  const current = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (current <= end) {
+    months.push(MONTH_NAMES[current.getMonth()]);
+    current.setMonth(current.getMonth() + 1);
+  }
+  return months.length > 0 ? months : [MONTH_NAMES[start.getMonth()]];
+}
+
+function pct(date: Date, range: Range) {
+  return Math.max(0, Math.min(100, ((date.getTime() - range.start.getTime()) / range.ms) * 100));
 }
 
 const STATUS: Record<ProjectStatus, { bar: string; fill: string; chip: string; Icon: typeof CheckCircle2 }> = {
@@ -19,6 +58,7 @@ const STATUS: Record<ProjectStatus, { bar: string; fill: string; chip: string; I
   "At Risk":   { bar: "bg-amber-200",   fill: "bg-amber-500",   chip: "bg-amber-50 text-amber-700",     Icon: AlertTriangle },
   "Overdue":   { bar: "bg-rose-200",    fill: "bg-rose-500",    chip: "bg-rose-50 text-rose-700",       Icon: Clock },
   "Completed": { bar: "bg-emerald-200", fill: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700", Icon: CheckCircle2 },
+  "Cancelled": { bar: "bg-slate-200",   fill: "bg-slate-500",   chip: "bg-slate-100 text-slate-600",    Icon: XCircle },
 };
 
 function fmtDate(iso: string) {
@@ -28,13 +68,21 @@ function fmtDate(iso: string) {
 type Filter = "All" | ProjectStatus;
 
 interface Props {
+  projects: TimelineRow[];
   statusFilter?: Filter;
   selectedId?: string;
   onSelectId?: (id: string) => void;
   onStatusFilterChange?: (f: Filter) => void;
 }
 
-export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, selectedId, onSelectId, onStatusFilterChange }: Props = {}) {
+export const ProjectTimeline = memo(function ProjectTimeline({
+  projects,
+  statusFilter,
+  selectedId,
+  onSelectId,
+  onStatusFilterChange,
+}: Props) {
+  const [today] = useState(() => new Date());
   const [internalFilter, setInternalFilter] = useState<Filter>("All");
   const filter = statusFilter ?? internalFilter;
   const setFilter = (f: Filter) => {
@@ -42,9 +90,11 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
     onStatusFilterChange?.(f);
   };
 
+  const range = useMemo(() => buildRange(projects), [projects]);
+
   const filtered = useMemo(
     () => (filter === "All" ? projects : projects.filter((p) => p.status === filter)),
-    [filter],
+    [filter, projects],
   );
 
   const defaultId =
@@ -61,14 +111,14 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
   };
 
   useEffect(() => {
-    if (!filtered.some((p) => p.id === activeId)) {
+    if (filtered.length > 0 && !filtered.some((p) => p.id === activeId)) {
       setActiveId(filtered[0]?.id ?? "");
     }
   }, [filter, activeId, filtered]);
 
   const p = projects.find((x) => x.id === activeId);
 
-  if (!p) {
+  if (projects.length === 0 || !p) {
     return (
       <Card>
         <CardHeader>
@@ -84,14 +134,14 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
     );
   }
 
-  const todayPct = pct(TODAY);
+  const todayPct = pct(today, range);
   const start = new Date(p.start);
   const end = new Date(p.end);
-  const left = pct(start);
-  const width = Math.max(2, pct(end) - left);
+  const left = pct(start, range);
+  const width = Math.max(2, pct(end, range) - left);
   const s = STATUS[p.status];
   const Icon = s.Icon;
-  const daysLeft = Math.ceil((end.getTime() - TODAY.getTime()) / 86400000);
+  const daysLeft = Math.ceil((end.getTime() - today.getTime()) / 86400000);
 
   return (
     <Card>
@@ -102,7 +152,7 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-1">
-            {(["All", "On Track", "At Risk", "Overdue", "Completed"] as Filter[]).map((f) => (
+            {(["All", "On Track", "At Risk", "Overdue", "Completed", "Cancelled"] as Filter[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -124,7 +174,7 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
             <SelectContent>
               {filtered.map((pr) => (
                 <SelectItem key={pr.id} value={pr.id} className="text-xs">
-                  {pr.id} · {pr.customer} — {pr.type}
+                  {pr.customer} — {pr.type}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -136,8 +186,8 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
           <div className="min-w-[560px]">
             {/* Month header */}
             <div className="relative h-5 border-b border-border">
-              <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${MONTHS.length}, 1fr)` }}>
-                {MONTHS.map((m) => (
+              <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${range.months.length}, 1fr)` }}>
+                {range.months.map((m) => (
                   <div key={m} className="border-l border-border/60 pl-1.5 text-[11px] text-muted-foreground">
                     {m}
                   </div>
@@ -147,8 +197,8 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
 
             {/* Single bar row */}
             <div className="relative h-7 py-1">
-              <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${MONTHS.length}, 1fr)` }}>
-                {MONTHS.map((m) => (
+              <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${range.months.length}, 1fr)` }}>
+                {range.months.map((m) => (
                   <div key={m} className="border-l border-border/40" />
                 ))}
               </div>
@@ -183,7 +233,7 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
             {/* Today legend */}
             <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <span className="inline-block h-3 w-px border-l-2 border-dashed border-foreground/40" />
-              Today · {TODAY.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              Today · {today.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </div>
           </div>
         </div>
@@ -212,10 +262,10 @@ export const ProjectTimeline = memo(function ProjectTimeline({ statusFilter, sel
           </div>
           <div className="rounded-lg border border-border bg-muted/30 p-3">
             <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              {p.status === "Overdue" ? "Overdue by" : p.status === "Completed" ? "Status" : "Days remaining"}
+              {p.status === "Overdue" ? "Overdue by" : p.status === "Completed" || p.status === "Cancelled" ? "Status" : "Days remaining"}
             </div>
             <div className={cn("mt-1 text-sm font-semibold", p.status === "Overdue" && "text-rose-600")}>
-              {p.status === "Completed" ? "Delivered" : p.status === "Overdue" ? `${Math.abs(daysLeft)} days` : `${daysLeft} days`}
+              {p.status === "Completed" ? "Delivered" : p.status === "Cancelled" ? "Closed" : p.status === "Overdue" ? `${Math.abs(daysLeft)} days` : `${daysLeft} days`}
             </div>
           </div>
         </div>

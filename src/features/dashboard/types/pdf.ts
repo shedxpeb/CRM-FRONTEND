@@ -99,8 +99,11 @@ export interface TableData {
   };
 }
 
-export type DateRange = 
+export type DateRange =
   | 'today'
+  | 'yesterday'
+  | 'last_7_days'
+  | 'last_30_days'
   | 'this_week'
   | 'this_month'
   | 'last_month'
@@ -108,7 +111,8 @@ export type DateRange =
   | 'last_quarter'
   | 'this_year'
   | 'last_year'
-  | 'all_time';
+  | 'all_time'
+  | 'custom';
 
 export type ExportStatus = 'idle' | 'preparing' | 'rendering' | 'generating' | 'ready' | 'error';
 
