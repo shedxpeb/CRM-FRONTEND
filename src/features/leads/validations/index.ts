@@ -91,8 +91,6 @@ export const baseLeadSchema = z.object({
 
   priority: z.enum(['Low', 'Medium', 'High', 'Urgent']),
 
-  createdAt: z.string().min(1, 'Current Date is required'),
-
   status: z.enum([
     'New', 'Contacted', 'DesignPending', 'BOQPending',
     'EstimateSent', 'ProposalSent', 'Negotiation',

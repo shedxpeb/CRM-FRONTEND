@@ -73,6 +73,8 @@ export type Industry =
   | 'Mining'
   | 'Agriculture'
   | 'Transportation'
+  | 'Logistics'
+  | 'Commercial'
   | 'Other';
 
 export type BusinessType =
