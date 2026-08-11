@@ -93,7 +93,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     source: (initialData?.source ?? config.sources[0] ?? 'Website') as LeadSource,
     priority: (initialData?.priority ?? config.priorities[1] ?? 'Medium') as LeadPriority,
     status: (initialData?.status ?? config.statuses[0] ?? 'New') as LeadStatus,
-    createdAt: initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    nextFollowUpDate: initialData?.nextFollowUpDate ? new Date(initialData.nextFollowUpDate).toISOString().split('T')[0] : '',
     customFields: initialData?.customFields ?? {},
   });
 
