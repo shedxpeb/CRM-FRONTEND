@@ -110,6 +110,20 @@ export const useCreateDocument = () => {
   
   return useMutation({
     mutationFn: (data: CreateDocumentDto) => documentsApi.createDocument(data),
+    onMutate: async (newDocument) => {
+      await queryClient.cancelQueries({ queryKey: ['documents'] });
+      const previousDocuments = queryClient.getQueryData(['documents']);
+      queryClient.setQueryData(['documents'], (old: any) => ({
+        ...old,
+        items: [newDocument, ...(old?.items || [])],
+      }));
+      return { previousDocuments };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousDocuments) {
+        queryClient.setQueryData(['documents'], context.previousDocuments);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['documentStats'] });
@@ -124,6 +138,17 @@ export const useUpdateDocument = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateDocumentDto }) =>
       documentsApi.updateDocument(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['document', id] });
+      const previousDocument = queryClient.getQueryData(['document', id]);
+      queryClient.setQueryData(['document', id], (old: any) => ({ ...old, ...data }));
+      return { previousDocument };
+    },
+    onError: (error, { id }, context) => {
+      if (context?.previousDocument) {
+        queryClient.setQueryData(['document', id], context.previousDocument);
+      }
+    },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['document', id] });
@@ -138,6 +163,20 @@ export const useDeleteDocument = () => {
   
   return useMutation({
     mutationFn: (id: string) => documentsApi.deleteDocument(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['documents'] });
+      const previousDocuments = queryClient.getQueryData(['documents']);
+      queryClient.setQueryData(['documents'], (old: any) => ({
+        ...old,
+        items: old?.items?.filter((item: any) => item.id !== id) || [],
+      }));
+      return { previousDocuments };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousDocuments) {
+        queryClient.setQueryData(['documents'], context.previousDocuments);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['documentStats'] });
@@ -218,6 +257,17 @@ export const useUpdateTemplate = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTemplateDto }) =>
       templatesApi.updateTemplate(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['template', id] });
+      const previousTemplate = queryClient.getQueryData(['template', id]);
+      queryClient.setQueryData(['template', id], (old: any) => ({ ...old, ...data }));
+      return { previousTemplate };
+    },
+    onError: (error, { id }, context) => {
+      if (context?.previousTemplate) {
+        queryClient.setQueryData(['template', id], context.previousTemplate);
+      }
+    },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       queryClient.invalidateQueries({ queryKey: ['template', id] });

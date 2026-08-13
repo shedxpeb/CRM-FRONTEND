@@ -193,13 +193,16 @@ export const useModules = (options?: UseQueryOptions<Module[]>) => {
 
 export const useUpdateModule = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Module> }) =>
       settingsApi.updateModule(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'modules'] });
       queryClient.invalidateQueries({ queryKey: ['sidebar'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update module:', error);
     },
   });
 };
@@ -217,12 +220,15 @@ export const useSystemPreferences = (options?: UseQueryOptions) => {
 
 export const useUpdateSystemPreferences = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: Partial<SystemPreferences>) =>
       settingsApi.updateSystemPreferences(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'preferences'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update system preferences:', error);
     },
   });
 };

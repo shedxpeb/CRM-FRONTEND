@@ -18,6 +18,7 @@ import { useDebounce } from '@/shared/hooks/useDebounce';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ROUTES } from '@/core/routes';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 
 // Lazy load heavy components to reduce initial bundle size
 const LeadForm = dynamic(() => import('@/features/leads/components/LeadForm').then(mod => ({ default: mod.LeadForm })), {
@@ -863,11 +864,12 @@ export default function LeadsPage() {
   );
 
   return (
-    <MainLayout>
-      <StandardPageLayout
-        title="Leads"
-        subtitle="Manage customer enquiries and PEB requirements"
-        headerActions={
+    <RouteGuard requiredModule="leads">
+      <MainLayout>
+        <StandardPageLayout
+          title="Leads"
+          subtitle="Manage customer enquiries and PEB requirements"
+          headerActions={
           <div className="flex flex-wrap items-center justify-end gap-2">
             {viewToggle}
             <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
@@ -1321,6 +1323,7 @@ export default function LeadsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </MainLayout>
+      </MainLayout>
+    </RouteGuard>
   );
 }
