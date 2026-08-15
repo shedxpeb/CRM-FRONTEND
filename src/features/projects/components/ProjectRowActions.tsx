@@ -16,6 +16,8 @@ interface ProjectRowActionsProps {
   onReserveInventory?: (project: Project) => void;
   onAssignTeam?: (project: Project) => void;
   onMarkComplete?: (project: Project) => void;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
 export const ProjectRowActions = React.memo(function ProjectRowActions({
@@ -28,6 +30,8 @@ export const ProjectRowActions = React.memo(function ProjectRowActions({
   onReserveInventory,
   onAssignTeam,
   onMarkComplete,
+  canUpdate = true,
+  canDelete = true,
 }: ProjectRowActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -60,6 +64,7 @@ export const ProjectRowActions = React.memo(function ProjectRowActions({
               label: 'Edit Project',
               icon: Edit,
               onClick: () => onEdit(project),
+              hidden: !canUpdate,
             },
           ],
           workflow: [
@@ -105,6 +110,7 @@ export const ProjectRowActions = React.memo(function ProjectRowActions({
               label: 'Delete Project',
               icon: Trash2,
               onClick: () => setShowDeleteDialog(true),
+              hidden: !canDelete,
             },
           ],
         }}

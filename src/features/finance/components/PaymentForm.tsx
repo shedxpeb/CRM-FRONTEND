@@ -10,6 +10,7 @@ import { CreatePaymentFormData } from '@/features/finance/validations';
 import { useFinanceModuleConfiguration } from '@/features/finance/hooks/useFinanceConfiguration';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { useProjects } from '@/features/projects/hooks/useProjects';
+import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
 
 interface PaymentFormProps {
   onSubmit: (data: CreatePaymentFormData) => void;
@@ -23,6 +24,7 @@ export const PaymentForm = memo(function PaymentForm({ onSubmit, onCancel, isLoa
   const { paymentMethods } = useFinanceModuleConfiguration();
   const { data: customers } = useCustomers();
   const { data: projects } = useProjects();
+  const { enabled: projectsEnabled } = useModuleEnabled('projects');
 
   const [formData, setFormData] = useState<CreatePaymentFormData>({
     type: 'Stage',
@@ -108,21 +110,23 @@ export const PaymentForm = memo(function PaymentForm({ onSubmit, onCancel, isLoa
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Project (Optional)</label>
-              <Select value={formData.projectId || ''} onValueChange={(v) => handleChange('projectId', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects?.data?.rows?.map((project, index) => (
-                    <SelectItem key={`${project.id}-${index}`} value={project.id}>
-                      {project.projectName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {projectsEnabled && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Project (Optional)</label>
+                <Select value={formData.projectId || ''} onValueChange={(v) => handleChange('projectId', v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects?.data?.rows?.map((project, index) => (
+                      <SelectItem key={`${project.id}-${index}`} value={project.id}>
+                        {project.projectName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Invoice (Optional)</label>

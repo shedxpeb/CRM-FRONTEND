@@ -12,6 +12,12 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  mustChangePassword: boolean;
+  completePasswordChange: (input: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   login: (input: LoginInput) => Promise<{ success: boolean; error?: string }>;
   register: (input: RegisterInput) => Promise<{ success: boolean; email?: string; otpDelivery?: OtpDeliveryResponse; error?: string }>;
   verifyOtp: (input: VerifyOtpInput) => Promise<{ success: boolean; error?: string }>;
@@ -35,6 +41,7 @@ const PROACTIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes — keeps sess
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -55,6 +62,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         // Silent refresh failed — interceptor handles if token actually expires
       }
+      // Re-fetch the profile so RBAC changes from SUPER-ADMIN (role
+      // permissions, user overrides) take effect without a logout. The
+      // backend recomputes effective permissions fresh once the cache was
+      // invalidated, so /auth/me returns the current set.
+      try {
+        const profileRes: any = await authService.getProfile();
+        const profile = profileRes?.data ?? profileRes;
+        if (profile && profile.permissions) {
+          setUser((prev) => {
+            if (prev && prev.permissions?.join('|') === profile.permissions.join('|')) {
+              return prev;
+            }
+            return profile;
+          });
+        }
+      } catch {
+        // Non-fatal — profile refresh runs again next tick
+      }
     }, PROACTIVE_REFRESH_INTERVAL_MS);
   }, [stopProactiveRefresh]);
 
@@ -70,6 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res: any = await authService.getProfile();
         const userData = res?.data ?? res;
         setUser(userData);
+        if (userData?.mustChangePassword) {
+          setMustChangePassword(true);
+        }
         const sid = getSessionId();
         if (sid && userData?.organizationId) {
           setSessionData(sid, userData.organizationId);
@@ -88,6 +116,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hydrate();
   }, [startProactiveRefresh]);
 
+  // Refresh the profile on window focus so RBAC/module changes from
+  // SUPER-ADMIN apply as soon as the user returns to the tab (no logout).
+  useEffect(() => {
+    const onFocus = async () => {
+      try {
+        const profileRes: any = await authService.getProfile();
+        const profile = profileRes?.data ?? profileRes;
+        if (profile && profile.permissions) {
+          setUser((prev) => {
+            if (prev && prev.permissions?.join('|') === profile.permissions.join('|')) {
+              return prev;
+            }
+            return profile;
+          });
+        }
+      } catch {
+        // Ignore — background refresh failures are non-fatal
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
   // Cleanup interval on unmount
   useEffect(() => {
     return () => stopProactiveRefresh();
@@ -99,7 +150,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = res?.data ?? res;
       setAccessToken(data.accessToken);
       setSessionData(data.sessionId, data.user?.organizationId || '');
-      setUser(data.user);
+      // The login response user omits permissions; load the full profile so
+      // sidebar/route guards enforce effective permissions immediately.
+      let profile: any = null;
+      try {
+        const profileRes: any = await authService.getProfile();
+        profile = profileRes?.data ?? profileRes;
+        setUser(profile ?? data.user);
+        if (profile?.mustChangePassword) {
+          setMustChangePassword(true);
+        }
+      } catch {
+        setUser(data.user);
+      }
+      if (!profile?.mustChangePassword && data.mustChangePassword) {
+        setMustChangePassword(true);
+      }
       startProactiveRefresh();
       const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const redirect = params?.get('redirect');
@@ -113,6 +179,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: msg };
     }
   }, [router, startProactiveRefresh]);
+
+  const completePasswordChange = useCallback(
+    async (input: {
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+    }): Promise<{ success: boolean; error?: string }> => {
+      try {
+        await authService.changePassword(input);
+        setMustChangePassword(false);
+        startProactiveRefresh();
+        return { success: true };
+      } catch (err: any) {
+        const msg = extractErrorMessage(err, 'Failed to update password');
+        return { success: false, error: msg };
+      }
+    },
+    [startProactiveRefresh],
+  );
 
   const register = useCallback(async (input: RegisterInput) => {
     try {
@@ -135,7 +220,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = res?.data ?? res;
       setAccessToken(data.accessToken);
       setSessionData(data.sessionId, data.user?.organizationId || '');
-      setUser(data.user);
+      try {
+        const profileRes: any = await authService.getProfile();
+        const profile = profileRes?.data ?? profileRes;
+        setUser(profile ?? data.user);
+      } catch {
+        setUser(data.user);
+      }
       startProactiveRefresh();
       router.push(ROUTES.dashboard);
       router.refresh();
@@ -188,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
     clearSession();
     setUser(null);
+    setMustChangePassword(false);
     router.push(ROUTES.login);
     router.refresh();
   }, [router, stopProactiveRefresh, queryClient]);
@@ -198,6 +290,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        mustChangePassword,
+        completePasswordChange,
         login,
         register,
         verifyOtp,

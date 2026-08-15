@@ -3,6 +3,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/layouts/MainLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
+import { usePermission } from '@/features/auth/usePermission';
 import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
@@ -58,6 +60,8 @@ export default function ItemPage() {
   const updateMutation = useUpdateItemMaster();
   const deleteMutation = useDeleteItemMaster();
 
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('item-master:create');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -310,16 +314,19 @@ export default function ItemPage() {
   }
 
   return (
+    <RouteGuard requiredModule="items" requiredPermission="item-master:list">
     <MainLayout>
       <StandardPageLayout
         title="Items"
         subtitle="Product catalog — local demo data (no backend yet)"
         headerActions={
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Add Item</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+          canCreate ? (
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Add Item</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          ) : undefined
         }
         kpiCards={kpiData.map((kpi, i) => <KPICard key={i} data={kpi} />)}
         searchValue={searchQuery}
@@ -413,5 +420,6 @@ export default function ItemPage() {
         </DialogContent>
       </Dialog>
     </MainLayout>
+    </RouteGuard>
   );
 }

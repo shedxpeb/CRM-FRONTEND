@@ -227,27 +227,6 @@ export interface TaskActivity {
 
 // ─── Notification Types ───────────────────────────────────────────────────────
 
-export type NotificationType =
-  | 'Task Assigned'
-  | 'Task Verified'
-  | 'Task Rejected'
-  | 'Task Completed'
-  | 'Task Due Soon'
-  | 'Task Overdue';
-
-export interface TaskNotification {
-  id: string;
-  userId: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  taskId: string;
-  taskTitle: string;
-  isRead: boolean;
-  createdAt: Date;
-  metadata?: Record<string, unknown>;
-}
-
 // ─── Employee Performance Stats ─────────────────────────────────────────────────
 
 export interface EmployeePerformanceStats {

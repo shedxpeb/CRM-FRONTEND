@@ -10,6 +10,7 @@ import { CreateInvoiceDto, InvoiceLineItem } from '@/features/finance/types';
 import { useFinanceModuleConfiguration } from '@/features/finance/hooks/useFinanceConfiguration';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { useProjects } from '@/features/projects/hooks/useProjects';
+import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface InvoiceFormProps {
@@ -24,6 +25,7 @@ export const InvoiceForm = memo(function InvoiceForm({ onSubmit, onCancel, isLoa
   const { gstTypes } = useFinanceModuleConfiguration();
   const { data: customers } = useCustomers();
   const { data: projects } = useProjects();
+  const { enabled: projectsEnabled } = useModuleEnabled('projects');
 
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([
     { id: '1', description: '', quantity: 1, unit: 'Nos', rate: 0, amount: 0, taxRate: 18, taxAmount: 0 },
@@ -142,6 +144,7 @@ export const InvoiceForm = memo(function InvoiceForm({ onSubmit, onCancel, isLoa
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {projectsEnabled && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Project (Optional)</label>
               <Select value={formData.projectId || ''} onValueChange={(v) => handleChange('projectId', v)}>
@@ -157,6 +160,7 @@ export const InvoiceForm = memo(function InvoiceForm({ onSubmit, onCancel, isLoa
                 </SelectContent>
               </Select>
             </div>
+          )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Source Type *</label>

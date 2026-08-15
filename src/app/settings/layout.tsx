@@ -12,7 +12,7 @@ interface SettingsLayoutProps {
 export default function SettingsLayoutWrapper({ children }: SettingsLayoutProps) {
   return (
     <AuthGate>
-      <RouteGuard requireSettings>
+      <RouteGuard requireSettings requiredPermission="organization:read">
         <MainLayout currentPath="/settings" showTopbar={false}>
           {children}
         </MainLayout>

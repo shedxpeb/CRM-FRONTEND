@@ -17,6 +17,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { MainLayout } from '@/layouts/MainLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { FilterConfig } from '@/components/layout/FilterBar';
 import { DataTable } from '@/components/data-table/DataTable';
@@ -1223,6 +1224,7 @@ export default function FinancePage() {
     ) : undefined;
 
   return (
+    <RouteGuard requiredModule="finance">
     <MainLayout title="Finance" subtitle="Operational finance derived from source records">
       <StandardPageLayout
         title="Finance"
@@ -1827,5 +1829,6 @@ export default function FinancePage() {
         </div>
       )}
     </MainLayout>
+    </RouteGuard>
   );
 }

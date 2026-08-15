@@ -20,6 +20,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { DeleteCustomerDialog } from '@/components/dialog/DangerConfirmationDialog';
+import { usePermission } from '@/features/auth/usePermission';
 
 interface PurchaseOrderRowActionsProps {
   purchaseOrder: PurchaseOrder;
@@ -63,11 +64,13 @@ export const PurchaseOrderRowActions = memo(function PurchaseOrderRowActions({
     }
   };
 
+  const { hasPermission } = usePermission();
   const status = purchaseOrder.status;
-  const canEdit = status === 'Draft' || status === 'PendingApproval';
-  const canDelete = status === 'Draft' || status === 'PendingApproval';
-  const canApprove = status === 'Draft' || status === 'PendingApproval';
-  const canSend = status === 'Approved';
+  const canEdit = (status === 'Draft' || status === 'PendingApproval') && hasPermission('purchase-order:update');
+  const canDelete = (status === 'Draft' || status === 'PendingApproval') && hasPermission('purchase-order:delete');
+  const canApprove = (status === 'Draft' || status === 'PendingApproval') && hasPermission('purchase-order:approve');
+  const canSend = status === 'Approved' && hasPermission('purchase-order:update');
+  const canChangeStatus = hasPermission('purchase-order:update');
   const isDraft = status === 'Draft';
 
   return (
@@ -96,7 +99,7 @@ export const PurchaseOrderRowActions = memo(function PurchaseOrderRowActions({
               label: 'Duplicate PO',
               icon: Copy,
               onClick: () => onDuplicate?.(purchaseOrder),
-              hidden: !onDuplicate,
+              hidden: !onDuplicate || !hasPermission('purchase-order:create'),
             },
           ],
           workflow: [
@@ -125,7 +128,7 @@ export const PurchaseOrderRowActions = memo(function PurchaseOrderRowActions({
                 onClick: () => onStatusChange?.(purchaseOrder, s),
                 hidden: status === s,
               })),
-              hidden: !onStatusChange,
+              hidden: !onStatusChange || !canChangeStatus,
             },
           ],
           exportPrint: [

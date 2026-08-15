@@ -1,6 +1,7 @@
 'use client';
 
 import { MainLayout } from '@/layouts/MainLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -92,6 +93,7 @@ export default function ProjectReportsPage() {
   };
 
   return (
+    <RouteGuard requiredModule="projects" requiredPermission="project:list">
     <MainLayout title="Project Reports" subtitle="Generate and view project analytics">
       <div className="space-y-6">
         <Card>
@@ -199,5 +201,6 @@ export default function ProjectReportsPage() {
         </div>
       </div>
     </MainLayout>
+    </RouteGuard>
   );
 }

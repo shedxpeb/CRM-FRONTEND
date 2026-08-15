@@ -41,6 +41,56 @@ let moduleStore: Module[] = MODULES.map((module) => ({
   requiredPermissions: [...module.requiredPermissions],
 }));
 
+/**
+ * Frontend module name → CRM canonical (singular) OrganizationModule key.
+ * Modules not listed here (finance, accounting, boq) have no per-org
+ * enablement row and stay enabled.
+ */
+const MODULE_TO_CRM_KEY: Record<string, string> = {
+  leads: 'lead',
+  customers: 'customer',
+  projects: 'project',
+  items: 'item-master',
+  inventory: 'inventory',
+  documents: 'document',
+  vendors: 'vendor',
+  purchases: 'purchase-order',
+  task: 'task',
+  warehouse: 'warehouse',
+  tracking: 'tracking',
+  reports: 'report',
+  user: 'user',
+  role: 'role',
+};
+
+/**
+ * Merges the static module catalog with the real per-organization
+ * enablement state returned by GET /organization/modules.
+ * - Legacy orgs with no module rows: everything stays enabled.
+ * - Modules with no CRM row (finance/accounting/boq): stay enabled.
+ * - Otherwise isEnabled reflects the OrganizationModule row.
+ */
+async function loadModulesFromBackend(): Promise<Module[]> {
+  const catalog: Module[] = MODULES.map((module) => ({
+    ...module,
+    name: module.name as Module['name'],
+    requiredPermissions: [...module.requiredPermissions],
+  }));
+
+  const response = await api.get<{ data: Array<{ moduleKey: string; enabled: boolean }> | null }>(
+    '/organization/modules',
+  );
+  const rows = response.data;
+  if (!rows || rows.length === 0) return catalog;
+
+  const enabledKeys = new Set(rows.filter((row) => row.enabled).map((row) => row.moduleKey));
+  return catalog.map((module) => {
+    const crmKey = MODULE_TO_CRM_KEY[module.name];
+    if (!crmKey) return module;
+    return { ...module, isEnabled: enabledKeys.has(crmKey) };
+  });
+}
+
 const MODULE_DEFAULTS: Record<string, { name: string; settings: Record<string, unknown> }> = {
   leads: { name: 'Leads', settings: LEAD_MODULE_DEFAULTS },
   customers: { name: 'Customers', settings: CUSTOMER_MODULE_DEFAULTS },
@@ -129,10 +179,18 @@ export const settingsApi = {
   },
 
   async getModules(): Promise<Module[]> {
+    try {
+      moduleStore = await loadModulesFromBackend();
+    } catch {
+      // Network/auth failure — fall back to the last known state.
+    }
     return moduleStore;
   },
 
   async updateModule(id: string, data: Partial<Module>): Promise<Module> {
+    // Module enablement is owned by the platform (SUPER-ADMIN tenant modules).
+    // Reflect the change locally for the current session; the authoritative
+    // state comes from GET /organization/modules on next fetch.
     moduleStore = moduleStore.map((module) =>
       module.id === id ? { ...module, ...data, id, updatedAt: new Date() } : module,
     );

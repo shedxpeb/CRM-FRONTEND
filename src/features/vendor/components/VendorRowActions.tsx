@@ -13,6 +13,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { DeleteCustomerDialog } from '@/components/dialog/DangerConfirmationDialog';
+import { usePermission } from '@/features/auth/usePermission';
 
 interface VendorRowActionsProps {
   vendor: Vendor;
@@ -35,6 +36,9 @@ export const VendorRowActions = memo(function VendorRowActions({
   onSendEmail,
   onStatusChange,
 }: VendorRowActionsProps) {
+  const { hasPermission } = usePermission();
+  const canEdit = hasPermission('vendor:update');
+  const canDelete = hasPermission('vendor:delete');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -67,6 +71,7 @@ export const VendorRowActions = memo(function VendorRowActions({
               label: 'Edit Vendor',
               icon: Edit,
               onClick: () => onEdit(vendor),
+              hidden: !canEdit,
             },
           ],
           communication: [
@@ -89,7 +94,7 @@ export const VendorRowActions = memo(function VendorRowActions({
                 icon: vendor.status === status ? CheckCircle : GitBranch,
                 onClick: () => onStatusChange?.(vendor, status),
               })),
-              hidden: !onStatusChange,
+              hidden: !onStatusChange || !canEdit,
             },
           ],
           utility: [
@@ -107,6 +112,7 @@ export const VendorRowActions = memo(function VendorRowActions({
               label: 'Delete Vendor',
               icon: Trash2,
               onClick: () => setShowDeleteDialog(true),
+              hidden: !canDelete,
             },
           ],
         }}

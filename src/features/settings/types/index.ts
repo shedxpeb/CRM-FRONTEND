@@ -137,7 +137,15 @@ export type ModuleName =
   | 'accounting'
   | 'boq'
   | 'design'
-  | 'automation';
+  | 'automation'
+  | 'vendors'
+  | 'purchases'
+  | 'task'
+  | 'warehouse'
+  | 'tracking'
+  | 'reports'
+  | 'user'
+  | 'role';
 
 export interface Module {
   id: string;

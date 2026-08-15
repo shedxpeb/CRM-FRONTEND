@@ -17,6 +17,7 @@ import { useLeads } from '@/features/leads/hooks/useLeads';
 import { useUsers } from '@/features/settings/hooks/useSettings';
 import { Lead } from '@/types/leads';
 import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
+import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
 import { ProjectCustomFields } from '@/features/projects/components/ProjectCustomFields';
 import { ProjectCustomFieldValues } from '@/features/projects/types';
 import { formatLeadLabel } from '@/lib/utils';
@@ -187,8 +188,11 @@ export const ProjectForm = memo(function ProjectForm({
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+  const { enabled: leadsEnabled } = useModuleEnabled('leads');
   const { data: leads } = useLeads(
-    isEditMode ? undefined : { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
+    !isEditMode && leadsEnabled
+      ? { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
+      : undefined,
   );
   const { data: users } = useUsers();
   const projectConfig = useProjectConfiguration();
@@ -369,7 +373,8 @@ export const ProjectForm = memo(function ProjectForm({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-            {/* Lead Selection */}
+            {/* Lead Selection — only when the leads module is enabled */}
+            {leadsEnabled && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Lead</label>
               <Combobox
@@ -459,6 +464,7 @@ export const ProjectForm = memo(function ProjectForm({
                 );
               })()}
             </div>
+            )}
 
           {/* Customer Selection + Summary */}
           <div className="space-y-2">

@@ -3,6 +3,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/layouts/MainLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
+import { usePermission } from '@/features/auth/usePermission';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { DataTable } from '@/components/data-table/DataTable';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -19,8 +21,7 @@ import {
   useVerifyTask,
   useEmployeePerformance,
   useSalaryAdjustments,
-  useCreateSalaryAdjustment,
-  createTaskNotification
+  useCreateSalaryAdjustment
 } from '@/features/task-management/hooks/useTaskManagement';
 import {
   Task,
@@ -246,6 +247,8 @@ export default function TaskManagementPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
+  const { hasPermission: canTask } = usePermission();
+  const canCreateTask = canTask('task:create');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
@@ -283,19 +286,8 @@ export default function TaskManagementPage() {
   );
   const isTaskView = TASK_VIEWS.includes(currentView);
 
-  // Create notification when task is assigned
   const handleCreateTask = (data: CreateTaskDto) => {
-    createMutation.mutate(data, {
-      onSuccess: (task) => {
-        createTaskNotification(
-          data.assignedUserId,
-          'Task Assigned',
-          task.taskId,
-          task.title,
-          'New task assigned to you'
-        );
-      },
-    });
+    createMutation.mutate(data);
   };
 
   const columns = useMemo(() => [
@@ -539,6 +531,7 @@ export default function TaskManagementPage() {
   };
 
   return (
+    <RouteGuard requiredModule="task" requiredPermission="task:list">
     <MainLayout>
       <div className="flex flex-col gap-3">
         {/* Header */}
@@ -546,19 +539,13 @@ export default function TaskManagementPage() {
           title="Task Management"
           subtitle="Tasks, team workload, performance and payments"
           actions={
-            currentView === 'salary' ? (
-              <Button onClick={() => setIsSalaryDialogOpen(true)} className="h-8">
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Add Adjustment</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            ) : currentView === 'performance' ? undefined : (
+            currentView === 'salary' ? undefined : currentView === 'performance' ? undefined : canCreateTask ? (
               <Button onClick={() => setIsCreateDialogOpen(true)} className="h-8">
                 <Plus className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Add Task</span>
                 <span className="sm:hidden">Add</span>
               </Button>
-            )
+            ) : undefined
           }
         />
 
@@ -996,14 +983,6 @@ export default function TaskManagementPage() {
               task={selectedTask}
               onSubmit={(data) => {
                 completeMutation.mutate({ id: selectedTask.id, data });
-                // Create notification for task completion
-                createTaskNotification(
-                  selectedTask.assignedUserId,
-                  'Task Completed',
-                  selectedTask.taskId,
-                  selectedTask.title,
-                  'Task marked as complete and pending verification'
-                );
                 setIsCompleteDialogOpen(false);
               }} 
               onCancel={() => setIsCompleteDialogOpen(false)} 
@@ -1025,20 +1004,9 @@ export default function TaskManagementPage() {
                 verifyMutation.mutate({ 
                   id: selectedTask.id, 
                   data,
-                  verifiedBy: 'admin-1', // Should come from auth context
-                  verifiedByName: 'Admin User' // Should come from auth context
+                  verifiedBy: user?.id || '',
+                  verifiedByName: user?.name || user?.email || 'Unknown'
                 });
-                // Create notification for task verification/rejection
-                const notificationType = data.status === 'Verified' ? 'Task Verified' : 'Task Rejected';
-                createTaskNotification(
-                  selectedTask.assignedUserId,
-                  notificationType,
-                  selectedTask.taskId,
-                  selectedTask.title,
-                  data.status === 'Verified' 
-                    ? 'Task verified by manager' 
-                    : `Task rejected: ${data.verificationNotes || 'No reason provided'}`
-                );
                 setIsVerifyDialogOpen(false);
               }} 
               onCancel={() => setIsVerifyDialogOpen(false)} 
@@ -1112,6 +1080,7 @@ export default function TaskManagementPage() {
         </DialogContent>
       </Dialog>
     </MainLayout>
+    </RouteGuard>
   );
 }
 

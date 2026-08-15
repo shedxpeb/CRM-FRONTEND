@@ -39,17 +39,23 @@ export const INDUSTRIES: { value: Industry; label: string }[] = [
 ];
 
 /**
- * Business Type options
+ * Business Type options — values match the backend BusinessType enum exactly.
  */
 export const BUSINESS_TYPES: { value: BusinessType; label: string }[] = [
-  { value: 'Pvt Ltd', label: 'Private Limited' },
-  { value: 'LLP', label: 'LLP' },
+  { value: 'PrivateLimited', label: 'Private Limited' },
+  { value: 'SoleProprietorship', label: 'Sole Proprietorship' },
   { value: 'Partnership', label: 'Partnership' },
-  { value: 'Proprietorship', label: 'Proprietorship' },
-  { value: 'Trust', label: 'Trust' },
+  { value: 'LLP', label: 'LLP' },
+  { value: 'PublicLimited', label: 'Public Limited' },
   { value: 'Government', label: 'Government' },
+  { value: 'NonProfit', label: 'Non-Profit' },
   { value: 'Other', label: 'Other' },
 ];
+
+/** Human-readable labels for backend enum values (fallback: the value itself). */
+export const BUSINESS_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  BUSINESS_TYPES.map((bt) => [bt.value, bt.label]),
+);
 
 /**
  * Customer Source options (reuses LeadSource values)

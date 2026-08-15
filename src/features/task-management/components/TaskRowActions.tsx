@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, CheckSquare, Edit, Trash2, Clock, Copy } from 'lucide-react';
 import { Task } from '../types';
+import { usePermission } from '@/features/auth/usePermission';
 
 interface TaskRowActionsProps {
   task: Task;
@@ -24,9 +25,13 @@ export const TaskRowActions = memo(function TaskRowActions({
   onDuplicate,
   onViewActivity,
 }: TaskRowActionsProps) {
+  const { hasPermission } = usePermission();
+  const canEdit = hasPermission('task:update');
+  const canDelete = hasPermission('task:delete');
+  const canComplete = hasPermission('task:update');
   return (
     <div className="flex items-center gap-0.5">
-      {task.status === 'In Progress' && (
+      {task.status === 'In Progress' && canComplete && (
         <Button
           variant="ghost"
           size="sm"
@@ -50,36 +55,42 @@ export const TaskRowActions = memo(function TaskRowActions({
           <CheckSquare className="h-4 w-4" />
         </Button>
       )}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={() => onEdit(task)}
-        title="Edit Task"
-        aria-label="Edit task"
-      >
-        <Edit className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={() => onDuplicate(task)}
-        title="Duplicate Task"
-        aria-label="Duplicate task"
-      >
-        <Copy className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-        onClick={() => onDelete(task)}
-        title="Delete Task"
-        aria-label="Delete task"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {canEdit && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => onEdit(task)}
+          title="Edit Task"
+          aria-label="Edit task"
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+      )}
+      {canEdit && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => onDuplicate(task)}
+          title="Duplicate Task"
+          aria-label="Duplicate task"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
+      )}
+      {canDelete && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+          onClick={() => onDelete(task)}
+          title="Delete Task"
+          aria-label="Delete task"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
       <Button
         variant="ghost"
         size="sm"

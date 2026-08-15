@@ -10,6 +10,7 @@ import { CreateExpenseFormData } from '@/features/finance/validations';
 import { useFinanceModuleConfiguration } from '@/features/finance/hooks/useFinanceConfiguration';
 import { useVendors } from '@/features/finance/hooks/useFinance';
 import { useProjects } from '@/features/projects/hooks/useProjects';
+import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
 
 interface ExpenseFormProps {
   onSubmit: (data: CreateExpenseFormData) => void;
@@ -23,6 +24,8 @@ export const ExpenseForm = memo(function ExpenseForm({ onSubmit, onCancel, isLoa
   const { expenseCategories } = useFinanceModuleConfiguration();
   const { data: vendors } = useVendors();
   const { data: projects } = useProjects();
+  const { enabled: projectsEnabled } = useModuleEnabled('projects');
+  const { enabled: vendorsEnabled } = useModuleEnabled('vendors');
 
   const [formData, setFormData] = useState<CreateExpenseFormData>({
     vendorId: '',
@@ -75,21 +78,23 @@ export const ExpenseForm = memo(function ExpenseForm({ onSubmit, onCancel, isLoa
           <CardTitle className="text-base">Expense Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Vendor *</label>
-            <Select value={formData.vendorId} onValueChange={(v) => handleChange('vendorId', v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select vendor" />
-              </SelectTrigger>
-              <SelectContent>
-                {vendors?.map((vendor) => (
-                  <SelectItem key={vendor.id} value={vendor.id}>
-                    {vendor.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {vendorsEnabled && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Vendor *</label>
+              <Select value={formData.vendorId} onValueChange={(v) => handleChange('vendorId', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors?.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -118,21 +123,23 @@ export const ExpenseForm = memo(function ExpenseForm({ onSubmit, onCancel, isLoa
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Project (Optional)</label>
-            <Select value={formData.projectId || ''} onValueChange={(v) => handleChange('projectId', v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects?.data?.rows?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.projectName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {projectsEnabled && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Project (Optional)</label>
+              <Select value={formData.projectId || ''} onValueChange={(v) => handleChange('projectId', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects?.data?.rows?.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.projectName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardContent>
       </Card>
 

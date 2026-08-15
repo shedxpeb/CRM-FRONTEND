@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MainLayout } from '@/layouts/MainLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
@@ -216,6 +217,7 @@ export function EstimatesPage() {
   };
 
   return (
+    <RouteGuard requiredModule="documents" requiredPermission="document:list">
     <MainLayout>
       <StandardPageLayout
         title="Estimates"
@@ -279,5 +281,6 @@ export function EstimatesPage() {
 
       {PdfPreviewDialog}
     </MainLayout>
+    </RouteGuard>
   );
 }

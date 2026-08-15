@@ -15,7 +15,6 @@ import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 
 interface SidebarProps {
   currentPath?: string;
-  userRole?: 'owner' | 'admin' | 'employee';
 }
 
 /** Prefetch only production CRM routes — avoid warming pending module chunks. */
@@ -63,7 +62,7 @@ const flattenForRail = (items: NavigationItem[]): NavigationItem[] => {
   return out;
 };
 
-export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ currentPath }: SidebarProps) {
   const nextPathname = usePathname();
   const pathname = currentPath || nextPathname;
   const isOpen = useSidebarIsOpen();
@@ -72,7 +71,7 @@ export const Sidebar = memo(function Sidebar({ currentPath, userRole = 'owner' }
   const expandSidebar = useSidebarStore((state) => state.expandSidebar);
   const toggleSidebar = useSidebarStore((state) => state.toggleSidebar);
   const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
-  const { items: navigationItems } = useNavigationItems(userRole);
+  const { items: navigationItems } = useNavigationItems();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   // Ensure sidebar is always open on desktop

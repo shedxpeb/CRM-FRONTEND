@@ -44,6 +44,7 @@ const LeadCalendarView = dynamic(() => import('@/features/leads/components/LeadC
 import { Lead, LeadStatus, LeadPriority } from '@/types/leads';
 import { useLeadConfiguration, useLeads, useKanbanLeads, useCalendarLeads, useDeleteLead, useCreateLead, useUpdateLead, useBulkStatusUpdate, useBulkDelete, useImportLeads } from '@/features/leads/hooks/useLeads';
 import { useLeadConversion } from '@/features/leads/hooks/useLeadConversion';
+import { usePermission } from '@/features/auth/usePermission';
 import { getLeadStatusVariant, getLeadPriorityVariant } from '@/features/leads/constants';
 import { getLeadCustomFieldValue } from '@/features/leads/components/LeadCustomFields';
 import { leadsApi, ImportResult } from '@/features/leads/services/leadsApi';
@@ -201,6 +202,12 @@ const baseColumns = [
 export default function LeadsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('lead:create');
+  const canUpdate = hasPermission('lead:update');
+  const canDelete = hasPermission('lead:delete');
+  const canExport = hasPermission('lead:list');
+  const canImport = hasPermission('lead:create');
   const leadConfig = useLeadConfiguration();
   const deleteLeadMutation = useDeleteLead();
   const createLeadMutation = useCreateLead();
@@ -864,7 +871,7 @@ export default function LeadsPage() {
   );
 
   return (
-    <RouteGuard requiredModule="leads">
+    <RouteGuard requiredModule="leads" requiredPermission="lead:list">
       <MainLayout>
         <StandardPageLayout
           title="Leads"
@@ -872,11 +879,13 @@ export default function LeadsPage() {
           headerActions={
           <div className="flex flex-wrap items-center justify-end gap-2">
             {viewToggle}
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Add Lead</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            {canCreate && (
+              <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Add Lead</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            )}
           </div>
         }
         kpiCards={
@@ -895,6 +904,7 @@ export default function LeadsPage() {
         filterMode="popover"
         toolbarActions={
           <>
+            {canExport && (
             <DropdownMenu open={isExportDropdownOpen} onOpenChange={setIsExportDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
@@ -928,14 +938,19 @@ export default function LeadsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
+            {canImport && (
             <Button variant="outline" size="sm" onClick={handleImport} disabled={importLeadsMutation.isPending} className="h-9 gap-1.5 text-xs">
               <Upload className={`h-3.5 w-3.5 ${importLeadsMutation.isPending ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{importLeadsMutation.isPending ? 'Importing...' : 'Import'}</span>
             </Button>
+            )}
+            {canExport && (
             <Button variant="outline" size="sm" onClick={() => setIsCustomColumnDialogOpen(true)} className="h-9 gap-1.5 text-xs">
               <FileText className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Columns</span>
             </Button>
+            )}
           </>
         }
         className="gap-4 sm:gap-6"
@@ -1034,6 +1049,8 @@ export default function LeadsPage() {
                     onView={handleRowClick}
                     onAddScore={handleAddScore}
                     onStatusChange={handleStatusChange}
+                    canUpdate={canUpdate}
+                    canDelete={canDelete}
                   />
                 )}
               />

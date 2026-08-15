@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { MainLayout } from '@/layouts/MainLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -35,6 +36,7 @@ export default function ReportsPage() {
   };
 
   return (
+    <RouteGuard requiredModule="inventory" requiredPermission="inventory:list">
     <MainLayout title="Inventory Reports" subtitle="Generate and export inventory reports">
       <div className="space-y-6">
         {/* Report Selection */}
@@ -168,37 +170,8 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Reports Generated This Month</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">24</p>
-              <p className="text-sm text-muted-foreground mt-1">+12% from last month</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Most Downloaded Report</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-semibold">Stock Summary</p>
-              <p className="text-sm text-muted-foreground mt-1">8 downloads this month</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Last Export</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-semibold">Stock Valuation</p>
-              <p className="text-sm text-muted-foreground mt-1">2 hours ago by John Doe</p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </MainLayout>
+    </RouteGuard>
   );
 }

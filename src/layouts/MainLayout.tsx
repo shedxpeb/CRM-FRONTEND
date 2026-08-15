@@ -14,7 +14,6 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { ContentWrapper } from '@/components/layout/ContentWrapper';
 import { useSidebarWidth } from '@/store/useSidebarStore';
-import { useAuth } from '@/features/auth/AuthContext';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -39,13 +38,6 @@ type MainLayoutContextValue = {
 };
 
 const MainLayoutContext = createContext<MainLayoutContextValue | null>(null);
-
-function toNavRole(role?: string | null): 'owner' | 'admin' | 'employee' {
-  const r = (role || '').toUpperCase();
-  if (r === 'OWNER' || r === 'SUPER_ADMIN') return 'owner';
-  if (r === 'ADMIN') return 'admin';
-  return 'employee';
-}
 
 /**
  * Nested MainLayout (page-level) becomes a chrome passthrough so the shell
@@ -131,7 +123,6 @@ function ShellMainLayout({
   showTopbar = true,
 }: MainLayoutProps) {
   const sidebarWidth = useSidebarWidth();
-  const { user } = useAuth();
   const [chrome, setChromeState] = useState<PageChrome>({
     title,
     subtitle,
@@ -167,7 +158,7 @@ function ShellMainLayout({
   return (
     <MainLayoutContext.Provider value={ctxValue}>
       <div className="min-h-screen bg-background overflow-x-hidden">
-        <Sidebar currentPath={currentPath} userRole={toNavRole(user?.role)} />
+        <Sidebar currentPath={currentPath} />
 
         <main style={{ marginLeft: sidebarWidth }} className="transition-all duration-300 min-h-screen">
           {effectiveShowTopbar && (

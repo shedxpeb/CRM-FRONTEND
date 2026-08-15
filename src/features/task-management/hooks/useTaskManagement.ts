@@ -14,7 +14,6 @@ import {
   UpdateSalaryAdjustmentDto,
   TaskQuery,
   SalaryAdjustmentQuery,
-  TaskNotification,
 } from '../types';
 
 // ─── Task Hooks ───────────────────────────────────────────────────────────────
@@ -255,85 +254,4 @@ export function useProcessSalaryAdjustment() {
   });
 }
 
-// ─── Notification Hooks ───────────────────────────────────────────────────────
 
-// Mock notification storage (in production, this would be a real notification service)
-const mockNotifications: TaskNotification[] = [];
-
-export function useNotifications(userId?: string) {
-  return useQuery({
-    queryKey: ['notifications', userId],
-    queryFn: async () => {
-      // In production, this would fetch from a real notification API
-      await new Promise(resolve => setTimeout(resolve, 200));
-      return userId 
-        ? mockNotifications.filter(n => n.userId === userId)
-        : mockNotifications;
-    },
-    staleTime: 1 * 60 * 1000, // 1 minute
-    refetchOnMount: false,
-  });
-}
-
-export function useMarkNotificationAsRead() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (notificationId: string) => {
-      // In production, this would call a real API
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const notification = mockNotifications.find(n => n.id === notificationId);
-      if (notification) {
-        notification.isRead = true;
-      }
-      return notification;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    },
-  });
-}
-
-export function useMarkAllNotificationsAsRead() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (userId: string) => {
-      // In production, this would call a real API
-      await new Promise(resolve => setTimeout(resolve, 100));
-      mockNotifications.forEach(n => {
-        if (n.userId === userId) {
-          n.isRead = true;
-        }
-      });
-      return true;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    },
-  });
-}
-
-// Helper function to create notifications (called by task mutations)
-export function createTaskNotification(
-  userId: string,
-  type: 'Task Assigned' | 'Task Verified' | 'Task Rejected' | 'Task Completed',
-  taskId: string,
-  taskTitle: string,
-  message: string
-): TaskNotification {
-  const notification: TaskNotification = {
-    id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    userId,
-    type,
-    title: type,
-    message,
-    taskId,
-    taskTitle,
-    isRead: false,
-    createdAt: new Date(),
-  };
-  
-  mockNotifications.push(notification);
-  return notification;
-}

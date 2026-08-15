@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { RouteGuard } from '@/features/auth/RouteGuard';
+import { usePermission } from '@/features/auth/usePermission';
 import { Input } from '@/components/ui/input';
 import {
   Table,
@@ -26,6 +28,8 @@ import { VendorRowActions } from '@/features/vendor/components/VendorRowActions'
 import { toast } from '@/components/ui/toast';
 
 export default function VendorsPage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('vendor:create');
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -133,16 +137,19 @@ export default function VendorsPage() {
   };
 
   return (
+    <RouteGuard requiredModule="vendors" requiredPermission="vendor:list">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Vendors</h1>
           <p className="text-muted-foreground">Manage your vendor relationships</p>
         </div>
-        <Button onClick={openCreateForm}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Vendor
-        </Button>
+        {canCreate && (
+          <Button onClick={openCreateForm}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Vendor
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -285,5 +292,6 @@ export default function VendorsPage() {
         isSubmitting={isSubmitting}
       />
     </div>
+    </RouteGuard>
   );
 }

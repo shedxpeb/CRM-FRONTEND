@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { MainLayout } from '@/layouts/MainLayout';
+import { usePermission } from '@/features/auth/usePermission';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
@@ -84,6 +86,10 @@ function projectToFormInitial(project: Project) {
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('project:create');
+  const canUpdate = hasPermission('project:update');
+  const canDelete = hasPermission('project:delete');
   const searchParams = useSearchParams();
   const customerId = searchParams.get('customerId');
   const shouldCreate = searchParams.get('create') === 'true';
@@ -570,16 +576,19 @@ export default function ProjectsPage() {
   }
 
   return (
+    <RouteGuard requiredModule="projects" requiredPermission="project:list">
     <MainLayout>
       <StandardPageLayout
         title="Projects"
         subtitle="Manage all projects"
         headerActions={
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">New Project</span>
-            <span className="sm:hidden">New</span>
-          </Button>
+          canCreate ? (
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">New Project</span>
+              <span className="sm:hidden">New</span>
+            </Button>
+          ) : null
         }
         kpiCards={
           <>
@@ -623,6 +632,8 @@ export default function ProjectsPage() {
                 onView={handleViewDetails}
                 onEdit={handleEditFromRow}
                 onDelete={handleDelete}
+                canUpdate={canUpdate}
+                canDelete={canDelete}
               />
             )}
           />
@@ -670,5 +681,6 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
     </MainLayout>
+    </RouteGuard>
   );
 }

@@ -28,6 +28,7 @@ import {
 } from '@/types/leads';
 import { X, Upload, AlertTriangle, AlertCircle } from 'lucide-react';
 import { DEFAULT_LEAD_CONFIGURATION, LeadModuleConfiguration } from '@/features/leads/hooks/useLeads';
+import { BUSINESS_TYPES } from '@/features/customers/constants';
 import { LeadCustomFields } from '@/features/leads/components/LeadCustomFields';
 import { createLeadSchema } from '@/features/leads/validations';
 
@@ -454,11 +455,21 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Business Type</label>
-              <Input
-                placeholder="Enter business type"
+              <Select
                 value={formData.businessType ?? ''}
-                onChange={(e) => handleInputChange('businessType', e.target.value)}
-              />
+                onValueChange={(v) => handleInputChange('businessType', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select business type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_TYPES.map((bt) => (
+                    <SelectItem key={bt.value} value={bt.value}>
+                      {bt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Address Line 1</label>
