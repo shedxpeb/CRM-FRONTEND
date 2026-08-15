@@ -30,6 +30,8 @@ interface LeadRowActionsProps {
   onView?: (lead: Lead) => void;
   onAddScore?: (lead: Lead, score: number) => void;
   onStatusChange?: (lead: Lead, status: LeadStatus) => void;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
 export const LeadRowActions = memo(function LeadRowActions({
@@ -43,6 +45,8 @@ export const LeadRowActions = memo(function LeadRowActions({
   onView,
   onAddScore,
   onStatusChange,
+  canUpdate = true,
+  canDelete = true,
 }: LeadRowActionsProps) {
   const [showTracker, setShowTracker] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
@@ -78,6 +82,7 @@ export const LeadRowActions = memo(function LeadRowActions({
               label: 'Edit Lead',
               icon: Edit,
               onClick: () => onEdit(lead),
+              hidden: !canUpdate,
             },
           ],
           workflow: [
@@ -136,6 +141,7 @@ export const LeadRowActions = memo(function LeadRowActions({
               label: 'Delete Lead',
               icon: Trash2,
               onClick: () => setShowDeleteDialog(true),
+              hidden: !canDelete,
             },
           ],
         }}

@@ -50,6 +50,7 @@ export interface AuthUser {
   organizationName?: string;
   isActive?: boolean;
   isVerified?: boolean;
+  permissions?: string[];
 }
 
 export interface AuthResponse {
@@ -68,7 +69,10 @@ export const authService = {
     api.post<AuthResponse & { message: string }>('/auth/verify-otp', data),
 
   login: (data: LoginInput) =>
-    api.post<AuthResponse>('/auth/login', data),
+    api.post<AuthResponse & { mustChangePassword?: boolean }>('/auth/login', data),
+
+  changePassword: (data: { currentPassword: string; newPassword: string; confirmPassword: string }) =>
+    api.post<{ message: string }>('/auth/change-password', data),
 
   logout: (sessionId: string) =>
     api.post<{ message: string }>('/auth/logout', { sessionId }),
@@ -83,7 +87,7 @@ export const authService = {
     api.post<OtpDeliveryResponse>('/auth/resend-otp', { email, purpose }),
 
   getProfile: () =>
-    api.get<AuthUser>('/auth/me'),
+    api.get<AuthUser & { mustChangePassword?: boolean }>('/auth/me'),
 
   bootstrapSession: async (): Promise<boolean> => {
     if (getAccessToken()) {

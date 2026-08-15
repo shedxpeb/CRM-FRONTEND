@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { Bell, Search, Settings, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Breadcrumbs } from './Breadcrumbs';
@@ -20,10 +18,24 @@ interface TopbarProps {
   onBackClick?: () => void;
 }
 
+function getInitials(name?: string, email?: string): string {
+  const source = (name || email || '?').trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
+}
+
 export const Topbar = memo(function Topbar({ title, subtitle, showBackButton, onBackClick }: TopbarProps) {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, setTheme, isMounted } = useTheme();
   const toggleSidebar = useSidebarStore((state) => state.toggleSidebar);
+  const displayName = user?.name || user?.email || 'User';
+  const initials = getInitials(user?.name, user?.email);
+  const roleLabel = user?.role
+    ? user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()
+    : '';
 
   return (
     <header className="h-[56px] bg-navbar border-b border-border flex items-center justify-between pl-0 pr-4 md:pr-5 lg:pr-6 2xl:pr-8 sticky top-0 z-20 w-full">
@@ -71,11 +83,8 @@ export const Topbar = memo(function Topbar({ title, subtitle, showBackButton, on
         </Button>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative h-10 w-10 flex-shrink-0">
+        <Button variant="ghost" size="icon" className="relative h-10 w-10 flex-shrink-0" aria-label="Notifications">
           <Bell className="h-5 w-5" />
-          <Badge className={cn('absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-[10px] font-medium')}>
-            3
-          </Badge>
         </Button>
 
         {/* Theme */}
@@ -93,12 +102,12 @@ export const Topbar = memo(function Topbar({ title, subtitle, showBackButton, on
         {/* Profile */}
         <div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-border flex-shrink-0">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-primary-foreground text-xs font-medium">JD</span>
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0" aria-hidden="true">
+              <span className="text-primary-foreground text-xs font-medium">{initials}</span>
             </div>
             <div className="hidden lg:block min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">Owner</p>
+              <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+              {roleLabel && <p className="text-xs text-muted-foreground truncate">{roleLabel}</p>}
             </div>
           </div>
           <Button

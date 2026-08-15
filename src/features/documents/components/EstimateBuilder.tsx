@@ -37,6 +37,7 @@ import {
 } from '../../inventory/types/peb-inventory';
 import { useCustomers } from '@/features/customers/hooks/useCustomers';
 import { useProjects } from '@/features/projects/hooks/useProjects';
+import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
 import { useItemMasters } from '@/features/item-master/hooks/useItemMaster';
 import { useCustomerAutofill } from '../hooks/useCustomerAutofill';
 import { ItemMaster, ItemCategory } from '@/features/item-master/types';
@@ -67,6 +68,7 @@ export function EstimateBuilder({
   // Customer and Project Selection
   const { data: customersData, isLoading: customersLoading } = useCustomers({ page: 1, pageSize: 100 });
   const { data: projectsData, isLoading: projectsLoading } = useProjects({ page: 1, pageSize: 100 });
+  const { enabled: projectsEnabled } = useModuleEnabled('projects');
   const customers = customersData?.data?.rows || [];
   const projects = projectsData?.data?.rows || [];
   const [selectedCustomerId, setSelectedCustomerId] = useState(estimate?.customerId || lead?.customerId || '');
@@ -262,6 +264,7 @@ export function EstimateBuilder({
                 <p className="text-sm text-red-500 mt-1">{validationErrors.customer}</p>
               )}
             </div>
+            {projectsEnabled && (
             <div>
               <Label className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
@@ -293,6 +296,7 @@ export function EstimateBuilder({
               />
               )}
             </div>
+            )}
           </div>
         </CardContent>
       </Card>

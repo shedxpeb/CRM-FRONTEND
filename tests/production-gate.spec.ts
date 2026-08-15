@@ -94,7 +94,7 @@ test.describe('Production gate — authenticated UI', () => {
     await page.getByPlaceholder('Enter company name').fill(`QA Co ${stamp}`);
     await page.getByPlaceholder('Enter mobile number').fill(mobile);
     await page.getByPlaceholder('Enter email address').fill(email);
-    await page.getByPlaceholder('Enter project title').fill(`QA Project ${stamp}`);
+    await page.getByPlaceholder('Enter project name').fill(`QA Project ${stamp}`);
     await page.getByRole('button', { name: 'Create Lead' }).click();
 
     await expect(page.getByRole('heading', { name: 'Create Lead' })).toBeHidden({ timeout: 30_000 });

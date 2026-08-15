@@ -16,6 +16,7 @@ import type {
   SettingsStats,
   ProjectConfiguration,
   SecuritySettings,
+  ModuleName,
 } from '../types';
 
 // ─── Company Hooks ─────────────────────────────────────────────────────────────
@@ -186,20 +187,36 @@ export const useModules = (options?: UseQueryOptions<Module[]>) => {
   return useQuery<Module[]>({
     queryKey: ['settings', 'modules'],
     queryFn: () => settingsApi.getModules(),
-    staleTime: 5 * 60 * 1000,
+    // Module enablement is owned by SUPER-ADMIN; treat it as always stale and
+    // poll so sidebar/route guards pick up toggles without a manual refresh
+    // (the sidebar stays mounted across navigations, so mount/focus alone is
+    // not enough).
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
     ...options,
   });
 };
 
+export const useModuleEnabled = (moduleName: ModuleName) => {
+  const { data: modules, isLoading } = useModules();
+  const moduleState = modules?.find((m) => m.name === moduleName);
+  // While loading (or if the catalog doesn't cover this module) default to enabled.
+  return { enabled: isLoading ? true : (moduleState?.isEnabled ?? true), isLoading };
+};
+
 export const useUpdateModule = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Module> }) =>
       settingsApi.updateModule(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'modules'] });
       queryClient.invalidateQueries({ queryKey: ['sidebar'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update module:', error);
     },
   });
 };
@@ -217,12 +234,15 @@ export const useSystemPreferences = (options?: UseQueryOptions) => {
 
 export const useUpdateSystemPreferences = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: Partial<SystemPreferences>) =>
       settingsApi.updateSystemPreferences(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'preferences'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update system preferences:', error);
     },
   });
 };

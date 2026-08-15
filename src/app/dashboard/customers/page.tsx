@@ -25,6 +25,8 @@ import {
 } from '@/features/customers/hooks/useCustomers';
 import { customersApi } from '@/features/customers';
 import { ROUTES } from '@/core/routes';
+import { usePermission } from '@/features/auth/usePermission';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import {
   Users,
@@ -37,6 +39,10 @@ import {
 
 export default function CustomersPage() {
   const router = useRouter();
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('customer:create');
+  const canUpdate = hasPermission('customer:update');
+  const canDelete = hasPermission('customer:delete');
   const customerConfig = useCustomerConfiguration();
 
   // Search and filter state with debounce
@@ -380,15 +386,18 @@ export default function CustomersPage() {
   }
 
   return (
+    <RouteGuard requiredModule="customers" requiredPermission="customer:list">
     <MainLayout>
       <StandardPageLayout
         title="Customers"
         subtitle="Manage your customer database"
         headerActions={
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Customer
-          </Button>
+          canCreate ? (
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Customer
+            </Button>
+          ) : null
         }
         kpiCards={
           <>
@@ -433,6 +442,8 @@ export default function CustomersPage() {
               onDelete={handleDeleteCustomer}
               onViewDetails={handleViewDetails}
               onStatusChange={handleStatusChange}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
             />
           )}
         />
@@ -485,5 +496,6 @@ export default function CustomersPage() {
         </DialogContent>
       </Dialog>
     </MainLayout>
+    </RouteGuard>
   );
 }

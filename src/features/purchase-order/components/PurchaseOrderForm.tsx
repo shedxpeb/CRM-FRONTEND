@@ -140,7 +140,6 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
 
   // Reset form when initialData changes (for edit mode)
   useEffect(() => {
-    console.log('PurchaseOrderForm - initialData changed:', initialData);
     if (initialData) {
       const mappedItems = (initialData.items || []).map((item: any) => ({
         itemCode: item.itemCode || '',
@@ -198,10 +197,8 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
         } : undefined,
       };
 
-      console.log('PurchaseOrderForm - resetting form with data:', formData);
       reset(formData);
     } else {
-      console.log('PurchaseOrderForm - initialData is null/undefined, resetting to defaults');
       reset({
         status: 'Draft',
         discountType: 'Amount',
@@ -226,7 +223,6 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
   // Auto-fill supplier fields when vendor changes
   useEffect(() => {
     if (selectedVendor && !initialData) {
-      console.log('Auto-filling supplier from vendor:', selectedVendor);
       setValue('supplier.name', selectedVendor.contactPerson || '');
       setValue('supplier.companyName', selectedVendor.companyName || '');
       setValue('supplier.address', selectedVendor.address || '');
@@ -308,11 +304,6 @@ export function PurchaseOrderForm({ open, onOpenChange, onSubmit, initialData, i
   const totals = calculateTotals();
 
   const onFormSubmit = async (data: PurchaseOrderFormData) => {
-    console.log('=== FORM SUBMISSION START ===');
-    console.log('Form submitting with data:', JSON.stringify(data, null, 2));
-    console.log('Initial data:', JSON.stringify(initialData, null, 2));
-    console.log('Current form values:', JSON.stringify(getValues(), null, 2));
-    console.log('=== FORM SUBMISSION END ===');
     try {
       await onSubmit(data);
     } catch (error) {

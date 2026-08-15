@@ -26,6 +26,12 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             refetchOnReconnect: false,
             retry: shouldRetry,
           },
+          mutations: {
+            retry: 1,
+            onError: (error) => {
+              console.error('Mutation error:', error);
+            },
+          },
         },
       })
   );

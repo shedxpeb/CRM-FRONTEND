@@ -5,9 +5,6 @@
 // Types
 export * from './types';
 
-// Mock Data
-export * from './mock-data';
-
 // Components
 export { DashboardFilter } from './components';
 

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { MainLayout } from '@/layouts/MainLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
+import { usePermission } from '@/features/auth/usePermission';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
 import { DataTable, Column } from '@/components/data-table/DataTable';
 import { WarehouseForm } from '@/features/inventory/components/WarehouseForm';
@@ -16,6 +18,8 @@ export default function WarehousesPage() {
   const { data: warehouses, isLoading } = useWarehouses();
   const createMutation = useCreateWarehouse();
 
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('inventory:create');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
 
@@ -189,6 +193,7 @@ export default function WarehousesPage() {
   );
 
   return (
+    <RouteGuard requiredModule="warehouse" requiredPermission="inventory:list">
     <MainLayout title="Warehouse Management" subtitle="Manage warehouse locations">
       <StandardPageLayout
         title="Warehouse Management"
@@ -202,11 +207,13 @@ export default function WarehousesPage() {
               <span className="hidden sm:inline">Export</span>
               <span className="sm:hidden">Export</span>
             </Button>
-            <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Add Warehouse</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            {canCreate && (
+              <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Add Warehouse</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            )}
           </div>
         }
       >
@@ -234,5 +241,6 @@ export default function WarehousesPage() {
         </DialogContent>
       </Dialog>
     </MainLayout>
+    </RouteGuard>
   );
 }

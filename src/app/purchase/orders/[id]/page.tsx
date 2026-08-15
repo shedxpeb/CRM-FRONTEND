@@ -61,10 +61,6 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   const { data: po, isLoading } = usePurchaseOrder(id);
   const updateMutation = useUpdatePurchaseOrder();
 
-  // Log PO data when it loads
-  if (po) {
-    console.log('Loaded PO data:', JSON.stringify(po, null, 2));
-  }
   const approveMutation = useApprovePurchaseOrder();
   const rejectMutation = useRejectPurchaseOrder();
   const sendMutation = useSendPurchaseOrder();
@@ -88,10 +84,6 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   const handleEdit = useCallback(
     async (formData: any) => {
       if (!po) return;
-      console.log('=== EDIT HANDLER START ===');
-      console.log('PO ID:', po.id);
-      console.log('Edit form data:', JSON.stringify(formData, null, 2));
-      console.log('=== EDIT HANDLER END ===');
       try {
         await updateMutation.mutateAsync({ id: po.id, data: formData });
         setShowEditForm(false);

@@ -25,6 +25,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { componentTextSizes } from '@/lib/design-system';
+import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
+import { RouteGuard } from '@/features/auth/RouteGuard';
+import { useAuth } from '@/features/auth/AuthContext';
 
 // Lazy load widgets for faster initial paint
 const ProjectStatusGrid = lazy(() => import('@/components/dashboard/ProjectStatusGrid').then(m => ({ default: m.ProjectStatusGrid })));
@@ -47,6 +50,12 @@ function toProjectStatus(p: GanttProject): ProjectStatus {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const { enabled: purchasesEnabled } = useModuleEnabled('purchases');
+  const { enabled: inventoryEnabled } = useModuleEnabled('inventory');
+  const { enabled: leadsEnabled } = useModuleEnabled('leads');
+  const { enabled: projectsEnabled } = useModuleEnabled('projects');
+  const { enabled: financeEnabled } = useModuleEnabled('finance');
   const [dateRange, setDateRange] = useState<DateRange>('this_month');
   const [customFrom, setCustomFrom] = useState<string>('');
   const [customTo, setCustomTo] = useState<string>('');
@@ -114,8 +123,9 @@ export default function DashboardPage() {
 
   const kpiCards = useMemo<KPICardConfig[]>(() => {
     if (!summary) return [];
-    return [
-      {
+    const cards: KPICardConfig[] = [];
+    if (purchasesEnabled) {
+      cards.push({
         label: 'Total Purchases',
         icon: ShoppingCart,
         accent: 'violet' as const,
@@ -134,8 +144,10 @@ export default function DashboardPage() {
           },
         },
         navigateTo: '/purchase/orders',
-      },
-      {
+      });
+    }
+    if (financeEnabled) {
+      cards.push({
         label: 'Total Sales',
         icon: DollarSign,
         accent: 'emerald' as const,
@@ -154,8 +166,10 @@ export default function DashboardPage() {
           },
         },
         navigateTo: '/dashboard/finance',
-      },
-      {
+      });
+    }
+    if (projectsEnabled) {
+      cards.push({
         label: 'Active Projects',
         icon: FolderKanban,
         accent: 'blue' as const,
@@ -175,8 +189,10 @@ export default function DashboardPage() {
         },
         navigateTo: '/dashboard/projects',
         queryParams: { status: 'Active' },
-      },
-      {
+      });
+    }
+    if (leadsEnabled) {
+      cards.push({
         label: 'Total Leads',
         icon: Users,
         accent: 'sky' as const,
@@ -195,9 +211,10 @@ export default function DashboardPage() {
           },
         },
         navigateTo: '/dashboard/leads',
-      },
-    ];
-  }, [summary, formatCurrency, formatChange, getTrend]);
+      });
+    }
+    return cards;
+  }, [summary, formatCurrency, formatChange, getTrend, purchasesEnabled, financeEnabled, projectsEnabled, leadsEnabled]);
 
   // Real chart data from the aggregated /dashboard endpoint
   const purchasesTrendData = charts?.purchaseTrend ?? [];
@@ -337,7 +354,7 @@ export default function DashboardPage() {
         })),
         tables: [],
         filter: dateRange,
-        generatedBy: 'Admin User',
+        generatedBy: user?.name || user?.email || 'Unknown',
         generatedOn: new Date().toLocaleString(),
         exportVersion: '1.0',
         system: 'PEB CRM',
@@ -423,6 +440,7 @@ export default function DashboardPage() {
   }
 
   return (
+    <RouteGuard requiredPermission="dashboard:view">
     <MainLayout
       title="Executive Dashboard"
       subtitle="Business Operations Overview"
@@ -515,45 +533,49 @@ export default function DashboardPage() {
             <Suspense fallback={<><ChartSkeleton /><ChartSkeleton /></>}>
               <>
                 {/* Total Purchases Trend */}
-                <ChartCard
-                  title="Total purchases trend"
-                  description="Monthly procurement spend"
-                  types={['bar', 'line', 'area']}
-                  initial="bar"
-                  showPeriod={true}
-                >
-                  {(type, period) => (
-                    <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
-                      <DynamicChart
-                        type={type}
-                        data={purchasesTrendData}
-                        dataKey="value"
-                        nameKey="name"
-                      />
-                    </Suspense>
-                  )}
-                </ChartCard>
+                {purchasesEnabled && (
+                  <ChartCard
+                    title="Total purchases trend"
+                    description="Monthly procurement spend"
+                    types={['bar', 'line', 'area']}
+                    initial="bar"
+                    showPeriod={true}
+                  >
+                    {(type, period) => (
+                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
+                        <DynamicChart
+                          type={type}
+                          data={purchasesTrendData}
+                          dataKey="value"
+                          nameKey="name"
+                        />
+                      </Suspense>
+                    )}
+                  </ChartCard>
+                )}
 
                 {/* Revenue vs Expenses */}
-                <ChartCard
-                  title="Revenue vs expenses"
-                  description="Monthly revenue vs procurement spend"
-                  types={['bar', 'line', 'area', 'composed']}
-                  initial="composed"
-                  showPeriod={true}
-                >
-                  {(type, period) => (
-                    <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
-                      <DynamicChart
-                        type={type}
-                        data={salesTrendData}
-                        dataKey="pipeline"
-                        secondKey="won"
-                        nameKey="name"
-                      />
-                    </Suspense>
-                  )}
-                </ChartCard>
+                {financeEnabled && (
+                  <ChartCard
+                    title="Revenue vs expenses"
+                    description="Monthly revenue vs procurement spend"
+                    types={['bar', 'line', 'area', 'composed']}
+                    initial="composed"
+                    showPeriod={true}
+                  >
+                    {(type, period) => (
+                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
+                        <DynamicChart
+                          type={type}
+                          data={salesTrendData}
+                          dataKey="pipeline"
+                          secondKey="won"
+                          nameKey="name"
+                        />
+                      </Suspense>
+                    )}
+                  </ChartCard>
+                )}
               </>
             </Suspense>
             </div>
@@ -563,44 +585,48 @@ export default function DashboardPage() {
             <Suspense fallback={<><ChartSkeleton /><ChartSkeleton /></>}>
               <>
                 {/* Total Leads by Source */}
-                <ChartCard
-                  title="Total leads by source"
-                  description="Where new leads are coming from"
-                  types={['bar', 'donut', 'pie', 'radar']}
-                  initial="bar"
-                  showPeriod={true}
-                >
-                  {(type, period) => (
-                    <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
-                      <DynamicChart
-                        type={type}
-                        data={leadsSourceData}
-                        dataKey="value"
-                        nameKey="name"
-                      />
-                    </Suspense>
-                  )}
-                </ChartCard>
+                {leadsEnabled && (
+                  <ChartCard
+                    title="Total leads by source"
+                    description="Where new leads are coming from"
+                    types={['bar', 'donut', 'pie', 'radar']}
+                    initial="bar"
+                    showPeriod={true}
+                  >
+                    {(type, period) => (
+                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
+                        <DynamicChart
+                          type={type}
+                          data={leadsSourceData}
+                          dataKey="value"
+                          nameKey="name"
+                        />
+                      </Suspense>
+                    )}
+                  </ChartCard>
+                )}
 
                 {/* Total Revenue */}
-                <ChartCard
-                  title="Total revenue"
-                  description="Monthly project revenue"
-                  types={['bar', 'line', 'area']}
-                  initial="bar"
-                  showPeriod={true}
-                >
-                  {(type, period) => (
-                    <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
-                      <DynamicChart
-                        type={type}
-                        data={revenueData}
-                        dataKey="value"
-                        nameKey="name"
-                      />
-                    </Suspense>
-                  )}
-                </ChartCard>
+                {financeEnabled && (
+                  <ChartCard
+                    title="Total revenue"
+                    description="Monthly project revenue"
+                    types={['bar', 'line', 'area']}
+                    initial="bar"
+                    showPeriod={true}
+                  >
+                    {(type, period) => (
+                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
+                        <DynamicChart
+                          type={type}
+                          data={revenueData}
+                          dataKey="value"
+                          nameKey="name"
+                        />
+                      </Suspense>
+                    )}
+                  </ChartCard>
+                )}
               </>
             </Suspense>
             </div>
@@ -610,66 +636,72 @@ export default function DashboardPage() {
             <Suspense fallback={<><ChartSkeleton /><ChartSkeleton /></>}>
               <>
                 {/* Projects by Status */}
-                <ChartCard
-                  title="Projects by status"
-                  description="Distribution across project statuses"
-                  types={['bar', 'line', 'area', 'composed']}
-                  initial="bar"
-                  showPeriod={true}
-                >
-                  {(type, period) => (
-                    <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
-                      <DynamicChart
-                        type={type}
-                        data={projectsTrendData}
-                        dataKey="value"
-                        nameKey="name"
-                      />
-                    </Suspense>
-                  )}
-                </ChartCard>
+                {projectsEnabled && (
+                  <ChartCard
+                    title="Projects by status"
+                    description="Distribution across project statuses"
+                    types={['bar', 'line', 'area', 'composed']}
+                    initial="bar"
+                    showPeriod={true}
+                  >
+                    {(type, period) => (
+                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
+                        <DynamicChart
+                          type={type}
+                          data={projectsTrendData}
+                          dataKey="value"
+                          nameKey="name"
+                        />
+                      </Suspense>
+                    )}
+                  </ChartCard>
+                )}
 
                 {/* Inventory Value Trend */}
-                <ChartCard
-                  title="Inventory value trend"
-                  description="Total inventory value over time"
-                  types={['bar', 'line', 'area']}
-                  initial="bar"
-                  showPeriod={true}
-                >
-                  {(type, period) => (
-                    <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
-                      <DynamicChart
-                        type={type}
-                        data={inventoryValueData}
-                        dataKey="value"
-                        nameKey="name"
-                      />
-                    </Suspense>
-                  )}
-                </ChartCard>
+                {inventoryEnabled && (
+                  <ChartCard
+                    title="Inventory value trend"
+                    description="Total inventory value over time"
+                    types={['bar', 'line', 'area']}
+                    initial="bar"
+                    showPeriod={true}
+                  >
+                    {(type, period) => (
+                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
+                        <DynamicChart
+                          type={type}
+                          data={inventoryValueData}
+                          dataKey="value"
+                          nameKey="name"
+                        />
+                      </Suspense>
+                    )}
+                  </ChartCard>
+                )}
               </>
             </Suspense>
             </div>
 
             {/* ROW 5 - Project Timeline Section */}
-            <div className="space-y-3 sm:space-y-4">
-              <Suspense fallback={<div className="h-32 w-full bg-card-hover rounded-md animate-pulse" />}>
-                <ProjectStatusGrid data={statusGridData} onSelect={(status) => setProjectStatusFilter(status)} />
-              </Suspense>
-              <Suspense fallback={<div className="h-64 w-full bg-card-hover rounded-md animate-pulse" />}>
-                <ProjectTimeline
-                  projects={timelineRows}
-                  statusFilter={projectStatusFilter}
-                  selectedId={selectedProjectId}
-                  onSelectId={setSelectedProjectId}
-                  onStatusFilterChange={setProjectStatusFilter}
-                />
-              </Suspense>
-              <Suspense fallback={<div className="h-96 w-full bg-card-hover rounded-md animate-pulse" />}>
-                <DetailedGanttChart selectedProjectId={selectedProjectId} />
-              </Suspense>
-            </div>
+            {projectsEnabled && (
+              <div className="space-y-3 sm:space-y-4">
+                <Suspense fallback={<div className="h-32 w-full bg-card-hover rounded-md animate-pulse" />}>
+                  <ProjectStatusGrid data={statusGridData} onSelect={(status) => setProjectStatusFilter(status)} />
+                </Suspense>
+                <Suspense fallback={<div className="h-64 w-full bg-card-hover rounded-md animate-pulse" />}>
+                  <ProjectTimeline
+                    projects={timelineRows}
+                    statusFilter={projectStatusFilter}
+                    selectedId={selectedProjectId}
+                    onSelectId={setSelectedProjectId}
+                    onStatusFilterChange={setProjectStatusFilter}
+                  />
+                </Suspense>
+                <Suspense fallback={<div className="h-96 w-full bg-card-hover rounded-md animate-pulse" />}>
+                  <DetailedGanttChart selectedProjectId={selectedProjectId} />
+                </Suspense>
+              </div>
+            )}
 
             {/* ROW 6 - Recent Status Updates */}
             <div className="space-y-3 sm:space-y-4">
@@ -684,5 +716,6 @@ export default function DashboardPage() {
           </div>
         )}
     </MainLayout>
+    </RouteGuard>
   );
 }

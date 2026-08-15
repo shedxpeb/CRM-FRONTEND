@@ -91,6 +91,20 @@ export function useCreateCustomer() {
 
   return useMutation({
     mutationFn: (data: CreateCustomerDto) => customersApi.create(data),
+    onMutate: async (newCustomer) => {
+      await queryClient.cancelQueries({ queryKey: ['customers'] });
+      const previousCustomers = queryClient.getQueryData(['customers']);
+      queryClient.setQueryData(['customers'], (old: any) => ({
+        ...old,
+        items: [newCustomer, ...(old?.items || [])],
+      }));
+      return { previousCustomers };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousCustomers) {
+        queryClient.setQueryData(['customers'], context.previousCustomers);
+      }
+    },
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
@@ -117,6 +131,17 @@ export function useUpdateCustomer() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateCustomerDto }) =>
       customersApi.update(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['customer', id] });
+      const previousCustomer = queryClient.getQueryData(['customer', id]);
+      queryClient.setQueryData(['customer', id], (old: any) => ({ ...old, ...data }));
+      return { previousCustomer };
+    },
+    onError: (error, { id }, context) => {
+      if (context?.previousCustomer) {
+        queryClient.setQueryData(['customer', id], context.previousCustomer);
+      }
+    },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
@@ -135,6 +160,20 @@ export function useDeleteCustomer() {
 
   return useMutation({
     mutationFn: (id: string) => customersApi.delete(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['customers'] });
+      const previousCustomers = queryClient.getQueryData(['customers']);
+      queryClient.setQueryData(['customers'], (old: any) => ({
+        ...old,
+        items: old?.items?.filter((item: any) => item.id !== id) || [],
+      }));
+      return { previousCustomers };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousCustomers) {
+        queryClient.setQueryData(['customers'], context.previousCustomers);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });

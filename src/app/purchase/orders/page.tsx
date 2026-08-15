@@ -3,6 +3,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
+import { RouteGuard } from '@/features/auth/RouteGuard';
+import { usePermission } from '@/features/auth/usePermission';
 import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,8 @@ import {
 } from 'lucide-react';
 
 export default function PurchaseOrdersPage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('purchase-order:create');
   const router = useRouter();
 
   const [search, setSearch] = useState('');
@@ -336,14 +340,17 @@ export default function PurchaseOrdersPage() {
   }, [stats]);
 
   return (
+    <RouteGuard requiredModule="purchases" requiredPermission="purchase-order:list">
     <StandardPageLayout
       title="Purchase Orders"
       subtitle="Manage and track all purchase orders"
       headerActions={
-        <Button onClick={openCreateForm}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Purchase Order
-        </Button>
+        canCreate ? (
+          <Button onClick={openCreateForm}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Purchase Order
+          </Button>
+        ) : undefined
       }
       kpiCards={kpiCards.map((kpi, i) => (
         <KPICard key={i} data={kpi} />
@@ -413,5 +420,6 @@ export default function PurchaseOrdersPage() {
         onOpenChange={(open) => { if (!open) setPreviewPdfPo(null); }}
       />
     </StandardPageLayout>
+    </RouteGuard>
   );
 }

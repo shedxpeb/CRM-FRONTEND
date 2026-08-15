@@ -19,8 +19,6 @@ export const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
   tasks,
   onTaskClick,
 }) => {
-  console.log('TaskCalendarView received tasks:', tasks);
-  console.log('TaskCalendarView tasks length:', tasks?.length);
   // Default to the month of the task due date nearest to today, so the calendar
   // never opens on an empty month when tasks exist elsewhere on the timeline.
   const [currentDate, setCurrentDate] = useState<Date>(() => {
@@ -306,18 +304,14 @@ export const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
   };
 
   const renderTimelineView = () => {
-    console.log('Timeline view - all tasks:', tasks);
-    console.log('Timeline view - tasks with dueDate:', tasks.filter(t => t.dueDate));
     const sortedTasks = [...tasks]
       .filter(task => {
         const hasDueDate = task.dueDate && !isNaN(new Date(task.dueDate).getTime());
-        console.log(`Task ${task.id} - dueDate: ${task.dueDate}, valid: ${hasDueDate}`);
         return hasDueDate;
       })
       .sort((a, b) =>
         new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
       );
-    console.log('Timeline view - sorted tasks:', sortedTasks);
 
     return (
       <div className="space-y-4">

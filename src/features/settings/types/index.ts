@@ -70,22 +70,22 @@ export interface Branch {
 
 // ─── User Types ───────────────────────────────────────────────────────────────
 
-export type UserRole = 'owner' | 'admin' | 'manager' | 'employee';
+export type UserRole = 'OWNER' | 'ADMIN' | 'EMPLOYEE';
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  mobile: string;
+  mobile?: string;
   role: UserRole;
   avatar?: string;
   department?: string;
   designation?: string;
-  isActive: boolean;
-  isLocked: boolean;
+  isActive?: boolean;
+  isLocked?: boolean;
   lastLogin?: Date;
   activeSession?: string;
-  loginHistory: LoginHistory[];
+  loginHistory?: LoginHistory[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -114,9 +114,12 @@ export interface Permission {
 export interface Role {
   id: string;
   name: string;
-  description: string;
-  permissions: Permission[];
-  isSystem: boolean;
+  code?: string;
+  description?: string;
+  permissions?: string[];
+  permissionIds?: string[];
+  inheritsFromId?: string;
+  isSystem?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -134,7 +137,15 @@ export type ModuleName =
   | 'accounting'
   | 'boq'
   | 'design'
-  | 'automation';
+  | 'automation'
+  | 'vendors'
+  | 'purchases'
+  | 'task'
+  | 'warehouse'
+  | 'tracking'
+  | 'reports'
+  | 'user'
+  | 'role';
 
 export interface Module {
   id: string;

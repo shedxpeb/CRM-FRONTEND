@@ -25,12 +25,13 @@ export type Industry =
   | 'Other';
 
 export type BusinessType =
-  | 'Pvt Ltd'
-  | 'LLP'
+  | 'SoleProprietorship'
   | 'Partnership'
-  | 'Proprietorship'
-  | 'Trust'
+  | 'PrivateLimited'
+  | 'PublicLimited'
+  | 'LLP'
   | 'Government'
+  | 'NonProfit'
   | 'Other';
 
 export type CustomerSource =

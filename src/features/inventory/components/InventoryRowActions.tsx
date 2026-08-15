@@ -31,6 +31,8 @@ interface InventoryRowActionsProps {
   onViewHistory?: (item: InventoryItem) => void;
   onCreatePurchaseRequest?: (item: InventoryItem) => void;
   onStatusChange?: (item: InventoryItem, status: StockStatus) => void;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
 export const InventoryRowActions = memo(function InventoryRowActions({
@@ -45,6 +47,8 @@ export const InventoryRowActions = memo(function InventoryRowActions({
   onViewHistory,
   onCreatePurchaseRequest,
   onStatusChange,
+  canUpdate = true,
+  canDelete = true,
 }: InventoryRowActionsProps) {
   const { stockStatuses } = useInventoryConfiguration();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -79,6 +83,7 @@ export const InventoryRowActions = memo(function InventoryRowActions({
               label: 'Edit Inventory',
               icon: Edit,
               onClick: () => onEdit(item),
+              hidden: !canUpdate,
             },
           ],
           workflow: [
@@ -145,6 +150,7 @@ export const InventoryRowActions = memo(function InventoryRowActions({
               label: 'Delete Inventory',
               icon: Trash2,
               onClick: () => setShowDeleteDialog(true),
+              hidden: !canDelete,
             },
           ],
         }}

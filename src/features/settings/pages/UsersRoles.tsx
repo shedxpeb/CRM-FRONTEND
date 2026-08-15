@@ -14,8 +14,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Trash2, Users, Shield, Key, Lock, Unlock, Mail, Phone } from 'lucide-react';
 import type { User, Role } from '../types';
 import { Column } from '@/components/data-table/DataTable';
+import { usePermission } from '@/features/auth/usePermission';
 
 export function UsersRoles() {
+  const { hasPermission } = usePermission();
+  const canCreateUser = hasPermission('user:create');
+  const canUpdateUser = hasPermission('user:update');
+  const canDeleteUser = hasPermission('user:delete');
+  const canCreateRole = hasPermission('role:create');
+  const canUpdateRole = hasPermission('role:update');
+  const canDeleteRole = hasPermission('role:delete');
   const { data: users, isLoading: usersLoading } = useUsers();
   const { data: roles, isLoading: rolesLoading } = useRoles();
   const createUser = useCreateUser();
@@ -168,23 +176,31 @@ export function UsersRoles() {
 
   const userRowActions = (user: User) => (
     <div className="flex gap-2">
-      <Button size="sm" variant="ghost" onClick={() => handleEditUser(user)}>
-        <Edit className="h-4 w-4" />
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(user)}>
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {canUpdateUser && (
+        <Button size="sm" variant="ghost" onClick={() => handleEditUser(user)}>
+          <Edit className="h-4 w-4" />
+        </Button>
+      )}
+      {canDeleteUser && (
+        <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(user)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 
   const roleRowActions = (role: Role) => (
     <div className="flex gap-2">
-      <Button size="sm" variant="ghost" onClick={() => handleEditRole(role)} disabled={role.isSystem}>
-        <Edit className="h-4 w-4" />
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => handleDeleteRole(role)} disabled={role.isSystem}>
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {canUpdateRole && (
+        <Button size="sm" variant="ghost" onClick={() => handleEditRole(role)} disabled={role.isSystem}>
+          <Edit className="h-4 w-4" />
+        </Button>
+      )}
+      {canDeleteRole && (
+        <Button size="sm" variant="ghost" onClick={() => handleDeleteRole(role)} disabled={role.isSystem}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 
@@ -206,10 +222,12 @@ export function UsersRoles() {
           <TabsContent value="users" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h2 className="text-lg font-semibold">User Management</h2>
-              <Button onClick={handleCreateUser}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add User
-              </Button>
+              {canCreateUser && (
+                <Button onClick={handleCreateUser}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add User
+                </Button>
+              )}
             </div>
 
             <DataTable
@@ -224,10 +242,12 @@ export function UsersRoles() {
           <TabsContent value="roles" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h2 className="text-lg font-semibold">Role Management</h2>
-              <Button onClick={handleCreateRole}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Role
-              </Button>
+              {canCreateRole && (
+                <Button onClick={handleCreateRole}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Role
+                </Button>
+              )}
             </div>
 
             <DataTable

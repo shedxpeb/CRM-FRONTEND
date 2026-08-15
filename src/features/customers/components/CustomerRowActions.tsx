@@ -32,6 +32,8 @@ interface CustomerRowActionsProps {
   onScheduleMeeting?: (customer: Customer) => void;
   onLogCall?: (customer: Customer) => void;
   onStatusChange?: (customer: Customer, status: CustomerStatus) => void;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
 export const CustomerRowActions = memo(function CustomerRowActions({
@@ -47,6 +49,8 @@ export const CustomerRowActions = memo(function CustomerRowActions({
   onScheduleMeeting,
   onLogCall,
   onStatusChange,
+  canUpdate = true,
+  canDelete = true,
 }: CustomerRowActionsProps) {
   const { statuses } = useCustomerConfiguration();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -81,6 +85,7 @@ export const CustomerRowActions = memo(function CustomerRowActions({
               label: 'Edit Customer',
               icon: Edit,
               onClick: () => onEdit(customer),
+              hidden: !canUpdate,
             },
           ],
           communication: [
@@ -155,6 +160,7 @@ export const CustomerRowActions = memo(function CustomerRowActions({
               label: 'Delete Customer',
               icon: Trash2,
               onClick: () => setShowDeleteDialog(true),
+              hidden: !canDelete,
             },
           ],
         }}

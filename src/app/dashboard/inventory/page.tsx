@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/layouts/MainLayout';
+import { usePermission } from '@/features/auth/usePermission';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 import { DataTable, Column } from '@/components/data-table/DataTable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StandardPageLayout } from '@/components/layout/StandardPageLayout';
@@ -53,6 +55,10 @@ function isReorderRequired(item: InventoryItem): boolean {
 export default function InventoryPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('inventory:create');
+  const canUpdate = hasPermission('inventory:update');
+  const canDelete = hasPermission('inventory:delete');
   const inventoryConfig = useInventoryConfiguration();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -415,16 +421,19 @@ export default function InventoryPage() {
   }
 
   return (
+    <RouteGuard requiredModule="inventory" requiredPermission="inventory:list">
     <MainLayout>
       <StandardPageLayout
         title="Inventory"
         subtitle="Stock management — local demo data (no backend yet)"
         headerActions={
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Add Inventory</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+          canCreate ? (
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="h-9">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Add Inventory</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          ) : null
         }
         kpiCards={kpiData.map((kpi, i) => <KPICard key={i} data={kpi} />)}
         kpiGridClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4"
@@ -461,6 +470,8 @@ export default function InventoryPage() {
                 onEdit={handleEditFromRow}
                 onDelete={handleDelete}
                 onViewDetails={handleViewDetails}
+                canUpdate={canUpdate}
+                canDelete={canDelete}
               />
             )}
           />
@@ -494,5 +505,6 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
     </MainLayout>
+    </RouteGuard>
   );
 }

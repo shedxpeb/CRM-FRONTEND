@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Customer } from '@/features/customers/types';
-import { getStatusVariant } from '@/features/customers/constants';
+import { Customer, BusinessType } from '@/features/customers/types';
+import { getStatusVariant, BUSINESS_TYPE_LABELS } from '@/features/customers/constants';
 import { createCustomerSchema, updateCustomerSchema } from '@/features/customers/validations';
 import { X, AlertCircle, Info } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
@@ -23,6 +23,7 @@ import { formatLeadLabel } from '@/lib/utils';
 import { useCustomerConfiguration } from '@/features/customers/hooks/useCustomers';
 import { CustomerCustomFields } from '@/features/customers/components/CustomerCustomFields';
 import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
+import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
 
 interface CustomerFormProps {
   initialData?: Partial<Customer>;
@@ -54,27 +55,27 @@ function mapLeadIndustryToCustomerIndustry(leadIndustry?: string): string {
 }
 
 const VALID_CUSTOMER_BUSINESS_TYPES = new Set([
-  'Pvt Ltd', 'LLP', 'Partnership', 'Proprietorship', 'Trust', 'Government', 'Other',
+  'SoleProprietorship', 'Partnership', 'PrivateLimited', 'PublicLimited',
+  'LLP', 'Government', 'NonProfit', 'Other',
 ]);
 
 function mapLeadBusinessTypeToCustomerBusinessType(leadBusinessType?: string): string {
-  if (!leadBusinessType) return 'Pvt Ltd';
+  // Leads and customers share the same BusinessType enum — pass through directly.
+  if (!leadBusinessType) return 'PrivateLimited';
   if (VALID_CUSTOMER_BUSINESS_TYPES.has(leadBusinessType)) return leadBusinessType;
-  const businessTypeMap: Record<string, string> = {
-    SoleProprietorship: 'Proprietorship',
-    PrivateLimited: 'Pvt Ltd',
-    PublicLimited: 'Other',
-    NonProfit: 'Other',
-  };
-  return businessTypeMap[leadBusinessType] || 'Other';
+  return 'Other';
 }
 
 export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, onCancel, isLoading, error, isEditMode = false }: CustomerFormProps) {
   const customerConfig = useCustomerConfiguration();
   const projectConfig = useProjectConfiguration();
-  // Load leads only for create-mode lead picker (never on edit)
+  const { enabled: leadsEnabled } = useModuleEnabled('leads');
+  // Load leads only for create-mode lead picker (never on edit) and only when
+  // the leads module is enabled for this organization.
   const { data: leadsResponse } = useLeads(
-    isEditMode ? undefined : { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
+    !isEditMode && leadsEnabled
+      ? { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
+      : undefined,
   );
   const leads = leadsResponse?.data?.rows || [];
 
@@ -98,7 +99,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
     gstNumber: '',
     panNumber: '',
     industry: 'Manufacturing',
-    businessType: 'Pvt Ltd',
+    businessType: 'PrivateLimited',
     website: '',
     address: '',
     city: '',
@@ -159,7 +160,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
         pincode: selectedLead.pincode || prev.pincode,
         source: mapLeadSourceToCustomerSource(selectedLead.source) as any,
         industry: mapLeadIndustryToCustomerIndustry(selectedLead.industry) as any,
-        businessType: mapLeadBusinessTypeToCustomerBusinessType(selectedLead.businessType) as any,
+        businessType: mapLeadBusinessTypeToCustomerBusinessType(selectedLead.businessType) as BusinessType,
         notes: selectedLead.remarks ? `${prev.notes || ''}\n\nLead Notes: ${selectedLead.remarks}` : prev.notes,
         leadId: selectedLead.id,
       }));
@@ -263,8 +264,8 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
         </div>
       )}
 
-      {/* Lead Selection Section (Only in create mode) */}
-      {!isEditMode && (
+      {/* Lead Selection Section (Only in create mode, only when leads module is enabled) */}
+      {!isEditMode && leadsEnabled && (
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-base">Convert from Lead (Optional)</CardTitle>
@@ -570,7 +571,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
                 <SelectContent>
                   {customerConfig.customerTypes.map((bt) => (
                     <SelectItem key={bt} value={bt}>
-                      {bt}
+                      {BUSINESS_TYPE_LABELS[bt] || bt}
                     </SelectItem>
                   ))}
                 </SelectContent>
