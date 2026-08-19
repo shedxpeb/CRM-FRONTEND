@@ -13,10 +13,12 @@ import {
   normalizeApiDocument,
 } from '@/features/documents/utils/documentHelpers';
 
-export function useUnifiedDocuments() {
-  const { data: estimates, loading: estimatesLoading, refetch: refetchEstimates } = useEstimates({ page: 1, pageSize: 1000 });
-  const { data: quotations, loading: quotationsLoading, refetch: refetchQuotations } = useQuotations({ page: 1, pageSize: 1000 });
-  const { data: apiDocuments, isLoading: apiLoading, refetch: refetchApi } = useDocuments({ page: 1, pageSize: 1000 });
+const DEFAULT_PAGE_SIZE = 50;
+
+export function useUnifiedDocuments(pageSize = DEFAULT_PAGE_SIZE) {
+  const { data: estimates, loading: estimatesLoading, refetch: refetchEstimates } = useEstimates({ page: 1, pageSize });
+  const { data: quotations, loading: quotationsLoading, refetch: refetchQuotations } = useQuotations({ page: 1, pageSize });
+  const { data: apiDocuments, isLoading: apiLoading, refetch: refetchApi } = useDocuments({ page: 1, pageSize });
 
   const allDocuments = useMemo(() => {
     const list: UnifiedDocument[] = [

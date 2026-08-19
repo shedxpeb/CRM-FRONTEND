@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start --port 3000",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
