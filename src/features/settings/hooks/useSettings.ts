@@ -1,6 +1,8 @@
 /**
  * Settings React Query Hooks
- * All hooks use the API services with automatic fallback to mock data
+ * All hooks call the backend via settingsApi. Endpoints that the backend does
+ * not expose yet surface a pending state (BackendPendingError) instead of
+ * returning mock data.
  */
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';

@@ -44,15 +44,50 @@ export function AnalyticsPage() {
 
   const safeStats = (stats as any) || defaultStats;
 
-  // Mock chart data
-  const chartData = [
-    { month: 'Jan', documents: 12, revenue: 2500000, conversion: 25 },
-    { month: 'Feb', documents: 15, revenue: 3200000, conversion: 28 },
-    { month: 'Mar', documents: 18, revenue: 4100000, conversion: 30 },
-    { month: 'Apr', documents: 14, revenue: 3800000, conversion: 27 },
-    { month: 'May', documents: 20, revenue: 4500000, conversion: 32 },
-    { month: 'Jun', documents: 22, revenue: 5200000, conversion: 35 },
-  ];
+  // Real monthly series derived from documents returned by the backend.
+  const monthMap = new Map<
+    string,
+    { documents: number; accepted: number; revenue: number }
+  >();
+  for (const doc of documents) {
+    const month = doc.createdAt
+      ? new Date(doc.createdAt).toLocaleString('en', { month: 'short', year: '2-digit' })
+      : 'Unknown';
+    const entry = monthMap.get(month) || { documents: 0, accepted: 0, revenue: 0 };
+    entry.documents += 1;
+    if (doc.status === 'Accepted') entry.accepted += 1;
+    entry.revenue += Number(doc.totalAmount) || 0;
+    monthMap.set(month, entry);
+  }
+  const chartData = [...monthMap.entries()]
+    .map(([month, entry]) => ({
+      month,
+      documents: entry.documents,
+      revenue: entry.revenue,
+      conversion: entry.documents > 0 ? Math.round((entry.accepted / entry.documents) * 100) : 0,
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  // Derived rates — no hard-coded percentages.
+  const totalDocuments =
+    safeStats.totalEstimates + safeStats.totalProposals + safeStats.totalQuotations;
+  const winRate =
+    totalDocuments > 0
+      ? ((safeStats.acceptedDocuments / totalDocuments) * 100).toFixed(1)
+      : '—';
+  const responseRate =
+    safeStats.sentDocuments > 0
+      ? ((safeStats.viewedDocuments / safeStats.sentDocuments) * 100).toFixed(1)
+      : '—';
+  const approvalDenominator =
+    safeStats.acceptedDocuments + safeStats.rejectedDocuments + safeStats.expiredDocuments;
+  const approvalRate =
+    approvalDenominator > 0
+      ? ((safeStats.acceptedDocuments / approvalDenominator) * 100).toFixed(1)
+      : '—';
+  // Not derivable from current stats — show an honest placeholder until the
+  // backend exposes conversion timestamps.
+  const avgTimeToConvert = '—';
 
   return (
     <MainLayout title="Analytics" subtitle="Document performance insights">
@@ -63,7 +98,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Total Documents',
               value: (safeStats.totalEstimates + safeStats.totalProposals + safeStats.totalQuotations).toString(),
-              change: 12,
+              change: 0,
               color: 'text-blue-600',
               icon: <FileText />,
             }}
@@ -72,7 +107,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Revenue Pipeline',
               value: `₹${(safeStats.totalRevenuePipeline / 1000000).toFixed(1)}M`,
-              change: 8,
+              change: 0,
               color: 'text-green-600',
               icon: <DollarSign />,
             }}
@@ -81,7 +116,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Conversion Rate',
               value: `${safeStats.conversionRate}%`,
-              change: 5,
+              change: 0,
               color: 'text-purple-600',
               icon: <Target />,
             }}
@@ -90,7 +125,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Avg Deal Size',
               value: `₹${(safeStats.averageDealSize / 1000).toFixed(0)}K`,
-              change: 3,
+              change: 0,
               color: 'text-orange-600',
               icon: <TrendingUp />,
             }}
@@ -103,7 +138,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Estimates',
               value: safeStats.totalEstimates.toString(),
-              change: 15,
+              change: 0,
               color: 'text-blue-600',
               icon: <FileText />,
             }}
@@ -112,7 +147,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Proposals',
               value: safeStats.totalProposals.toString(),
-              change: 10,
+              change: 0,
               color: 'text-purple-600',
               icon: <FileText />,
             }}
@@ -121,7 +156,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Quotations',
               value: safeStats.totalQuotations.toString(),
-              change: 8,
+              change: 0,
               color: 'text-green-600',
               icon: <FileText />,
             }}
@@ -134,7 +169,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Accepted',
               value: safeStats.acceptedDocuments.toString(),
-              change: 12,
+              change: 0,
               color: 'text-green-600',
               icon: <CheckCircle />,
             }}
@@ -143,7 +178,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Pending',
               value: (safeStats.draftDocuments + safeStats.sentDocuments).toString(),
-              change: -5,
+              change: 0,
               color: 'text-yellow-600',
               icon: <Clock />,
             }}
@@ -152,7 +187,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Converted',
               value: safeStats.convertedDocuments.toString(),
-              change: 8,
+              change: 0,
               color: 'text-blue-600',
               icon: <CheckCircle />,
             }}
@@ -161,7 +196,7 @@ export function AnalyticsPage() {
             data={{
               title: 'Pending Approvals',
               value: safeStats.pendingApprovals.toString(),
-              change: -2,
+              change: 0,
               color: 'text-orange-600',
               icon: <Clock />,
             }}
@@ -228,22 +263,24 @@ export function AnalyticsPage() {
               <div>
                 <p className="text-sm text-gray-600">Win Rate</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {((safeStats.acceptedDocuments / (safeStats.totalEstimates + safeStats.totalProposals + safeStats.totalQuotations)) * 100).toFixed(1)}%
+                  {winRate === '—' ? '—' : `${winRate}%`}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Avg. Time to Convert</p>
-                <p className="text-2xl font-bold">14 days</p>
+                <p className="text-2xl font-bold">{avgTimeToConvert}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Response Rate</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {((safeStats.viewedDocuments / safeStats.sentDocuments) * 100).toFixed(1)}%
+                  {responseRate === '—' ? '—' : `${responseRate}%`}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Approval Rate</p>
-                <p className="text-2xl font-bold text-purple-600">92%</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {approvalRate === '—' ? '—' : `${approvalRate}%`}
+                </p>
               </div>
             </div>
           </CardContent>

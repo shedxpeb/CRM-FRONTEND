@@ -25,19 +25,14 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { ErrorState } from '@/components/states/ErrorState';
 import { Breadcrumbs } from '@/layouts/Breadcrumbs';
 import type { KPICard as KPICardType } from '@/types';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useTasks, useTaskStats } from '../../hooks/useTaskManagement';
 import type { Task, TaskPriority } from '../../types';
 import { DashboardTaskListWidget } from './DashboardTaskListWidget';
 import { TeamSummaryStrip } from './TeamSummaryStrip';
 import { RecentActivityWidget } from './RecentActivityWidget';
 
-/**
- * Mock signed-in manager/admin. Replaced by the real auth/session user once
- * the backend lands — this dashboard is for Manager / Admin / Super Admin.
- */
-const CURRENT_USER = { id: 'admin-1', name: 'Admin User' } as const;
-
-/** Frozen workspace routes (built in later phases). */
+/** Workspace routes (built in later phases). */
 const ROUTES = {
   taskDetail: (id: string) => `/dashboard/task-management/${id}`,
   createTask: '/dashboard/tasks/create',
@@ -56,6 +51,8 @@ const ACTIVE_LIST_STATUSES = new Set(['Completed', 'Cancelled']);
 
 export function TaskDashboardWorkspace() {
   const router = useRouter();
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
 
   const {
     data: tasks,
@@ -75,8 +72,8 @@ export function TaskDashboardWorkspace() {
   const allTasks = useMemo(() => tasks ?? [], [tasks]);
 
   const myTasks = useMemo(
-    () => allTasks.filter((t) => t.assignedUserId === CURRENT_USER.id),
-    [allTasks]
+    () => (currentUserId ? allTasks.filter((t) => t.assignedUserId === currentUserId) : []),
+    [allTasks, currentUserId]
   );
 
   const criticalTasks = useMemo(
