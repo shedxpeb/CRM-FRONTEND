@@ -53,7 +53,7 @@ function mapProjectData(po: PurchaseOrder): ProjectData | undefined {
     state: 'Maharashtra',
     deliveryContact: 'Site Manager',
     phone: '+91 9876543210',
-    email: 'site@pebcrm.com',
+    email: 'site@buildxcrm.com',
   };
 }
 
