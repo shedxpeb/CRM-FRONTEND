@@ -14,7 +14,7 @@ import { createProjectSchema, updateProjectSchema, CreateProjectInput, UpdatePro
 import { customersApi } from '@/features/customers/services/customersApi';
 import { useCustomerProjectData } from '@/features/customers/hooks/useCustomers';
 import { useLeads } from '@/features/leads/hooks/useLeads';
-import { projectsApi } from '@/features/projects/services/projectsApi';
+import { useUsers } from '@/features/settings/hooks/useSettings';
 import { Lead } from '@/types/leads';
 import { useProjectConfiguration } from '@/features/projects/hooks/useProjects';
 import { useModuleEnabled } from '@/features/settings/hooks/useSettings';
@@ -194,13 +194,7 @@ export const ProjectForm = memo(function ProjectForm({
       ? { page: 1, pageSize: 50, sortBy: 'createdAt', sortOrder: 'desc' }
       : undefined,
   );
-  const { data: managersData } = useQuery({
-    queryKey: ['project', 'managers'],
-    queryFn: () => projectsApi.getManagers(),
-    staleTime: 5 * 60 * 1000,
-  });
-  const managerUsers: Array<{ id: string; name: string; email: string; role: string }> =
-    (managersData as any)?.data ?? [];
+  const { data: users } = useUsers();
   const projectConfig = useProjectConfiguration();
   const customers = customersCombobox;
   const [showAutoFillNotice, setShowAutoFillNotice] = useState(false);
@@ -259,10 +253,12 @@ export const ProjectForm = memo(function ProjectForm({
   })();
 
   const managerOptions = (() => {
-    const options = managerUsers.map((u) => ({
-      value: u.id,
-      label: `${u.name}${u.email ? ` (${u.email})` : ''}`,
-    }));
+    const options = (users ?? [])
+      .filter((u) => u.isActive && !u.isLocked)
+      .map((u) => ({
+        value: u.id,
+        label: `${u.name}${u.email ? ` (${u.email})` : ''}`,
+      }));
     if (
       projectManagerId &&
       !options.some((o) => o.value === projectManagerId)
