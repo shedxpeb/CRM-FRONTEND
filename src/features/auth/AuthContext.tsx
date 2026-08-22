@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { silentRefresh } from '@/core/api';
+import { silentRefresh, startTokenRefresh, stopTokenRefresh } from '@/core/api';
 import { setAccessToken, setSessionData, clearSession, getAccessToken, getSessionId } from '@/core/auth/session';
 import { ROUTES } from '@/core/routes';
 import { authService, AuthUser, LoginInput, RegisterInput, VerifyOtpInput, ForgotPasswordInput, OtpDeliveryResponse, ResetPasswordInput } from './authService';
@@ -37,7 +37,7 @@ function extractErrorMessage(err: any, fallback: string): string {
   return fallback;
 }
 
-const PROACTIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes — keeps session alive and token fresh
+const PROFILE_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes — refresh profile for RBAC updates
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -45,27 +45,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const profileIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const stopProactiveRefresh = useCallback(() => {
-    if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-      refreshIntervalRef.current = null;
+  const stopProfileRefresh = useCallback(() => {
+    if (profileIntervalRef.current) {
+      clearInterval(profileIntervalRef.current);
+      profileIntervalRef.current = null;
     }
   }, []);
 
+  /** Start periodic profile refresh (for RBAC updates) + token-expiry-based proactive refresh. */
   const startProactiveRefresh = useCallback(() => {
-    stopProactiveRefresh();
-    refreshIntervalRef.current = setInterval(async () => {
-      try {
-        await silentRefresh();
-      } catch {
-        // Silent refresh failed — interceptor handles if token actually expires
-      }
-      // Re-fetch the profile so RBAC changes from SUPER-ADMIN (role
-      // permissions, user overrides) take effect without a logout. The
-      // backend recomputes effective permissions fresh once the cache was
-      // invalidated, so /auth/me returns the current set.
+    stopProfileRefresh();
+    // 1. Token refresh: scheduled based on actual JWT expiry, not a fixed interval
+    startTokenRefresh();
+    // 2. Profile refresh: periodically fetch /auth/me for RBAC updates
+    profileIntervalRef.current = setInterval(async () => {
       try {
         const profileRes: any = await authService.getProfile();
         const profile = profileRes?.data ?? profileRes;
@@ -80,8 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         // Non-fatal — profile refresh runs again next tick
       }
-    }, PROACTIVE_REFRESH_INTERVAL_MS);
-  }, [stopProactiveRefresh]);
+    }, PROFILE_REFRESH_INTERVAL_MS);
+  }, [stopProfileRefresh]);
 
   useEffect(() => {
     const hydrate = async () => {
@@ -139,10 +134,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
-  // Cleanup interval on unmount
+  // Cleanup intervals on unmount
   useEffect(() => {
-    return () => stopProactiveRefresh();
-  }, [stopProactiveRefresh]);
+    return () => {
+      stopProfileRefresh();
+      stopTokenRefresh();
+    };
+  }, [stopProfileRefresh]);
 
   const login = useCallback(async (input: LoginInput) => {
     try {
@@ -268,7 +266,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    stopProactiveRefresh();
+    stopProfileRefresh();
+    stopTokenRefresh();
     // Revoke server session + clear HttpOnly refresh cookie WHILE access token is still present.
     // Clearing the token first caused logout to 401 and left refreshToken intact (silent re-login).
     try {
@@ -282,7 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMustChangePassword(false);
     router.push(ROUTES.login);
     router.refresh();
-  }, [router, stopProactiveRefresh, queryClient]);
+  }, [router, stopProfileRefresh, queryClient]);
 
   return (
     <AuthContext.Provider

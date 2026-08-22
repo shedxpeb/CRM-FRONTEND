@@ -12,8 +12,7 @@ if (!API_BASE_URL) {
 // Date field names that should be parsed as dates
 const DATE_FIELDS = [
   'createdAt', 'updatedAt', 'deletedAt',
-  'lastFollowUp', 'nextFollowUpDate',
-  'convertedDate', 'performedAt', 'timestamp',
+  'lastFollowUp', 'nextFollowUpDate', 'convertedDate', 'performedAt', 'timestamp',
   'date', 'dueDate', 'startDate', 'endDate',
   'birthDate', 'joinDate', 'expiryDate'
 ];
@@ -31,7 +30,6 @@ function parseDates(data: any): any {
   if (typeof data === 'object') {
     const result: any = {};
     for (const [key, value] of Object.entries(data)) {
-      // Check if this is a date field and value is a string
       if (DATE_FIELDS.includes(key) && typeof value === 'string') {
         const parsed = dayjs(value);
         if (parsed.isValid()) {
@@ -56,52 +54,108 @@ export const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-// --- Refresh Token Queue ---
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: any) => void;
-}> = [];
+// ─── Single-Flight Refresh ───────────────────────────────────────────────────
+// Both the proactive timer and the 401 interceptor must share ONE refresh
+// attempt. A stale refresh token cookie, a 502 from the proxy, or a network
+// hiccup should never cause multiple parallel refreshes or an accidental logout.
 
-function processQueue(error: any, token: string | null = null) {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token!);
-    }
-  });
-  failedQueue = [];
+type RefreshResult = { accessToken: string; sessionId?: string };
+let refreshInFlight: Promise<RefreshResult> | null = null;
+
+/** Core refresh — only this function should call the /auth/refresh endpoint. */
+async function doRefresh(): Promise<RefreshResult> {
+  const { data } = await axios.post(
+    `${API_BASE_URL}/auth/refresh`,
+    {},
+    { withCredentials: true },
+  );
+  const responseData = data?.data ?? data;
+  const accessToken = responseData.accessToken;
+  if (!accessToken) throw new Error('No access token in refresh response');
+  setAccessToken(accessToken);
+  if (responseData.sessionId) {
+    setSessionData(responseData.sessionId, getTenantId() || '');
+  }
+  return { accessToken, sessionId: responseData.sessionId };
 }
 
-/** Single-flight refresh — AuthContext + axios 401 handler must not rotate in parallel. */
-let refreshInFlight: Promise<string> | null = null;
-
+/**
+ * Public single-flight refresh entry point.
+ * If a refresh is already in progress, subsequent callers receive the same
+ * promise instead of triggering a second network call.
+ */
 export async function silentRefresh(): Promise<string> {
-  if (refreshInFlight) return refreshInFlight;
+  if (refreshInFlight) return refreshInFlight.then(r => r.accessToken);
 
-  refreshInFlight = (async () => {
-    const { data } = await axios.post(
-      `${API_BASE_URL}/auth/refresh`,
-      {},
-      { withCredentials: true },
-    );
-    const responseData = data?.data ?? data;
-    const accessToken = responseData.accessToken;
-    if (!accessToken) throw new Error('No access token in refresh response');
-    setAccessToken(accessToken);
-    if (responseData.sessionId) {
-      setSessionData(responseData.sessionId, getTenantId() || '');
-    }
-    return accessToken;
-  })().finally(() => {
+  refreshInFlight = doRefresh().finally(() => {
     refreshInFlight = null;
   });
 
-  return refreshInFlight;
+  return refreshInFlight.then(r => r.accessToken);
 }
 
-// Request interceptor - attach access token
+// ─── Token-Expiry-Based Proactive Refresh ────────────────────────────────────
+// Instead of a fixed interval, schedule the next refresh at 80% of the access
+// token lifetime. This guarantees the token is refreshed *before* expiry, not
+// at arbitrary intervals that might race with actual usage.
+
+let proactiveTimer: ReturnType<typeof setTimeout> | null = null;
+const REFRESH_SAFETY_MARGIN_MS = 30_000; // refresh 30s before expiry as minimum
+
+function scheduleProactiveRefresh(expiresInSeconds?: number) {
+  if (proactiveTimer) clearTimeout(proactiveTimer);
+
+  const lifetimeMs = (expiresInSeconds || 30 * 60) * 1000; // default 30 min
+  const refreshAtMs = Math.max(lifetimeMs * 0.8, lifetimeMs - 5 * 60 * 1000); // 80% or 5 min before end
+
+  proactiveTimer = setTimeout(async () => {
+    try {
+      const token = await silentRefresh();
+      // Parse the new JWT to schedule the next refresh correctly
+      scheduleProactiveRefreshFromToken(token);
+    } catch {
+      // Silent refresh failed — the 401 interceptor will handle recovery
+      // if the access token actually expires during normal use.
+    }
+  }, Math.max(refreshAtMs, REFRESH_SAFETY_MARGIN_MS));
+}
+
+function scheduleProactiveRefreshFromToken(token: string) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.exp) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const remaining = payload.exp - nowSec;
+      if (remaining > 0) {
+        scheduleProactiveRefresh(remaining);
+        return;
+      }
+    }
+  } catch {
+    // If we can't decode the token, fall back to a 25-minute schedule
+  }
+  scheduleProactiveRefresh(25 * 60);
+}
+
+/** Start the proactive refresh cycle — call after login or session bootstrap. */
+export function startTokenRefresh() {
+  const token = getAccessToken();
+  if (token) {
+    scheduleProactiveRefreshFromToken(token);
+  } else {
+    scheduleProactiveRefresh(25 * 60); // 25 minutes if no token yet
+  }
+}
+
+/** Stop the proactive refresh cycle — call on logout. */
+export function stopTokenRefresh() {
+  if (proactiveTimer) {
+    clearTimeout(proactiveTimer);
+    proactiveTimer = null;
+  }
+}
+
+// ─── Request Interceptor ─────────────────────────────────────────────────────
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     await assertEndpointAvailable(config);
@@ -118,10 +172,23 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response interceptor - handle 401 with refresh and date parsing
+// ─── Response Interceptor — 401 Handling ─────────────────────────────────────
+
+/** Queue of requests waiting for a single in-flight refresh. */
+let refreshQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+function processRefreshQueue(error: unknown, token: string | null = null) {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    error ? reject(error) : resolve(token!);
+  });
+  refreshQueue = [];
+}
+
 apiClient.interceptors.response.use(
   (response) => {
-    // Parse date strings in response data
     if (response.data) {
       response.data = parseDates(response.data);
     }
@@ -134,19 +201,21 @@ apiClient.interceptors.response.use(
       rememberUnavailableEndpoint(originalRequest.url);
     }
 
+    // Only handle 401 — every other status passes through to the caller
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
 
-    // Never retry refresh on auth endpoints — they 401 for valid business reasons
+    // Never retry refresh/auth endpoints — they 401 for valid business reasons
     const url = originalRequest.url || '';
     if (url.includes('/auth/')) {
       return Promise.reject(error);
     }
 
-    if (isRefreshing) {
+    // If a refresh is already in flight, queue this request
+    if (refreshInFlight) {
       return new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
+        refreshQueue.push({ resolve, reject });
       }).then((token) => {
         originalRequest.headers.Authorization = `Bearer ${token}`;
         return apiClient(originalRequest);
@@ -154,35 +223,48 @@ apiClient.interceptors.response.use(
     }
 
     originalRequest._retry = true;
-    isRefreshing = true;
 
     try {
-      const newAccessToken = await silentRefresh();
-      processQueue(null, newAccessToken);
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      const result = await (refreshInFlight || doRefresh());
+      const newToken = result.accessToken;
+      processRefreshQueue(null, newToken);
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      // Schedule the next proactive refresh from the new token
+      scheduleProactiveRefreshFromToken(newToken);
       return apiClient(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError, null);
-      clearSession();
-      if (typeof window !== 'undefined') {
-        const authRoutes = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
-        const currentPath = window.location.pathname;
-        if (!authRoutes.has(currentPath)) {
-          const reason =
-            refreshError && typeof refreshError === 'object' && 'response' in refreshError
-              ? 'session_expired'
-              : 'backend_unavailable';
-          window.location.href = `/login?reason=${reason}`;
+      processRefreshQueue(refreshError, null);
+
+      // Distinguish: was the refresh itself the failure, or was the retried request the failure?
+      // If the error comes from /auth/refresh, the session is truly dead.
+      // If it comes from a different URL, the refresh succeeded but the retried
+      // request hit a server error — do NOT log the user out for a 500.
+      const isRefreshEndpointFailure =
+        axios.isAxiosError(refreshError) &&
+        (refreshError.config?.url?.includes('/auth/refresh') || !refreshError.response);
+
+      if (isRefreshEndpointFailure) {
+        stopTokenRefresh();
+        clearSession();
+        if (typeof window !== 'undefined') {
+          const authRoutes = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
+          const currentPath = window.location.pathname;
+          if (!authRoutes.has(currentPath)) {
+            const reason =
+              refreshError && typeof refreshError === 'object' && 'response' in refreshError
+                ? 'session_expired'
+                : 'backend_unavailable';
+            window.location.href = `/login?reason=${reason}`;
+          }
         }
       }
+
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   },
 );
 
-// Typed API methods - unwrap response.data
+// ─── Typed API Methods ───────────────────────────────────────────────────────
 export const api = {
   get: <T>(url: string, config?: AxiosRequestConfig) =>
     apiClient.get<T>(url, config).then(res => res.data),

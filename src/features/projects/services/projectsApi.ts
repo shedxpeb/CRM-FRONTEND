@@ -32,6 +32,15 @@ export interface ProjectsData {
 }
 
 export const projectsApi = {
+  /**
+   * Fetch assignable project managers for the current organization.
+   * Uses project:read permission (not user:list).
+   */
+  getManagers: () =>
+    api.get<BackendResponse<Array<{ id: string; name: string; email: string; role: string }>>>(
+      '/project/managers',
+    ),
+
   getAll: (params?: PaginationParams & ProjectFilters) =>
     api.get<BackendResponse<ProjectsData>>('/project', { params }),
 
