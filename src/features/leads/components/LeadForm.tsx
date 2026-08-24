@@ -148,54 +148,68 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     const source = normalizeEnum(formData.source) ?? formData.source;
     const status = normalizeEnum(formData.status) ?? formData.status;
 
-    // Build clean payload - convert types and strip empty/undefined values
+    // Helper to distinguish between empty string (explicitly cleared) and undefined (not provided)
+    const toNullable = (value: string | undefined): string | null | undefined => {
+      if (value === undefined) return undefined;
+      if (value === '') return null;
+      return value;
+    };
+
+    const toNullableNumber = (value: string | undefined): number | null | undefined => {
+      if (value === undefined) return undefined;
+      if (value === '') return null;
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    // Build clean payload - convert types and preserve cleared values as null
     const raw: Record<string, any> = {
       customerName: formData.customerName,
       companyName: formData.companyName,
-      designation: formData.designation || undefined,
-      website: formData.website || undefined,
+      designation: toNullable(formData.designation),
+      website: toNullable(formData.website),
       mobile: formData.mobile,
-      alternateMobile: formData.alternateMobile || undefined,
+      alternateMobile: toNullable(formData.alternateMobile),
       email: formData.email || '',
-      gstNumber: formData.gstNumber || undefined,
-      panNumber: formData.panNumber || undefined,
+      gstNumber: toNullable(formData.gstNumber),
+      panNumber: toNullable(formData.panNumber),
       industry: formData.industry || undefined,
       businessType: formData.businessType || undefined,
-      addressLine1: formData.addressLine1 || undefined,
-      addressLine2: formData.addressLine2 || undefined,
-      area: formData.area || undefined,
-      city: formData.city || undefined,
-      state: formData.state || undefined,
-      country: formData.country || undefined,
-      pincode: formData.pincode || undefined,
-      linkedin: formData.linkedin || undefined,
-      facebook: formData.facebook || undefined,
-      instagram: formData.instagram || undefined,
+      addressLine1: toNullable(formData.addressLine1),
+      addressLine2: toNullable(formData.addressLine2),
+      area: toNullable(formData.area),
+      city: toNullable(formData.city),
+      state: toNullable(formData.state),
+      country: toNullable(formData.country),
+      pincode: toNullable(formData.pincode),
+      linkedin: toNullable(formData.linkedin),
+      facebook: toNullable(formData.facebook),
+      instagram: toNullable(formData.instagram),
       tags: formData.tags?.length ? formData.tags : undefined,
       projectTitle: formData.projectTitle,
       projectType,
       structureType,
-      width: formData.width ? parseFloat(formData.width as string) : undefined,
-      length: formData.length ? parseFloat(formData.length as string) : undefined,
-      height: formData.height ? parseFloat(formData.height as string) : undefined,
-      baySpacing: formData.baySpacing ? parseFloat(formData.baySpacing as string) : undefined,
+      width: toNullableNumber(formData.width),
+      length: toNullableNumber(formData.length),
+      height: toNullableNumber(formData.height),
+      baySpacing: toNullableNumber(formData.baySpacing),
       roofType: formData.roofType || undefined,
       wallType: formData.wallType || undefined,
       materialPreference: formData.materialPreference || undefined,
       craneRequired: formData.craneRequired ?? false,
-      craneCapacity: formData.craneCapacity ? parseFloat(formData.craneCapacity as string) : undefined,
+      craneCapacity: toNullableNumber(formData.craneCapacity),
       mezzanine: formData.mezzanine ?? false,
-      mezzanineArea: formData.mezzanineArea ? parseFloat(formData.mezzanineArea as string) : undefined,
-      mezzanineLoad: formData.mezzanineLoad ? parseFloat(formData.mezzanineLoad as string) : undefined,
+      mezzanineArea: toNullableNumber(formData.mezzanineArea),
+      mezzanineLoad: toNullableNumber(formData.mezzanineLoad),
       insulationRequired: formData.insulationRequired ?? false,
-      insulationType: formData.insulationType || undefined,
-      insulationThickness: formData.insulationThickness ? parseFloat(formData.insulationThickness as string) : undefined,
-      siteLocation: formData.siteLocation || undefined,
-      siteAddress: formData.siteAddress || undefined,
-      mapCoordinates: formData.mapCoordinates || undefined,
-      soilNotes: formData.soilNotes || undefined,
-      customerNotes: formData.customerNotes || undefined,
-      specialRequirement: formData.specialRequirement || undefined,
+      insulationType: toNullable(formData.insulationType),
+      insulationThickness: toNullableNumber(formData.insulationThickness),
+      siteLocation: toNullable(formData.siteLocation),
+      siteAddress: toNullable(formData.siteAddress),
+      mapCoordinates: toNullable(formData.mapCoordinates),
+      soilNotes: toNullable(formData.soilNotes),
+      customerNotes: toNullable(formData.customerNotes),
+      specialRequirement: toNullable(formData.specialRequirement),
       source,
       priority: formData.priority,
       status,
@@ -209,7 +223,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
         : undefined,
     };
 
-    // Remove all undefined keys so they are not sent in the request
+    // Remove all undefined keys (not provided) but keep null values (explicitly cleared)
     const fullPayload = Object.fromEntries(
       Object.entries(raw).filter(([_, v]) => v !== undefined)
     ) as Partial<Lead>;
@@ -261,7 +275,8 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
         if (Boolean(previousNormalized) !== Boolean(value)) changed[key] = value;
         continue;
       }
-      if (String(previousNormalized ?? '') !== String(value ?? '')) {
+      // Properly detect changes including when a field is cleared (null vs value)
+      if (previousNormalized !== value) {
         changed[key] = value;
       }
     }
