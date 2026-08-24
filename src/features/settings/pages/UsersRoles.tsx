@@ -38,7 +38,7 @@ export function UsersRoles() {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
-  const [userFormData, setUserFormData] = useState<Partial<User>>({});
+  const [userFormData, setUserFormData] = useState<Partial<User> & { password?: string }>({});
   const [roleFormData, setRoleFormData] = useState<Partial<Role>>({});
 
   const userColumns: Column<User>[] = [
@@ -116,7 +116,7 @@ export function UsersRoles() {
 
   const handleCreateUser = () => {
     setEditingUser(null);
-    setUserFormData({ isActive: true, isLocked: false });
+    setUserFormData({ isActive: true });
     setIsUserDialogOpen(true);
   };
 
@@ -159,7 +159,9 @@ export function UsersRoles() {
     if (editingUser) {
       updateUser.mutate({ id: editingUser.id, data: userFormData });
     } else {
-      createUser.mutate(userFormData as Omit<User, 'id' | 'createdAt' | 'updatedAt'>);
+      // Only send fields expected by CreateUserDto
+      const { password, name, email, mobile, department, designation, role, isActive } = userFormData;
+      createUser.mutate({ name: name || '', email: email || '', mobile, department, designation, role: role as any, isActive, password } as any);
     }
     setIsUserDialogOpen(false);
   };
@@ -321,6 +323,37 @@ export function UsersRoles() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                      id="department"
+                      value={userFormData.department || ''}
+                      onChange={(e) => setUserFormData({ ...userFormData, department: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="designation">Designation</Label>
+                    <Input
+                      id="designation"
+                      value={userFormData.designation || ''}
+                      onChange={(e) => setUserFormData({ ...userFormData, designation: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="password">{editingUser ? 'New Password (leave blank to keep current)' : 'Password'}</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={(userFormData as any).password || ''}
+                    onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value } as any)}
+                    placeholder={editingUser ? 'Leave blank to keep current password' : 'Min 8 chars, uppercase + lowercase + number'}
+                    {...(!editingUser && { required: true })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -331,16 +364,18 @@ export function UsersRoles() {
                     />
                     <Label htmlFor="isActive">Active</Label>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isLocked"
-                      checked={userFormData.isLocked || false}
-                      onChange={(e) => setUserFormData({ ...userFormData, isLocked: e.target.checked })}
-                      className="h-4 w-4"
-                    />
-                    <Label htmlFor="isLocked">Locked</Label>
-                  </div>
+                  {editingUser && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isLocked"
+                        checked={userFormData.isLocked || false}
+                        onChange={(e) => setUserFormData({ ...userFormData, isLocked: e.target.checked })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="isLocked">Locked</Label>
+                    </div>
+                  )}
                 </div>
               </div>
 
