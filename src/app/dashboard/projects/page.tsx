@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CreateProjectInput } from '@/features/projects/validations';
-import { Project, ProjectPriority, ProjectStage, ProjectStatus, CreateProjectDto, UpdateProjectDto, ProjectCustomFieldValues } from '@/features/projects/types';
+import { Project, ProjectPriority, ProjectStage, ProjectStatus, CreateProjectDto, UpdateProjectDto, ProjectCustomFieldValues, HealthStatus } from '@/features/projects/types';
 import {
   useProjects,
   useCreateProject,
@@ -30,6 +30,7 @@ import {
   useDeleteProject,
   useProjectConfiguration,
   useProjectsStats,
+  useProject,
 } from '@/features/projects/hooks/useProjects';
 import { projectsApi } from '@/features/projects/services/projectsApi';
 import {
@@ -54,8 +55,10 @@ function projectToFormInitial(project: Project) {
     return date.toISOString().split('T')[0];
   };
   return {
+    projectCode: project.projectCode || '',
     projectName: project.projectName,
     customerId: project.customerId,
+    customerName: project.customerName || '',
     leadId: project.leadId,
     projectType: project.projectType,
     value: project.value,
@@ -68,6 +71,7 @@ function projectToFormInitial(project: Project) {
     endDate: toDateInput(project.endDate),
     priority: project.priority,
     projectManagerId: project.projectManagerId,
+    projectManager: project.projectManager || '',
     structureType: project.structureType,
     width: project.width,
     length: project.length,
@@ -80,6 +84,9 @@ function projectToFormInitial(project: Project) {
     insulation: project.insulation,
     coveredArea: project.coveredArea,
     totalWeight: project.totalWeight,
+    status: project.status,
+    stage: project.stage,
+    progress: project.progress,
     customFields: project.customFields ?? {},
   };
 }
@@ -99,14 +106,10 @@ export default function ProjectsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>(
-    statusQueryParam && statusQueryParam !== 'all' ? (statusQueryParam as ProjectStatus) : 'all'
-  );
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<ProjectPriority | 'all'>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
-  const [healthFilter, setHealthFilter] = useState<string>(
-    healthQueryParam && healthQueryParam !== 'all' ? healthQueryParam : 'all'
-  );
+  const [healthFilter, setHealthFilter] = useState<HealthStatus | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(25);
 
@@ -126,7 +129,7 @@ export default function ProjectsPage() {
     status: statusFilter === 'all' ? undefined : statusFilter,
     priority: priorityFilter === 'all' ? undefined : priorityFilter,
     city: cityFilter === 'all' ? undefined : cityFilter,
-    healthStatus: healthFilter === 'all' ? undefined : (healthFilter as Project['healthStatus']),
+    healthStatus: healthFilter === 'all' ? undefined : healthFilter,
   });
   const { data: statsResponse } = useProjectsStats(true);
 
@@ -209,12 +212,23 @@ export default function ProjectsPage() {
   const projects = projectsResponse?.data?.rows ?? [];
   const pagination = projectsResponse?.data?.pagination;
 
+  // Fetch fresh project data from server when editing
+  const { data: freshProjectData, isLoading: isProjectLoading } = useProject(
+    selectedProjectId || ''
+  );
+
   const selectedProject = useMemo(
-    () =>
-      selectedProjectId
-        ? projects.find((p) => p.id === selectedProjectId) ?? null
-        : null,
-    [projects, selectedProjectId]
+    () => {
+      // Use fresh server data if available, otherwise fall back to list data
+      if (selectedProjectId && freshProjectData?.data) {
+        return freshProjectData.data;
+      }
+      if (selectedProjectId) {
+        return projects.find((p) => p.id === selectedProjectId) ?? null;
+      }
+      return null;
+    },
+    [selectedProjectId, freshProjectData, projects]
   );
 
   const kpiData = useMemo(() => {
@@ -286,10 +300,10 @@ export default function ProjectsPage() {
         ],
       },
       {
-        key: 'health',
+        key: 'healthStatus',
         label: 'Health',
         value: healthFilter,
-        onChange: setHealthFilter,
+        onChange: (value: string) => setHealthFilter(value as HealthStatus | 'all'),
         options: [
           { value: 'all', label: 'All Health' },
           ...projectConfig.healthIndicators.map((h) => ({ value: h, label: h })),
@@ -443,8 +457,9 @@ export default function ProjectsPage() {
         },
         onError: (error: any) => {
           const message =
-            error?.response?.data?.message || error?.message || 'Failed to create project';
-          toast.error(typeof message === 'string' ? message : 'Failed to create project');
+            error?.response?.data?.message || error?.response?.data?.errors || error?.message || 'Failed to create project';
+          console.error('Project creation error:', error?.response?.data);
+          toast.error(typeof message === 'string' ? message : Array.isArray(message) ? message.join(', ') : 'Failed to create project');
         },
       });
     },
@@ -464,8 +479,9 @@ export default function ProjectsPage() {
           },
           onError: (error: any) => {
             const message =
-              error?.response?.data?.message || error?.message || 'Failed to update project';
-            toast.error(typeof message === 'string' ? message : 'Failed to update project');
+              error?.response?.data?.message || error?.response?.data?.errors || error?.message || 'Failed to update project';
+            console.error('Project update error:', error?.response?.data);
+            toast.error(typeof message === 'string' ? message : Array.isArray(message) ? message.join(', ') : 'Failed to update project');
           },
         }
       );
@@ -475,9 +491,34 @@ export default function ProjectsPage() {
 
   const handleDelete = useCallback(
     (project: Project) => {
-      if (confirm(`Are you sure you want to delete project "${project.projectName}"?`)) {
-        deleteMutation.mutate(project.id);
-      }
+      deleteMutation.mutate(project.id, {
+        onSuccess: () => {
+          toast.success('Project deleted successfully');
+        },
+        onError: (error: any) => {
+          // Detailed error logging for debugging
+          console.error('Project deletion error:', {
+            message: error?.message,
+            code: error?.code,
+            config: {
+              url: error?.config?.url,
+              method: error?.config?.method,
+              baseURL: error?.config?.baseURL,
+            },
+            response: {
+              status: error?.response?.status,
+              statusText: error?.response?.statusText,
+              data: error?.response?.data,
+              headers: error?.response?.headers,
+            },
+            isAxiosError: error?.isAxiosError,
+          });
+
+          const message =
+            error?.response?.data?.message || error?.response?.data?.errors || error?.message || 'Failed to delete project';
+          toast.error(typeof message === 'string' ? message : Array.isArray(message) ? message.join(', ') : 'Failed to delete project');
+        },
+      });
     },
     [deleteMutation]
   );

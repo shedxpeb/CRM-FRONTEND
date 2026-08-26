@@ -13,6 +13,7 @@ const CustomerRowActions = lazy(() => import('@/features/customers/components/Cu
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from '@/components/ui/toast';
 import { Customer, CustomerStatus } from '@/features/customers';
 import { getStatusVariant } from '@/features/customers/constants';
 import {
@@ -198,6 +199,35 @@ export default function CustomersPage() {
       ),
     },
     {
+      key: 'projectCode',
+      label: 'Project Code',
+      className: 'hidden xl:table-cell min-w-[100px] max-w-[120px]',
+      headerClassName: 'hidden xl:table-cell',
+      render: (value) => (
+        <span className="text-xs font-mono truncate block">{value || '-'}</span>
+      ),
+    },
+    {
+      key: 'accountTier',
+      label: 'Account Tier',
+      className: 'hidden xl:table-cell min-w-[100px]',
+      headerClassName: 'hidden xl:table-cell',
+      render: (value) => (
+        <span className="text-xs truncate block">{value || '-'}</span>
+      ),
+    },
+    {
+      key: 'creditLimit',
+      label: 'Credit Limit (₹)',
+      className: 'hidden xl:table-cell min-w-[120px]',
+      headerClassName: 'hidden xl:table-cell',
+      render: (value) => (
+        <span className="text-xs font-medium">
+          {value !== null && value !== undefined ? `₹${Number(value).toLocaleString('en-IN')}` : '-'}
+        </span>
+      ),
+    },
+    {
       key: 'city',
       label: 'City',
       sortable: true,
@@ -237,18 +267,20 @@ export default function CustomersPage() {
 
   const settingsCustomColumnDefs = useMemo(
     () =>
-      customerConfig.customFields.map((field) => ({
-        key: field.key as keyof Customer,
-        label: field.label,
-        sortable: true,
-        className: 'min-w-[100px] max-w-[130px] hidden 2xl:table-cell',
-        headerClassName: 'hidden 2xl:table-cell',
-        render: (_: unknown, row: Customer) => (
-          <span className="text-xs truncate block">
-            {getCustomerCustomFieldValue(row, field.key)?.toString() ?? '-'}
-          </span>
-        ),
-      })),
+      customerConfig.customFields
+        .filter((field) => field.key !== 'accountTier' && field.key !== 'creditLimit')
+        .map((field) => ({
+          key: field.key as keyof Customer,
+          label: field.label,
+          sortable: true,
+          className: 'min-w-[100px] max-w-[130px] hidden 2xl:table-cell',
+          headerClassName: 'hidden 2xl:table-cell',
+          render: (_: unknown, row: Customer) => (
+            <span className="text-xs truncate block">
+              {getCustomerCustomFieldValue(row, field.key)?.toString() ?? '-'}
+            </span>
+          ),
+        })),
     [customerConfig.customFields]
   );
 
@@ -256,6 +288,20 @@ export default function CustomersPage() {
     () => [...baseColumns, ...settingsCustomColumnDefs],
     [baseColumns, settingsCustomColumnDefs]
   );
+
+  // Development-only assertion to catch duplicate column keys
+  if (process.env.NODE_ENV === 'development') {
+    const allKeys = columns.map((col) => col.key);
+    const duplicateKeys = allKeys.filter(
+      (key, index) => allKeys.indexOf(key) !== index
+    );
+    if (duplicateKeys.length > 0) {
+      console.error(
+        '[CustomerPage] Duplicate DataTable column keys:',
+        [...new Set(duplicateKeys)]
+      );
+    }
+  }
 
   // Memoized handlers using React Query mutations
   const handleCreateCustomer = useCallback((data: Partial<Customer>) => {
@@ -298,9 +344,34 @@ export default function CustomersPage() {
   }, [selectedCustomer, updateMutation]);
 
   const handleDeleteCustomer = useCallback((customer: Customer) => {
-    if (confirm(`Delete customer "${customer.customerName}"?`)) {
-      deleteMutation.mutate(customer.id);
-    }
+    deleteMutation.mutate(customer.id, {
+      onSuccess: () => {
+        toast.success('Customer deleted successfully');
+      },
+      onError: (error: any) => {
+        // Detailed error logging for debugging
+        console.error('Customer deletion error:', {
+          message: error?.message,
+          code: error?.code,
+          config: {
+            url: error?.config?.url,
+            method: error?.config?.method,
+            baseURL: error?.config?.baseURL,
+          },
+          response: {
+            status: error?.response?.status,
+            statusText: error?.response?.statusText,
+            data: error?.response?.data,
+            headers: error?.response?.headers,
+          },
+          isAxiosError: error?.isAxiosError,
+        });
+
+        const message =
+          error?.response?.data?.message || error?.response?.data?.errors || error?.message || 'Failed to delete customer';
+        toast.error(typeof message === 'string' ? message : Array.isArray(message) ? message.join(', ') : 'Failed to delete customer');
+      },
+    });
   }, [deleteMutation]);
 
   const handleRowClick = useCallback((row: Customer) => {

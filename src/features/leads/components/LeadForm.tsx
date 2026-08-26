@@ -69,6 +69,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     tags: initialData?.tags ?? [],
     projectTitle: initialData?.projectTitle ?? '',
     projectType: (initialData?.projectType ?? config.projectTypes[0] ?? 'Factory') as ProjectType,
+    projectCode: initialData?.projectCode ?? '',
     structureType: (initialData?.structureType ?? config.structureTypes[0] ?? 'PEB') as StructureType,
     width: initialData?.width?.toString() ?? '',
     length: initialData?.length?.toString() ?? '',
@@ -188,6 +189,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
       tags: formData.tags?.length ? formData.tags : undefined,
       projectTitle: formData.projectTitle,
       projectType,
+      projectCode: toNullable(formData.projectCode),
       structureType,
       width: toNullableNumber(formData.width),
       length: toNullableNumber(formData.length),
@@ -623,6 +625,21 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
                 <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
                   <AlertCircle className="h-3 w-3" />
                   {errors.projectTitle}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Project Code</label>
+              <Input
+                placeholder="Enter project code (e.g., SHX-26-002)"
+                value={formData.projectCode ?? ''}
+                onChange={(e) => handleInputChange('projectCode', e.target.value)}
+                className={errors.projectCode ? 'border-red-500' : ''}
+              />
+              {errors.projectCode && (
+                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.projectCode}
                 </p>
               )}
             </div>

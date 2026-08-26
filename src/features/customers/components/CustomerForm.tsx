@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState, memo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -79,8 +79,8 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
   );
   const leads = leadsResponse?.data?.rows || [];
 
-  // Filter only non-converted leads
-  const availableLeads = leads.filter((lead: Lead) => lead.status !== 'Converted');
+  // One Lead can create multiple Customers - show all available leads
+  const availableLeads = leads;
 
   const [selectedLeadId, setSelectedLeadId] = useState<string>(initialData?.leadId || '');
   const [showAutoFillNotice, setShowAutoFillNotice] = useState<boolean>(false);
@@ -89,6 +89,43 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
 
   // Customer owns its data — lead link is reference-only (snapshot rule)
   const leadReferenceId = isEditMode ? initialData?.leadId : undefined;
+
+  // Reset form state when initialData changes (e.g., editing different customers)
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      setFormData({
+        customerName: '',
+        companyName: '',
+        mobile: '',
+        alternateMobile: '',
+        email: '',
+        gstNumber: '',
+        panNumber: '',
+        industry: 'Manufacturing',
+        businessType: 'PrivateLimited',
+        website: '',
+        address: '',
+        city: '',
+        state: '',
+        country: 'India',
+        pincode: '',
+        source: 'Website',
+        status: 'Prospect',
+        notes: '',
+        projectTitle: '',
+        projectType: '',
+        projectCode: '',
+        accountTier: '',
+        creditLimit: undefined,
+        customFields: initialData?.customFields ?? {},
+        ...initialData,
+      });
+      setErrors({});
+      setTouchedFields(new Set());
+      setEditedFields(new Set());
+      setSelectedLeadId(initialData?.leadId || '');
+    }
+  }, [initialData, isEditMode]);
 
   const [formData, setFormData] = useState<Partial<Customer>>({
     customerName: '',
@@ -111,6 +148,9 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
     notes: '',
     projectTitle: '',
     projectType: '',
+    projectCode: '',
+    accountTier: '',
+    creditLimit: undefined,
     customFields: initialData?.customFields ?? {},
     ...initialData,
   });
@@ -162,6 +202,9 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
         industry: mapLeadIndustryToCustomerIndustry(selectedLead.industry) as any,
         businessType: mapLeadBusinessTypeToCustomerBusinessType(selectedLead.businessType) as BusinessType,
         notes: selectedLead.remarks ? `${prev.notes || ''}\n\nLead Notes: ${selectedLead.remarks}` : prev.notes,
+        projectTitle: selectedLead.projectTitle || prev.projectTitle,
+        projectType: selectedLead.projectType || prev.projectType,
+        projectCode: selectedLead.projectCode || prev.projectCode,
         leadId: selectedLead.id,
       }));
       setShowAutoFillNotice(true);
@@ -228,8 +271,10 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
 
     const submitData: Record<string, any> = {};
     for (const [key, value] of Object.entries(rawSubmitData)) {
+      // For optional fields that can be cleared, send empty string to clear the value
       if (value === '' || value === undefined) {
-        if (['email', 'alternateMobile', 'gstNumber', 'panNumber', 'website', 'notes', 'pincode', 'country'].includes(key)) {
+        if (['email', 'alternateMobile', 'gstNumber', 'panNumber', 'website', 'notes', 'pincode', 'country', 'accountTier'].includes(key)) {
+          submitData[key] = ''; // Send empty string to clear the field
           continue;
         }
       }
@@ -238,12 +283,29 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
       }
     }
 
+    // Handle creditLimit separately - send null to clear, otherwise send the number
+    if (rawSubmitData.creditLimit === undefined || rawSubmitData.creditLimit === null || (typeof rawSubmitData.creditLimit === 'string' && rawSubmitData.creditLimit === '')) {
+      submitData.creditLimit = null;
+    } else {
+      submitData.creditLimit = rawSubmitData.creditLimit;
+    }
+
+    // Handle customFields - include them in the submission
+    if (rawSubmitData.customFields && typeof rawSubmitData.customFields === 'object') {
+      submitData.customFields = rawSubmitData.customFields;
+    }
+
     // Edit: PATCH only changed fields vs initialData
     if (isEditMode && initialData) {
       const changed: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(submitData)) {
         const previous = (initialData as Record<string, unknown>)[key];
-        if (String(previous ?? '') !== String(value ?? '')) {
+        // For customFields, compare JSON strings to detect changes
+        if (key === 'customFields') {
+          if (JSON.stringify(previous) !== JSON.stringify(value)) {
+            changed[key] = value;
+          }
+        } else if (String(previous ?? '') !== String(value ?? '')) {
           changed[key] = value;
         }
       }
@@ -344,10 +406,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">Customer Name *</label>
               <div className="relative">
                 <Input
+                  data-field="customerName"
                   value={formData.customerName || ''}
                   onChange={(e) => handleChange('customerName', e.target.value)}
                   placeholder="Enter customer name"
-                 
+
                   className={errors.customerName ? 'border-red-500' : ''}
                 />
 
@@ -364,10 +427,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">Company Name *</label>
               <div className="relative">
                 <Input
+                  data-field="companyName"
                   value={formData.companyName || ''}
                   onChange={(e) => handleChange('companyName', e.target.value)}
                   placeholder="Enter company name"
-                 
+
                   className={errors.companyName ? 'border-red-500' : ''}
                 />
 
@@ -384,10 +448,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">Mobile *</label>
               <div className="relative">
                 <Input
+                  data-field="mobile"
                   value={formData.mobile || ''}
                   onChange={(e) => handleChange('mobile', e.target.value)}
                   placeholder="+91 XXXXX XXXXX"
-                 
+
                   className={errors.mobile ? 'border-red-500' : ''}
                 />
 
@@ -404,10 +469,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">Alternate Mobile</label>
               <div className="relative">
                 <Input
+                  data-field="alternateMobile"
                   value={formData.alternateMobile || ''}
                   onChange={(e) => handleChange('alternateMobile', e.target.value)}
                   placeholder="+91 XXXXX XXXXX"
-                 
+
                   className={errors.alternateMobile ? 'border-red-500' : ''}
                 />
 
@@ -424,11 +490,12 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">Email</label>
               <div className="relative">
                 <Input
+                  data-field="email"
                   type="email"
                   value={formData.email || ''}
                   onChange={(e) => handleChange('email', e.target.value)}
                   placeholder="Enter email address"
-                 
+
                   className={errors.email ? 'border-red-500' : ''}
                 />
 
@@ -454,6 +521,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
           <div className="space-y-2">
             <label className="text-sm font-medium">Project Name *</label>
             <Input
+              data-field="projectTitle"
               value={formData.projectTitle || ''}
               onChange={(e) => handleChange('projectTitle', e.target.value)}
               placeholder="Enter project name"
@@ -467,12 +535,28 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
             )}
           </div>
           <div className="space-y-2">
+            <label className="text-sm font-medium">Project Code</label>
+            <Input
+              data-field="projectCode"
+              value={formData.projectCode || ''}
+              onChange={(e) => handleChange('projectCode', e.target.value)}
+              placeholder="Enter project code (e.g., SHX-26-002)"
+              className={errors.projectCode ? 'border-red-500' : ''}
+            />
+            {errors.projectCode && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.projectCode}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
             <label className="text-sm font-medium">Project Type *</label>
             <Select
               value={formData.projectType}
               onValueChange={(v) => handleChange('projectType', v)}
             >
-              <SelectTrigger className={errors.projectType ? 'border-red-500' : ''}>
+              <SelectTrigger data-field="projectType" className={errors.projectType ? 'border-red-500' : ''}>
                 <SelectValue placeholder="Select project type" />
               </SelectTrigger>
               <SelectContent>
@@ -504,10 +588,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">GST Number</label>
               <div className="relative">
                 <Input
+                  data-field="gstNumber"
                   value={formData.gstNumber || ''}
                   onChange={(e) => handleChange('gstNumber', e.target.value)}
                   placeholder="22AAAAA0000A1Z5"
-                 
+
                   className={errors.gstNumber ? 'border-red-500' : ''}
                 />
 
@@ -523,6 +608,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
             <div className="space-y-2">
               <label className="text-sm font-medium">PAN Number</label>
               <Input
+                data-field="panNumber"
                 value={formData.panNumber || ''}
                 onChange={(e) => handleChange('panNumber', e.target.value)}
                 placeholder="AAAAA0000A"
@@ -541,7 +627,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
                 value={formData.industry}
                 onValueChange={(v) => handleChange('industry', v)}
               >
-                <SelectTrigger className={errors.industry ? 'border-red-500' : ''}>
+                <SelectTrigger data-field="industry" className={errors.industry ? 'border-red-500' : ''}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -565,7 +651,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
                 value={formData.businessType}
                 onValueChange={(v) => handleChange('businessType', v)}
               >
-                <SelectTrigger className={errors.businessType ? 'border-red-500' : ''}>
+                <SelectTrigger data-field="businessType" className={errors.businessType ? 'border-red-500' : ''}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -586,6 +672,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Website</label>
               <Input
+                data-field="website"
                 value={formData.website || ''}
                 onChange={(e) => handleChange('website', e.target.value)}
                 placeholder="https://www.example.com"
@@ -595,6 +682,46 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
                 <p className="text-xs text-red-500 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   {errors.website}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Account Tier</label>
+              <Select
+                value={formData.accountTier}
+                onValueChange={(v) => handleChange('accountTier', v)}
+              >
+                <SelectTrigger data-field="accountTier" className={errors.accountTier ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Select account tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Prospect">Prospect</SelectItem>
+                  <SelectItem value="Standard">Standard</SelectItem>
+                  <SelectItem value="Premium">Premium</SelectItem>
+                  <SelectItem value="Enterprise">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.accountTier && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.accountTier}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Credit Limit (₹)</label>
+              <Input
+                data-field="creditLimit"
+                type="number"
+                value={formData.creditLimit || ''}
+                onChange={(e) => handleChange('creditLimit', e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="Enter credit limit"
+                className={errors.creditLimit ? 'border-red-500' : ''}
+              />
+              {errors.creditLimit && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.creditLimit}
                 </p>
               )}
             </div>
@@ -613,10 +740,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">Address *</label>
               <div className="relative">
                 <Input
+                  data-field="address"
                   value={formData.address || ''}
                   onChange={(e) => handleChange('address', e.target.value)}
                   placeholder="Enter full address"
-                 
+
                   className={errors.address ? 'border-red-500' : ''}
                 />
 
@@ -633,10 +761,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">City *</label>
               <div className="relative">
                 <Input
+                  data-field="city"
                   value={formData.city || ''}
                   onChange={(e) => handleChange('city', e.target.value)}
                   placeholder="Enter city"
-                 
+
                   className={errors.city ? 'border-red-500' : ''}
                 />
 
@@ -653,10 +782,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">State *</label>
               <div className="relative">
                 <Input
+                  data-field="state"
                   value={formData.state || ''}
                   onChange={(e) => handleChange('state', e.target.value)}
                   placeholder="Enter state"
-                 
+
                   className={errors.state ? 'border-red-500' : ''}
                 />
 
@@ -672,6 +802,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
             <div className="space-y-2">
               <label className="text-sm font-medium">Country</label>
               <Input
+                data-field="country"
                 value={formData.country || ''}
                 onChange={(e) => handleChange('country', e.target.value)}
                 placeholder="Enter country"
@@ -688,10 +819,11 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               <label className="text-sm font-medium">Pincode</label>
               <div className="relative">
                 <Input
+                  data-field="pincode"
                   value={formData.pincode || ''}
                   onChange={(e) => handleChange('pincode', e.target.value)}
                   placeholder="6-digit pincode"
-                 
+
                   className={errors.pincode ? 'border-red-500' : ''}
                 />
 
@@ -721,9 +853,9 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
                 <Select
                   value={formData.source}
                   onValueChange={(v) => handleChange('source', v)}
-                  
+
                 >
-                  <SelectTrigger className={errors.source ? 'border-red-500' : ''}>
+                  <SelectTrigger data-field="source" className={errors.source ? 'border-red-500' : ''}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -750,7 +882,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
                 value={formData.status}
                 onValueChange={(v) => handleChange('status', v)}
               >
-                <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
+                <SelectTrigger data-field="status" className={errors.status ? 'border-red-500' : ''}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -771,6 +903,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Notes</label>
               <textarea
+                data-field="notes"
                 value={formData.notes || ''}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 placeholder="Additional notes about the customer..."
@@ -794,6 +927,39 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
         values={formData.customFields}
         onChange={handleCustomFieldChange}
       />
+
+      {/* Validation Summary at Bottom */}
+      {Object.keys(errors).length > 0 && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-red-900 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Validation Errors
+              </h4>
+              <p className="text-sm text-red-700">Please fix the following errors:</p>
+              <ul className="space-y-1 mt-2">
+                {Object.entries(errors).map(([field, message]) => (
+                  <li
+                    key={field}
+                    className="text-sm text-red-600 flex items-start gap-2 cursor-pointer hover:text-red-800"
+                    onClick={() => {
+                      const element = document.querySelector(`[data-field="${field}"]`) as HTMLElement;
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        element.focus();
+                      }
+                    }}
+                  >
+                    <span className="text-red-400 mt-0.5">•</span>
+                    <span>{message}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-3">

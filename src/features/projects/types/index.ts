@@ -5,20 +5,15 @@
  */
 
 export type ProjectStatus =
-  | 'Lead'
-  | 'Estimate'
-  | 'Proposal'
-  | 'Quotation'
-  | 'Approved'
-  | 'Design'
-  | 'BOQ'
-  | 'Procurement'
+  | 'New'
+  | 'DesignInProgress'
+  | 'DesignApproved'
   | 'Fabrication'
-  | 'Dispatch'
+  | 'DispatchReady'
+  | 'Dispatched'
   | 'Installation'
-  | 'Completion'
-  | 'After Sales'
-  | 'On Hold'
+  | 'Completed'
+  | 'OnHold'
   | 'Cancelled';
 
 export type ProjectStage =
@@ -284,18 +279,20 @@ export interface CreateProjectDto {
   projectCode?: string;
   projectName: string;
   customerId: string;
+  customerName?: string;
   leadId?: string;
   projectType: ProjectType;
-  value: number;
-  budget: number;
+  value?: number;
+  budget?: number;
   location: string;
   city: string;
   state: string;
   pincode?: string;
-  startDate: Date;
-  endDate: Date;
+  startDate?: Date;
+  endDate?: Date;
   priority: ProjectPriority;
   projectManagerId: string;
+  projectManager?: string;
   structureType: StructureType;
   width?: number;
   length?: number;
@@ -308,6 +305,9 @@ export interface CreateProjectDto {
   insulation?: boolean;
   coveredArea?: number;
   totalWeight?: number;
+  status?: ProjectStatus;
+  stage?: ProjectStage;
+  progress?: number;
   customFields?: ProjectCustomFieldValues;
 }
 
@@ -316,28 +316,29 @@ export interface CreateProjectDto {
  */
 export interface UpdateProjectDto {
   projectName?: string;
-  value?: number;
-  budget?: number;
-  location?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
-  startDate?: Date;
-  endDate?: Date;
+  value?: number | null;
+  budget?: number | null;
+  location?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  startDate?: Date | null;
+  endDate?: Date | null;
   priority?: ProjectPriority;
   projectManagerId?: string;
+  projectManager?: string | null;
   structureType?: StructureType;
-  width?: number;
-  length?: number;
-  height?: number;
-  baySpacing?: number;
+  width?: number | null;
+  length?: number | null;
+  height?: number | null;
+  baySpacing?: number | null;
   roofType?: RoofType;
   craneSystem?: CraneSystem;
-  mezzanine?: boolean;
+  mezzanine?: boolean | null;
   wallType?: WallType;
-  insulation?: boolean;
-  coveredArea?: number;
-  totalWeight?: number;
+  insulation?: boolean | null;
+  coveredArea?: number | null;
+  totalWeight?: number | null;
   status?: ProjectStatus;
   stage?: ProjectStage;
   progress?: number;
@@ -345,12 +346,12 @@ export interface UpdateProjectDto {
   procurementProgress?: number;
   fabricationProgress?: number;
   installationProgress?: number;
-  materialCost?: number;
-  procurementCost?: number;
-  fabricationCost?: number;
-  installationCost?: number;
-  profitMargin?: number;
-  customFields?: ProjectCustomFieldValues;
+  materialCost?: number | null;
+  procurementCost?: number | null;
+  fabricationCost?: number | null;
+  installationCost?: number | null;
+  profitMargin?: number | null;
+  customFields?: ProjectCustomFieldValues | null;
 }
 
 /**

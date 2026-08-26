@@ -108,10 +108,23 @@ export function useDeleteProject() {
 
   return useMutation({
     mutationFn: (id: string) => projectsApi.delete(id),
-    onSuccess: () => {
+    onSuccess: (_, projectId) => {
+      // Invalidate all project-related queries
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project'] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Invalidate specific project detail cache
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+        queryClient.invalidateQueries({ queryKey: ['project', projectId, 'tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['project', projectId, 'activities'] });
+      }
+      // Note: We do NOT invalidate customer queries because deleting a project
+      // should NOT delete or affect the customer. The customer remains intact.
+    },
+    onError: (error: any) => {
+      console.error('Project deletion failed:', error);
     },
   });
 }
@@ -138,6 +151,8 @@ export function useBulkDeleteProjects() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Note: We do NOT invalidate customer queries because deleting projects
+      // should NOT delete or affect customers. The customers remain intact.
     },
   });
 }
