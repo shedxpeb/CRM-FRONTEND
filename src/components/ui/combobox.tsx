@@ -130,6 +130,23 @@ export function Combobox({
     setSearchQuery("")
   }
 
+  // Handle wheel events to prevent parent modal scrolling when dropdown is open
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!open) return;
+    
+    const container = e.currentTarget;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    
+    // Allow scrolling if there's room to scroll
+    const canScrollUp = scrollTop > 0;
+    const canScrollDown = scrollTop + clientHeight < scrollHeight;
+    
+    // If we can scroll in the direction of the wheel, consume the event
+    if ((e.deltaY < 0 && canScrollUp) || (e.deltaY > 0 && canScrollDown)) {
+      e.stopPropagation();
+    }
+  }
+
   return (
     <Popover open={open} onOpenChange={(newOpen) => {
       setOpen(newOpen)
@@ -167,6 +184,7 @@ export function Combobox({
           <div 
             ref={optionsRef}
             className="max-h-[300px] overflow-y-auto overflow-x-hidden p-1"
+            onWheel={handleWheel}
           >
             {filteredOptions.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">

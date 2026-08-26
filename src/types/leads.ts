@@ -128,7 +128,8 @@ export interface Lead {
   // Project Details
   projectTitle: string;
   projectType: ProjectType;
-  
+  projectCode?: string;
+
   // Structure Details
   structureType: StructureType;
   width?: number;
@@ -251,6 +252,7 @@ export interface CreateLeadDto {
   tags?: string[];
   projectTitle: string;
   projectType: ProjectType;
+  projectCode?: string;
   structureType: StructureType;
   width?: number;
   length?: number;
@@ -308,6 +310,7 @@ export interface UpdateLeadDto {
   tags?: string[];
   projectTitle?: string;
   projectType?: ProjectType;
+  projectCode?: string;
   structureType?: StructureType;
   width?: number;
   length?: number;

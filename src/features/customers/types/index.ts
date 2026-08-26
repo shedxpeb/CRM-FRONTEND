@@ -105,9 +105,10 @@ export interface Customer {
   // Project Details
   projectTitle?: string;
   projectType?: string;
-
-  /** Settings-defined custom field values */
-  customFields?: Record<string, string | number | boolean>;
+  projectCode?: string;
+  accountTier?: string;
+  creditLimit?: number;
+  customFields?: Record<string, string | number | boolean | undefined>;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -191,6 +192,9 @@ export interface CreateCustomerDto {
   leadId?: string; // Reference to the lead that was converted to this customer
   projectTitle?: string;
   projectType?: string;
+  projectCode?: string;
+  accountTier?: string;
+  creditLimit?: number;
 }
 
 /**
@@ -218,6 +222,9 @@ export interface UpdateCustomerDto {
   notes?: string;
   projectTitle?: string;
   projectType?: string;
+  projectCode?: string;
+  accountTier?: string;
+  creditLimit?: number;
 }
 
 /**

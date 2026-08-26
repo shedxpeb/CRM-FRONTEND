@@ -87,10 +87,6 @@ export const createCustomerSchema = z.object({
     .optional()
     .nullable(),
 
-  customFields: z.record(z.string(), z.any())
-    .optional()
-    .nullable(),
-
   projectTitle: z.string()
     .optional()
     .nullable()
@@ -99,6 +95,17 @@ export const createCustomerSchema = z.object({
   projectType: z.string()
     .optional()
     .nullable(),
+
+  projectCode: z.string()
+    .optional()
+    .nullable()
+    .refine(val => !val || val === '' || val.length <= 50, 'Project code must be less than 50 characters'),
+
+  accountTier: z.string().optional(),
+
+  creditLimit: z.number().optional(),
+
+  customFields: z.record(z.string(), z.any()).optional(),
 });
 
 /**

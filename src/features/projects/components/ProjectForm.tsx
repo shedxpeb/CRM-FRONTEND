@@ -219,21 +219,122 @@ export const ProjectForm = memo(function ProjectForm({
     setValue,
     watch,
     formState: { errors },
+    reset,
   } = useForm<CreateProjectInput>({
-    resolver: zodResolver(createProjectSchema),
+    resolver: zodResolver(createProjectSchema) as any,
     defaultValues: {
-      ...initialData,
+      projectCode: '',
+      projectName: '',
+      customerId: prefillCustomerId || '',
+      customerName: '',
+      leadId: '',
       projectType: 'Industrial Shed',
+      value: undefined,
+      budget: undefined,
+      location: '',
+      city: '',
+      state: '',
+      pincode: '',
+      startDate: '',
+      endDate: '',
       priority: 'Medium',
+      projectManagerId: '',
+      projectManager: '',
       structureType: 'PEB Building',
+      width: undefined,
+      length: undefined,
+      height: undefined,
+      baySpacing: undefined,
       roofType: 'Standing Seam',
       craneSystem: 'None',
-      wallType: 'Single Skin',
       mezzanine: false,
+      wallType: 'Single Skin',
       insulation: false,
-      ...(prefillCustomerId && { customerId: prefillCustomerId }),
+      coveredArea: undefined,
+      totalWeight: undefined,
+      status: 'New',
+      stage: undefined,
+      progress: 0,
+      customFields: {},
     },
   });
+
+  // Reset form when switching between create/edit modes or when initialData changes
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      // In edit mode, load ALL saved values from initialData (fresh from server)
+      reset({
+        projectCode: initialData.projectCode || '',
+        projectName: initialData.projectName || '',
+        customerId: initialData.customerId || '',
+        customerName: initialData.customerName || '',
+        leadId: initialData.leadId || '',
+        projectType: initialData.projectType || 'Industrial Shed',
+        value: initialData.value !== undefined ? initialData.value : undefined,
+        budget: initialData.budget !== undefined ? initialData.budget : undefined,
+        location: initialData.location || '',
+        city: initialData.city || '',
+        state: initialData.state || '',
+        pincode: initialData.pincode || '',
+        startDate: initialData.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '',
+        endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '',
+        priority: initialData.priority || 'Medium',
+        projectManagerId: initialData.projectManagerId || '',
+        projectManager: initialData.projectManager || '',
+        structureType: initialData.structureType || 'PEB Building',
+        width: initialData.width !== undefined ? initialData.width : undefined,
+        length: initialData.length !== undefined ? initialData.length : undefined,
+        height: initialData.height !== undefined ? initialData.height : undefined,
+        baySpacing: initialData.baySpacing !== undefined ? initialData.baySpacing : undefined,
+        roofType: initialData.roofType || 'Standing Seam',
+        craneSystem: initialData.craneSystem || 'None',
+        mezzanine: initialData.mezzanine ?? false,
+        wallType: initialData.wallType || 'Single Skin',
+        insulation: initialData.insulation ?? false,
+        coveredArea: initialData.coveredArea !== undefined ? initialData.coveredArea : undefined,
+        totalWeight: initialData.totalWeight !== undefined ? initialData.totalWeight : undefined,
+        status: initialData.status || 'New',
+        stage: initialData.stage || undefined,
+        progress: initialData.progress || 0,
+      });
+    } else if (!isEditMode) {
+      // In create mode, use clean defaults
+      reset({
+        projectCode: '',
+        projectName: '',
+        customerId: prefillCustomerId || '',
+        customerName: '',
+        leadId: '',
+        projectType: 'Industrial Shed',
+        value: undefined,
+        budget: undefined,
+        location: '',
+        city: '',
+        state: '',
+        pincode: '',
+        startDate: '',
+        endDate: '',
+        priority: 'Medium',
+        projectManagerId: '',
+        projectManager: '',
+        structureType: 'PEB Building',
+        width: undefined,
+        length: undefined,
+        height: undefined,
+        baySpacing: undefined,
+        roofType: 'Standing Seam',
+        craneSystem: 'None',
+        mezzanine: false,
+        wallType: 'Single Skin',
+        insulation: false,
+        coveredArea: undefined,
+        totalWeight: undefined,
+        status: 'New',
+        stage: undefined,
+        progress: 0,
+      });
+    }
+  }, [isEditMode, initialData, prefillCustomerId, reset]);
 
   const customerId = watch('customerId');
   const projectManagerId = watch('projectManagerId');
@@ -330,18 +431,70 @@ export const ProjectForm = memo(function ProjectForm({
 
   const handleFormSubmit = (data: CreateProjectInput) => {
     if (isEditMode && initialData) {
-      // In edit mode, submit all data and let backend handle what needs to be updated
-      onSubmit({ ...data, customFields });
+      // In edit mode, only send fields that were actually modified
+      const updateData: any = { customFields };
+
+      // Helper to check if a field was modified
+      const isModified = (field: string, currentValue: any) => {
+        const initialValue = (initialData as any)[field];
+        // Handle different types of comparison
+        if (currentValue === undefined && initialValue === undefined) return false;
+        if (currentValue === null && initialValue === null) return false;
+        if (currentValue === '' && initialValue === null) return true; // Cleared
+        if (currentValue === null && initialValue !== null) return true; // Cleared
+        if (currentValue === '' && initialValue !== undefined && initialValue !== null && initialValue !== '') return true; // Cleared
+        if (currentValue !== initialValue) return true; // Changed
+        return false;
+      };
+
+      // Check each field and only include if modified
+      const allFields = [
+        'projectCode', 'projectName', 'customerId', 'customerName', 'leadId',
+        'projectType', 'value', 'budget', 'location', 'city', 'state', 'pincode',
+        'startDate', 'endDate', 'priority', 'projectManagerId', 'projectManager',
+        'structureType', 'width', 'length', 'height', 'baySpacing', 'roofType',
+        'craneSystem', 'mezzanine', 'wallType', 'insulation', 'coveredArea',
+        'totalWeight', 'status', 'stage', 'progress'
+      ];
+
+      allFields.forEach((field) => {
+        if (isModified(field, (data as any)[field])) {
+          // Convert empty strings to null for clearable fields
+          if ((data as any)[field] === '') {
+            updateData[field] = null;
+          } else if (['value', 'budget', 'width', 'length', 'height', 'baySpacing', 'coveredArea', 'totalWeight'].includes(field)) {
+            // Convert numeric fields
+            if ((data as any)[field] === undefined || (data as any)[field] === null) {
+              updateData[field] = null;
+            } else if (typeof (data as any)[field] === 'string') {
+              updateData[field] = parseFloat((data as any)[field]);
+            } else {
+              updateData[field] = (data as any)[field];
+            }
+          } else {
+            updateData[field] = (data as any)[field];
+          }
+        }
+      });
+
+      // Always include customFields if they exist
+      if (customFields && Object.keys(customFields).length > 0) {
+        updateData.customFields = customFields;
+      }
+
+      onSubmit(updateData);
       return;
     }
-    onSubmit({ ...data, customFields });
+    // In create mode, always remove projectCode to let backend generate it
+    const { projectCode, ...dataWithoutCode } = data;
+    onSubmit({ ...dataWithoutCode, customFields });
   };
 
   const customerStatus = customerProjectData?.data?.status;
   const isCustomerInactive = customerStatus === 'Inactive' || customerStatus === 'Churned';
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit as any)} className="space-y-6">
       {/* Auto-fill Notice */}
       {showAutoFillNotice && (
         <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-start gap-2">
