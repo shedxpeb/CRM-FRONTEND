@@ -73,21 +73,21 @@ export const ProjectRowActions = React.memo(function ProjectRowActions({
               label: 'Start Design',
               icon: FileText,
               onClick: () => onStartDesign?.(project),
-              hidden: !(project.status === 'Approved' && onStartDesign),
+              hidden: !(project.status === 'DesignApproved' && onStartDesign),
             },
             {
               key: 'create-boq',
               label: 'Create BOQ',
               icon: FileText,
               onClick: () => onCreateBOQ?.(project),
-              hidden: !(project.status === 'Design' && onCreateBOQ),
+              hidden: !(project.stage === 'BOQ' && onCreateBOQ),
             },
             {
               key: 'reserve-inventory',
               label: 'Reserve Inventory',
               icon: Package,
               onClick: () => onReserveInventory?.(project),
-              hidden: !((project.status === 'BOQ' || project.status === 'Procurement') && onReserveInventory),
+              hidden: !((project.stage === 'BOQ' || project.stage === 'Procurement') && onReserveInventory),
             },
             {
               key: 'assign-team',
@@ -101,7 +101,7 @@ export const ProjectRowActions = React.memo(function ProjectRowActions({
               label: 'Mark Complete',
               icon: CheckCircle,
               onClick: () => onMarkComplete?.(project),
-              hidden: !(project.status === 'Installation' && onMarkComplete),
+              hidden: !(project.stage === 'Installation' && onMarkComplete),
             },
           ],
           danger: [

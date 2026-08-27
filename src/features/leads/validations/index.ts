@@ -67,6 +67,8 @@ export const baseLeadSchema = z.object({
 
   projectType: z.enum(['Factory', 'Warehouse', 'IndustrialShed', 'Commercial', 'Residential', 'ColdStorage', 'Other']),
 
+  projectCode: z.string().max(50).optional().or(z.literal('')),
+
   structureType: z.enum(['PEB', 'SteelStructure', 'Hybrid', 'Other']),
 
   width: z.union([z.string(), z.number()]).optional(),

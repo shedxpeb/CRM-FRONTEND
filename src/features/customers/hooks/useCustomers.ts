@@ -160,25 +160,27 @@ export function useDeleteCustomer() {
 
   return useMutation({
     mutationFn: (id: string) => customersApi.delete(id),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['customers'] });
-      const previousCustomers = queryClient.getQueryData(['customers']);
-      queryClient.setQueryData(['customers'], (old: any) => ({
-        ...old,
-        items: old?.items?.filter((item: any) => item.id !== id) || [],
-      }));
-      return { previousCustomers };
-    },
-    onError: (error, _, context) => {
-      if (context?.previousCustomers) {
-        queryClient.setQueryData(['customers'], context.previousCustomers);
-      }
-    },
     onSuccess: () => {
+      // Invalidate all customer-related queries
       queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['customer'] });
       queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
+      // Invalidate all dashboard queries
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Invalidate projects to remove projects belonging to deleted customer
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
+      // Invalidate customer combobox used in project form
+      queryClient.invalidateQueries({ queryKey: ['customer-combobox'] });
+      // Invalidate leads (customers can come from leads)
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-kanban'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
+    },
+    onError: (error: any) => {
+      console.error('Customer deletion failed:', error);
     },
   });
 }
@@ -214,6 +216,11 @@ export function useBulkDeleteCustomers() {
       queryClient.invalidateQueries({ queryKey: ['customers', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // Invalidate projects to remove projects belonging to deleted customers
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', 'stats'] });
+      // Invalidate customer combobox used in project form
+      queryClient.invalidateQueries({ queryKey: ['customer-combobox'] });
     },
   });
 }

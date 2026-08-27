@@ -126,7 +126,20 @@ const baseColumns = [
     filterable: true,
     className: 'min-w-[100px] max-w-[130px] hidden lg:table-cell',
     headerClassName: 'hidden lg:table-cell',
-    render: (value: string) => <span className="text-xs truncate block">{value}</span>,
+    render: (_: unknown, row: Lead) => (
+      <div className="min-w-0">
+        <p className="text-xs truncate block">{row.projectType}</p>
+        {row.projectCode && <p className="text-[10px] text-muted-foreground truncate">{row.projectCode}</p>}
+      </div>
+    ),
+  },
+  {
+    key: 'projectCode' as const,
+    label: 'Project Code',
+    filterable: true,
+    className: 'min-w-[100px] max-w-[120px] hidden xl:table-cell',
+    headerClassName: 'hidden xl:table-cell',
+    render: (value: string) => <span className="text-xs font-mono truncate block">{value || '-'}</span>,
   },
   {
     key: 'structureType' as const,

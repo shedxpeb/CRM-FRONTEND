@@ -17,21 +17,23 @@ import {
  * Create Project Schema
  */
 export const createProjectSchema = z.object({
-  projectCode: z.string().min(2, 'Project code must be at least 2 characters').max(50, 'Project code must not exceed 50 characters'),
+  projectCode: z.string().min(2, 'Project code must be at least 2 characters').max(50, 'Project code must not exceed 50 characters').optional(),
   projectName: z.string().min(3, 'Project name must be at least 3 characters'),
   customerId: z.string().min(1, 'Customer is required'),
+  customerName: z.string().optional(),
   leadId: z.string().optional(),
   projectType: z.enum(['Industrial Shed', 'Warehouse', 'Factory', 'Commercial Building', 'Showroom', 'School', 'Hospital', 'Sports Complex', 'Airport Terminal', 'Other'] as const),
-  value: z.number().min(0, 'Value must be positive'),
-  budget: z.number().min(0, 'Budget must be positive'),
+  value: z.number().min(0, 'Value must be positive').optional(),
+  budget: z.number().min(0, 'Budget must be positive').optional(),
   location: z.string().min(3, 'Location must be at least 3 characters'),
   city: z.string().min(2, 'City is required'),
   state: z.string().min(2, 'State is required'),
   pincode: z.string().optional(),
-  startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().min(1, 'End date is required'),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   priority: z.enum(['Low', 'Medium', 'High', 'Urgent'] as const),
   projectManagerId: z.string().min(1, 'Project manager is required'),
+  projectManager: z.string().optional(),
   structureType: z.enum(['PEB Building', 'Conventional Steel', 'Hybrid', 'Pre-Engineered', 'Cold Storage'] as const),
   width: z.number().positive().optional(),
   length: z.number().positive().optional(),
@@ -44,6 +46,10 @@ export const createProjectSchema = z.object({
   insulation: z.boolean().optional(),
   coveredArea: z.number().positive().optional(),
   totalWeight: z.number().positive().optional(),
+  status: z.enum(['New', 'DesignInProgress', 'DesignApproved', 'Fabrication', 'DispatchReady', 'Dispatched', 'Installation', 'Completed', 'OnHold', 'Cancelled'] as const).optional(),
+  stage: z.enum(['Design', 'BOQ', 'Procurement', 'Fabrication', 'Dispatch', 'Installation', 'Handover'] as const).optional(),
+  progress: z.number().min(0).max(100).optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
 }).refine(
   (data) => {
     if (data.startDate && data.endDate) {
