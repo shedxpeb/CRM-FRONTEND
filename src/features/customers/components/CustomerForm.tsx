@@ -487,7 +487,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
 
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Email</label>
+              <label className="text-sm font-medium">Email *</label>
               <div className="relative">
                 <Input
                   data-field="email"

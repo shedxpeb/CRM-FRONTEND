@@ -160,6 +160,7 @@ export const ItemForm = memo(function ItemForm({
   const validate = (): boolean => {
     const next: FormErrors = {};
 
+    // Required fields (marked with * in UI)
     if (!formData.itemName.trim()) {
       next.itemName = 'Item name is required.';
     }
@@ -172,13 +173,13 @@ export const ItemForm = memo(function ItemForm({
       next.unit = 'Unit is required.';
     }
 
-    validatePositiveNumber(next, 'defaultRate', formData.defaultRate, 'Default rate');
-
+    // Optional fields - only validate if provided
     const gstRateNum = parseFloat(formData.gstRate);
     if (formData.gstRate && (isNaN(gstRateNum) || gstRateNum < 0 || gstRateNum > 100)) {
       next.gstRate = 'GST rate must be between 0 and 100.';
     }
 
+    validatePositiveNumber(next, 'defaultRate', formData.defaultRate, 'Default rate');
     validatePositiveNumber(next, 'weight', formData.weight, 'Weight');
     validatePositiveNumber(next, 'thickness', formData.thickness, 'Thickness');
     validatePositiveNumber(next, 'length', formData.length, 'Length');
@@ -399,7 +400,7 @@ export const ItemForm = memo(function ItemForm({
             <div>
               <Label htmlFor="itemTypeClass">Item Type Class</Label>
               <Select
-                value={formData.itemTypeClass || undefined}
+                value={formData.itemTypeClass || ''}
                 onValueChange={(value: string) =>
                   setFormData({ ...formData, itemTypeClass: value as ItemTypeClass })
                 }
@@ -419,7 +420,7 @@ export const ItemForm = memo(function ItemForm({
             <div>
               <Label htmlFor="taxType">Tax Type</Label>
               <Select
-                value={formData.taxType || undefined}
+                value={formData.taxType || ''}
                 onValueChange={(value: string) =>
                   setFormData({ ...formData, taxType: value as TaxType })
                 }
