@@ -646,6 +646,8 @@ export const ProjectForm = memo(function ProjectForm({
             {errors.customerId && <p className="text-sm text-red-500">{errors.customerId.message}</p>}
           </div>
 
+          
+
           {/* Customer Summary Card */}
           {customerId && !isEditMode && (
             <CustomerSummaryCard data={customerProjectData} isLoading={customerDataLoading} />
