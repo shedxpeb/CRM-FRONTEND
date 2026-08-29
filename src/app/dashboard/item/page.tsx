@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ROUTES } from '@/core/routes';
 import { EmptyState } from '@/components/states/EmptyState';
+import { DeleteItemDialog } from '@/components/dialog/DangerConfirmationDialog';
 import { Package, Plus, Download } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
 
@@ -66,6 +67,9 @@ export default function ItemPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string | number>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedItemForDelete, setSelectedItemForDelete] = useState<ItemMaster | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filterOptions = useMemo(() => {
     const categories = new Set<string>();
@@ -262,12 +266,27 @@ export default function ItemPage() {
 
   const handleDelete = useCallback(
     (item: ItemMaster) => {
-      if (confirm(`Delete item "${item.itemName}"?`)) {
-        deleteMutation.mutate(item.id);
-      }
+      setSelectedItemForDelete(item);
+      setShowDeleteDialog(true);
     },
-    [deleteMutation]
+    []
   );
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedItemForDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteMutation.mutateAsync(selectedItemForDelete.id);
+      setShowDeleteDialog(false);
+      setSelectedItemForDelete(null);
+      toast.success('Item deleted successfully');
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || 'Failed to delete item';
+      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleExport = useCallback(() => {
     const headers = ['Item Code', 'Item Name', 'Category', 'Brand', 'Unit', 'Rate', 'HSN', 'GST%', 'Status'];
@@ -419,6 +438,14 @@ export default function ItemPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <DeleteItemDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+        entityName={selectedItemForDelete ? `${selectedItemForDelete.itemName} (${selectedItemForDelete.itemCode})` : ''}
+      />
     </MainLayout>
     </RouteGuard>
   );

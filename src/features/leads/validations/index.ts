@@ -33,19 +33,25 @@ export const baseLeadSchema = z.object({
 
   addressLine1: z.string().max(255).optional().or(z.literal('')),
   addressLine2: z.string().max(255).optional().or(z.literal('')),
-  area: z.string().max(100).optional().or(z.literal('')),
+  area: z.string()
+    .min(1, 'Area is required')
+    .max(100, 'Area must be less than 100 characters')
+    .transform((val) => val.trim()),
 
   city: z.string()
+    .min(1, 'City is required')
     .max(50, 'City must be less than 50 characters')
-    .optional()
-    .or(z.literal('')),
+    .transform((val) => val.trim()),
 
   state: z.string()
+    .min(1, 'State is required')
     .max(50, 'State must be less than 50 characters')
-    .optional()
-    .or(z.literal('')),
+    .transform((val) => val.trim()),
 
-  country: z.string().max(50).optional().or(z.literal('')),
+  country: z.string()
+    .min(1, 'Country is required')
+    .max(50, 'Country must be less than 50 characters')
+    .transform((val) => val.trim()),
 
   pincode: z.string()
     .max(10, 'Pincode must be less than 10 characters')

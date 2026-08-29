@@ -10,14 +10,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CardSkeleton } from '@/components/loading/CardSkeleton';
 import { ErrorState } from '@/components/states/ErrorState';
-import { TrackingEngine } from '@/components/tracking/TrackingEngine';
-import { ActivityAuditLog } from '@/components/tracking/ActivityAuditLog';
 import { useItemMaster, useUpdateItemMaster } from '@/features/item-master/hooks/useItemMaster';
 import { getCategoryPath } from '@/features/item-master/data/categoryMasterData';
 import { ROUTES } from '@/core/routes';
 import {
   ArrowLeft, Edit, ChevronDown, ChevronRight, Package, DollarSign,
-  Percent, Scale, ExternalLink, Hash, FileText, Ruler, Weight,
+  Percent, Scale, ExternalLink, Hash, FileText, Weight,
 } from 'lucide-react';
 
 const ItemForm = dynamic(
@@ -178,11 +176,6 @@ export default function ItemDetailPage() {
 
         {/* Collapsible Sections */}
         <div className="space-y-3">
-          {/* Workflow */}
-          <Section title="Workflow / Status Pipeline" defaultOpen={true}>
-            <TrackingEngine entityType="item" entityId={itemId} />
-          </Section>
-
           {/* Overview */}
           <Section title="Overview" defaultOpen={false}>
             <InfoGrid
@@ -302,11 +295,6 @@ export default function ItemDetailPage() {
                 <p className="text-xs text-muted-foreground">Open Documents module</p>
               </div>
             </div>
-          </Section>
-
-          {/* Activities */}
-          <Section title="Activities & Audit Log" defaultOpen={false}>
-            <ActivityAuditLog entityType="item" entityId={itemId} />
           </Section>
         </div>
       </div>

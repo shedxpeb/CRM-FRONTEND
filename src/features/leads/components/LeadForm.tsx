@@ -505,15 +505,22 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Area</label>
+              <label className="text-sm font-medium">Area <span className="text-red-500">*</span></label>
               <Input
                 placeholder="Enter area"
                 value={formData.area ?? ''}
                 onChange={(e) => handleInputChange('area', e.target.value)}
+                className={errors.area ? 'border-red-500' : ''}
               />
+              {errors.area && (
+                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.area}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">City</label>
+              <label className="text-sm font-medium">City <span className="text-red-500">*</span></label>
               <Input
                 placeholder="Enter city"
                 value={formData.city ?? ''}
@@ -528,7 +535,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">State</label>
+              <label className="text-sm font-medium">State <span className="text-red-500">*</span></label>
               <Input
                 placeholder="Enter state"
                 value={formData.state ?? ''}
@@ -558,12 +565,19 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Country</label>
+              <label className="text-sm font-medium">Country <span className="text-red-500">*</span></label>
               <Input
                 placeholder="Enter country"
                 value={formData.country ?? ''}
                 onChange={(e) => handleInputChange('country', e.target.value)}
+                className={errors.country ? 'border-red-500' : ''}
               />
+              {errors.country && (
+                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.country}
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
