@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,7 @@ const vendorSchema = z.object({
   gstNumber: z.string().optional(),
   panNumber: z.string().optional(),
   contactPerson: z.string().min(1, 'Contact person is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  email: z.string().min(1, 'Email is required').email('Invalid email'),
   phone: z.string().min(1, 'Phone is required'),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -36,8 +37,8 @@ const vendorSchema = z.object({
   pincode: z.string().optional(),
   country: z.string().optional(),
   paymentTerms: z.string().optional(),
-  creditLimit: z.number().optional(),
-  creditDays: z.number().optional(),
+  creditLimit: z.any().optional(),
+  creditDays: z.any().optional(),
   status: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -59,6 +60,7 @@ export function VendorForm({ open, onOpenChange, onSubmit, initialData, isSubmit
     formState: { errors },
     setValue,
     watch,
+    reset,
   } = useForm<VendorFormData>({
     resolver: zodResolver(vendorSchema),
     defaultValues: initialData ? {
@@ -84,8 +86,23 @@ export function VendorForm({ open, onOpenChange, onSubmit, initialData, isSubmit
     },
   });
 
+  useEffect(() => {
+    if (!initialData) {
+      reset({
+        status: 'Active',
+        country: 'India',
+      });
+    }
+  }, [initialData, reset]);
+
   const onFormSubmit = async (data: VendorFormData) => {
-    await onSubmit(data);
+    // Convert empty strings to undefined for optional number fields
+    const submitData = {
+      ...data,
+      creditLimit: (data.creditLimit === '' || data.creditLimit === undefined) ? undefined : (typeof data.creditLimit === 'string' ? Number(data.creditLimit) : data.creditLimit),
+      creditDays: (data.creditDays === '' || data.creditDays === undefined) ? undefined : (typeof data.creditDays === 'string' ? Number(data.creditDays) : data.creditDays),
+    };
+    await onSubmit(submitData);
   };
 
   return (
@@ -131,7 +148,7 @@ export function VendorForm({ open, onOpenChange, onSubmit, initialData, isSubmit
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input id="email" type="email" {...register('email')} />
               {errors.email && (
                 <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -216,19 +233,19 @@ export function VendorForm({ open, onOpenChange, onSubmit, initialData, isSubmit
             </div>
             <div className="space-y-2">
               <Label htmlFor="creditLimit">Credit Limit</Label>
-              <Input id="creditLimit" type="number" {...register('creditLimit', { valueAsNumber: true })} />
+              <Input id="creditLimit" type="number" {...register('creditLimit')} />
               {errors.creditLimit && (
-                <p className="text-sm text-red-500">{errors.creditLimit.message}</p>
+                <p className="text-sm text-red-500">{String(errors.creditLimit.message)}</p>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="creditDays">Credit Days</Label>
-            <Input id="creditDays" type="number" {...register('creditDays', { valueAsNumber: true })} />
+            <Input id="creditDays" type="number" {...register('creditDays')} />
             {errors.creditDays && (
-              <p className="text-sm text-red-500">{errors.creditDays.message}</p>
-            )}
+              <p className="text-sm text-red-500">{String(errors.creditDays.message)}</p>
+              )}
           </div>
 
           <div className="space-y-2">
