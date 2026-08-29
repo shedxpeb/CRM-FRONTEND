@@ -218,3 +218,21 @@ export function DeleteDocumentDialog(props: Omit<DangerConfirmationDialogProps, 
     />
   );
 }
+
+export function DeleteItemDialog(props: Omit<DangerConfirmationDialogProps, 'title' | 'consequences'>) {
+  return (
+    <DangerConfirmationDialog
+      {...props}
+      title="Delete Item"
+      consequences={[
+        'Permanently remove this item from the system',
+        'Remove the item from Item Master',
+        'Remove the item from available item selections/dropdowns',
+        'Remove the item from linked inventory/item references where applicable',
+        'Clear applicable item-related follow-ups or references',
+        'Delete/archive the item according to the existing Item Master deletion rules',
+      ]}
+      additionalInfo="Related inventory, purchase, or historical records will be preserved where required, but they will no longer reference this item."
+    />
+  );
+}
