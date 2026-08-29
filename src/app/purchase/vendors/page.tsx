@@ -65,6 +65,7 @@ export default function VendorsPage() {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
       queryClient.invalidateQueries({ queryKey: ['vendor-stats'] });
       setShowForm(false);
+      setEditingVendor(null);
       toast.success('Vendor created successfully');
     },
     onError: (error: any) => {
@@ -203,22 +204,20 @@ export default function VendorsPage() {
               <TableHead>Contact Person</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>GST</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Outstanding</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : data?.data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   No vendors found
                 </TableCell>
               </TableRow>
@@ -229,7 +228,6 @@ export default function VendorsPage() {
                   <TableCell>{vendor.contactPerson}</TableCell>
                   <TableCell>{vendor.phone}</TableCell>
                   <TableCell>{vendor.email || '-'}</TableCell>
-                  <TableCell>{vendor.gstNumber || '-'}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -241,7 +239,6 @@ export default function VendorsPage() {
                       {vendor.status}
                     </span>
                   </TableCell>
-                  <TableCell>₹{vendor.outstanding.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
                     <VendorRowActions
                       vendor={vendor}
