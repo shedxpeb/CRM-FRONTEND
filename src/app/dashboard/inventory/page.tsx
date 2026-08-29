@@ -26,9 +26,7 @@ import {
   useInventoryConfiguration,
 } from '@/features/inventory/hooks/useInventory';
 import { InventoryItem, StockStatus, ItemTypeClass, CreateInventoryItemDto } from '@/features/inventory/types';
-import { getStockStatusVariant } from '@/features/inventory/constants';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ROUTES } from '@/core/routes';
 import { useDebounce } from '@/shared/hooks/useDebounce';
@@ -243,62 +241,18 @@ export default function InventoryPage() {
 
   const baseColumns: Column<InventoryItem>[] = useMemo(
     () => [
-      { key: 'itemCode', label: 'Code', sortable: true, className: 'w-[90px]', render: (v) => <span className="font-mono text-xs">{v}</span> },
-      {
-        key: 'itemName',
-        label: 'Item',
-        sortable: true,
-        className: 'min-w-[140px] max-w-[200px]',
-        render: (_, row) => (
-          <div className="min-w-0">
-            <p className="font-medium text-xs truncate">{row.itemName}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{row.category || '-'}</p>
-          </div>
-        ),
-      },
-      { key: 'brand', label: 'Brand', sortable: true, className: 'hidden md:table-cell', headerClassName: 'hidden md:table-cell', render: (v) => <span className="text-xs">{v || '-'}</span> },
-      { key: 'currentStock', label: 'Stock', sortable: true, render: (v, row) => <span className="text-xs font-medium">{Number(v).toLocaleString()} {row.unit}</span> },
-      { key: 'availableStock', label: 'Available', sortable: true, className: 'hidden sm:table-cell', headerClassName: 'hidden sm:table-cell', render: (v, row) => <span className="text-xs text-green-700">{Number(v).toLocaleString()} {row.unit}</span> },
-      { key: 'warehouseName', label: 'Warehouse', sortable: true, className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell', render: (v) => <span className="text-xs truncate">{v}</span> },
-      { key: 'binLocation', label: 'Bin', sortable: true, className: 'hidden xl:table-cell', headerClassName: 'hidden xl:table-cell', render: (v) => <span className="text-xs font-mono">{v || '-'}</span> },
-      {
-        key: 'totalValue',
-        label: 'Value',
-        sortable: true,
-        className: 'hidden lg:table-cell',
-        headerClassName: 'hidden lg:table-cell',
-        render: (v) => <span className="text-xs font-medium">₹{Number(v).toLocaleString()}</span>,
-      },
-      {
-        key: 'status',
-        label: 'Status',
-        sortable: true,
-        render: (v) => (
-          <Badge variant={getStockStatusVariant(v as StockStatus)} className="text-[10px]">
-            {v}
-          </Badge>
-        ),
-      },
+      { key: 'itemCode', label: 'Item Code', sortable: true, className: 'w-[100px]', render: (v) => <span className="font-mono text-xs">{v}</span> },
+      { key: 'currentStock', label: 'Current Stock', sortable: true, render: (v, row) => <span className="text-xs font-medium">{Number(v || 0).toLocaleString()} {row.unit || 'PCS'}</span> },
+      { key: 'warehouseName', label: 'Warehouse', sortable: true, className: 'hidden sm:table-cell', headerClassName: 'hidden sm:table-cell', render: (v) => <span className="text-xs truncate">{v || '-'}</span> },
+      { key: 'binLocation', label: 'Bin Location', sortable: true, className: 'hidden md:table-cell', headerClassName: 'hidden md:table-cell', render: (v) => <span className="text-xs font-mono">{v || '-'}</span> },
+      { key: 'minimumStock', label: 'Min Stock', sortable: true, className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell', render: (v, row) => <span className="text-xs">{Number(v || 0).toLocaleString()} {row.unit || 'PCS'}</span> },
+      { key: 'reorderLevel', label: 'Reorder Level', sortable: true, className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell', render: (v, row) => <span className="text-xs">{Number(v || 0).toLocaleString()} {row.unit || 'PCS'}</span> },
+      { key: 'status', label: 'Status', sortable: true, className: 'hidden xl:table-cell', headerClassName: 'hidden xl:table-cell', render: (v) => <span className="text-xs">{v}</span> },
     ],
     []
   );
 
-  const settingsCustomColumnDefs = useMemo(
-    () =>
-      inventoryConfig.customFields.map((field) => ({
-        key: field.key as keyof InventoryItem,
-        label: field.label,
-        sortable: true,
-        className: 'hidden 2xl:table-cell',
-        headerClassName: 'hidden 2xl:table-cell',
-        render: (_: unknown, row: InventoryItem) => (
-          <span className="text-xs truncate block">{getInventoryCustomFieldValue(row, field.key)?.toString() ?? '-'}</span>
-        ),
-      })),
-    [inventoryConfig.customFields]
-  );
-
-  const columns = useMemo(() => [...baseColumns, ...settingsCustomColumnDefs], [baseColumns, settingsCustomColumnDefs]);
+  const columns = useMemo(() => baseColumns, [baseColumns]);
 
   const handleRowClick = useCallback((item: InventoryItem) => {
     router.push(ROUTES.inventoryDetail(item.id));
