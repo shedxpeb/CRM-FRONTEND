@@ -12,7 +12,7 @@ interface OtpRecoveryState {
   resendAvailableAt: number;
 }
 
-const STORAGE_KEY = 'peb-crm:otp-recovery';
+const STORAGE_KEY = 'BuildX:otp-recovery';
 
 function readState(): OtpRecoveryState | null {
   if (typeof window === 'undefined') return null;

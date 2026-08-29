@@ -54,7 +54,47 @@ export const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-// ─── Single-Flight Refresh ───────────────────────────────────────────────────
+// ── Browser-wide refresh coordination ──────────────────────────────────────────
+// Prevent two tabs from simultaneously performing refresh.
+// Uses BroadcastChannel with localStorage fallback. Only one tab may initiate a refresh at a time.
+let refreshInProgressInOtherTab = false;
+
+const REFRESH_BC_CHANNEL = typeof window !== 'undefined' ? new BroadcastChannel('crm_refresh_channel') : null;
+
+if (REFRESH_BC_CHANNEL) {
+  REFRESH_BC_CHANNEL.onmessage = (event: MessageEvent) => {
+    if (event.data?.type === 'refresh-in-progress') {
+      refreshInProgressInOtherTab = true;
+    }
+    if (event.data?.type === 'refresh-done') {
+      refreshInProgressInOtherTab = false;
+    }
+  };
+}
+
+// LocalStorage fallback for browsers without BroadcastChannel support
+if (!REFRESH_BC_CHANNEL) {
+  const REFRESH_LS_KEY = 'crm_refresh_in_progress';
+  const checkLS = setInterval(() => {
+    const lsInProgress = localStorage.getItem(REFRESH_LS_KEY) === 'true';
+    if (!lsInProgress) {
+      clearInterval(checkLS);
+      // Set the lock immediately
+      localStorage.setItem(REFRESH_LS_KEY, 'true');
+      refreshInProgressInOtherTab = false;
+    }
+  }, 100);
+  setTimeout(() => clearInterval(checkLS), 10000);
+}
+
+function broadcastRefreshStart() {
+  REFRESH_BC_CHANNEL?.postMessage?.({ type: 'refresh-in-progress' }) ?? localStorage.setItem('crm_refresh_in_progress', 'true');
+}
+function broadcastRefreshDone() {
+  REFRESH_BC_CHANNEL?.postMessage?.({ type: 'refresh-done' }) ?? localStorage.removeItem('crm_refresh_in_progress');
+}
+
+// ── Single-Flight Refresh ───────────────────────────────────────────────────
 // Both the proactive timer and the 401 interceptor must share ONE refresh
 // attempt. A stale refresh token cookie, a 502 from the proxy, or a network
 // hiccup should never cause multiple parallel refreshes or an accidental logout.
@@ -64,6 +104,24 @@ let refreshInFlight: Promise<RefreshResult> | null = null;
 
 /** Core refresh — only this function should call the /auth/refresh endpoint. */
 async function doRefresh(): Promise<RefreshResult> {
+  // Check if another tab is already refreshing
+  if (refreshInProgressInOtherTab) {
+    // Wait for the other tab's refresh to complete
+    return new Promise<RefreshResult>((resolve) => {
+      const check = setInterval(() => {
+        if (!refreshInProgressInOtherTab) {
+          clearInterval(check);
+          doRefresh().then(resolve).catch(resolve);
+        }
+      }, 100);
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(check);
+        resolve({ accessToken: '' } as RefreshResult);
+      }, 10000);
+    });
+  }
+
   const { data } = await axios.post(
     `${API_BASE_URL}/auth/refresh`,
     {},
@@ -83,12 +141,26 @@ async function doRefresh(): Promise<RefreshResult> {
  * Public single-flight refresh entry point.
  * If a refresh is already in progress, subsequent callers receive the same
  * promise instead of triggering a second network call.
+ * Also coordinates across tabs via BroadcastChannel.
+ * Broadcasts refresh start/done to prevent concurrent refreshes across tabs.
  */
 export async function silentRefresh(): Promise<string> {
-  if (refreshInFlight) return refreshInFlight.then(r => r.accessToken);
+  // Broadcast that this tab is starting a refresh
+  broadcastRefreshStart();
+
+  // Check if another tab already has an in-flight refresh promise
+  if (refreshInFlight) {
+    // Other tab is refreshing - wait for it to complete, then allow this one to proceed
+    refreshInFlight.then(() => {
+      broadcastRefreshDone();
+    });
+    return refreshInFlight.then(r => r.accessToken);
+  }
 
   refreshInFlight = doRefresh().finally(() => {
     refreshInFlight = null;
+    // Notify other tabs that refresh is done
+    broadcastRefreshDone();
   });
 
   return refreshInFlight.then(r => r.accessToken);
