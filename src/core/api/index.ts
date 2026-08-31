@@ -73,7 +73,7 @@ if (REFRESH_BC_CHANNEL) {
 }
 
 // LocalStorage fallback for browsers without BroadcastChannel support
-if (!REFRESH_BC_CHANNEL) {
+if (!REFRESH_BC_CHANNEL && typeof window !== 'undefined' && localStorage) {
   const REFRESH_LS_KEY = 'crm_refresh_in_progress';
   const checkLS = setInterval(() => {
     const lsInProgress = localStorage.getItem(REFRESH_LS_KEY) === 'true';
@@ -88,10 +88,10 @@ if (!REFRESH_BC_CHANNEL) {
 }
 
 function broadcastRefreshStart() {
-  REFRESH_BC_CHANNEL?.postMessage?.({ type: 'refresh-in-progress' }) ?? localStorage.setItem('crm_refresh_in_progress', 'true');
+  REFRESH_BC_CHANNEL?.postMessage?.({ type: 'refresh-in-progress' }) ?? (typeof window !== 'undefined' && localStorage?.setItem('crm_refresh_in_progress', 'true'));
 }
 function broadcastRefreshDone() {
-  REFRESH_BC_CHANNEL?.postMessage?.({ type: 'refresh-done' }) ?? localStorage.removeItem('crm_refresh_in_progress');
+  REFRESH_BC_CHANNEL?.postMessage?.({ type: 'refresh-done' }) ?? (typeof window !== 'undefined' && localStorage?.removeItem('crm_refresh_in_progress'));
 }
 
 // ── Single-Flight Refresh ───────────────────────────────────────────────────

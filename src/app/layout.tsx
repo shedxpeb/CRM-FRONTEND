@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PEB CRM + ERP",
-  description: "Pre-Engineered Building CRM and ERP Management System",
+  title: "BuildX CRM + ERP",
+  description: "BuildX CRM and ERP Management System",
 };
 
 export default function RootLayout({

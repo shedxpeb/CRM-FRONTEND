@@ -125,7 +125,7 @@ export const Sidebar = memo(function Sidebar({ currentPath }: SidebarProps) {
           'flex items-center justify-between border-b border-border flex-shrink-0',
           isCollapsed ? 'justify-center h-[64px] px-0' : 'h-[56px] px-5'
         )}>
-          {!isCollapsed && <h1 className="text-2xl font-bold text-foreground truncate tracking-tight">PEB CRM</h1>}
+          {!isCollapsed && <h1 className="text-2xl font-bold text-foreground truncate tracking-tight">BuildX CRM</h1>}
           <div className={cn(isCollapsed ? 'hidden lg:block' : '')}>
             <button
               type="button"
@@ -278,7 +278,7 @@ export const Sidebar = memo(function Sidebar({ currentPath }: SidebarProps) {
         {/* Footer */}
         <div className={cn('border-t border-border flex-shrink-0', isCollapsed ? 'p-4' : 'px-4 py-3')}>
           {!isCollapsed && (
-            <p className="text-xs text-muted-foreground text-center">© 2026 PEB CRM</p>
+            <p className="text-xs text-muted-foreground text-center">© 2026 BuildX CRM</p>
           )}
         </div>
       </aside>
