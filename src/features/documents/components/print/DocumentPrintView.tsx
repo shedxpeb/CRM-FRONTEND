@@ -97,6 +97,9 @@ export function DocumentPrintView({ model, company, authorizedBy, authorizedDesi
             {model.proposalSections?.estimateNumber && (
               <FieldRow label="Estimate #" value={model.proposalSections.estimateNumber} />
             )}
+            {model.quotationSections?.proposalNumber && (
+              <FieldRow label="Proposal #" value={model.quotationSections.proposalNumber} />
+            )}
             {model.quotationSections?.sourceEstimateNumber && (
               <FieldRow label="Estimate #" value={model.quotationSections.sourceEstimateNumber} />
             )}

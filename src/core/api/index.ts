@@ -73,7 +73,7 @@ if (REFRESH_BC_CHANNEL) {
 }
 
 // LocalStorage fallback for browsers without BroadcastChannel support
-if (!REFRESH_BC_CHANNEL && typeof window !== 'undefined' && localStorage) {
+if (!REFRESH_BC_CHANNEL && typeof window !== 'undefined') {
   const REFRESH_LS_KEY = 'crm_refresh_in_progress';
   const checkLS = setInterval(() => {
     const lsInProgress = localStorage.getItem(REFRESH_LS_KEY) === 'true';

@@ -36,7 +36,7 @@ export function QuotationsPage() {
   const shouldCreate = searchParams.get('create') === 'true';
 
   const { data: quotationsResponse, loading, createQuotation, updateQuotation, deleteQuotation, refetch } = useQuotations({ page: 1, pageSize: 1000 });
-  const { previewPdf, downloadPdf, PdfPreviewDialog } = useDocumentPdfActions();
+  const { previewPdf, downloadPdf, previewServerPdf, downloadServerPdf, PdfPreviewDialog } = useDocumentPdfActions();
   const quotations = quotationsResponse || [];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,7 +93,7 @@ export function QuotationsPage() {
         quot.quotationNumber.toLowerCase().includes(q) ||
         quot.customerName.toLowerCase().includes(q) ||
         (quot.projectName?.toLowerCase().includes(q) ?? false) ||
-        quot.proposalNumber.toLowerCase().includes(q) ||
+        (quot.proposalNumber?.toLowerCase().includes(q) ?? false) ||
         quot.status.toLowerCase().includes(q) ||
         creator.toLowerCase().includes(q);
       return matchesStatus && matchesCustomer && matchesProject && matchesCreator && matchesSearch;
@@ -202,7 +202,7 @@ export function QuotationsPage() {
   const handleDuplicateQuotation = async (quotation: Quotation) => {
     try {
       const duplicateData: CreateQuotationDto = {
-        proposalId: quotation.proposalId,
+        ...(quotation.proposalId ? { proposalId: quotation.proposalId } : {}),
         paymentTerms: quotation.paymentTerms,
         pricingConfiguration: quotation.pricingConfiguration,
         validUntil: quotation.validUntil,
@@ -220,7 +220,7 @@ export function QuotationsPage() {
   const handleBuilderSave = async (data: CreateQuotationDto) => {
     try {
       if (editingQuotation) {
-        await updateQuotation(editingQuotation.id, data);
+        await updateQuotation(editingQuotation.id, data as Partial<Quotation>);
       } else {
         await createQuotation(data);
       }
@@ -241,7 +241,7 @@ export function QuotationsPage() {
         subtitle="Manage quotation documents"
         kpiGridClassName="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4"
         headerActions={
-          <Button onClick={() => alert('Quotations are created from Proposals. Convert a proposal to create a quotation snapshot.')} className="h-9" variant="outline">
+          <Button onClick={() => { setEditingQuotation(null); setSelectedProposal(null); setIsBuilderDialogOpen(true); }} className="h-9" variant="outline">
             <Plus className="h-4 w-4 mr-2" />
             New Quotation
           </Button>
@@ -276,8 +276,8 @@ export function QuotationsPage() {
               onDelete={() => handleDeleteQuotation(row)}
               onSend={() => {}}
               onConvertToProject={() => handleConvertToProject(row)}
-              onPreviewPdf={() => previewPdf(row)}
-              onDownload={() => downloadPdf(row)}
+              onPreviewPdf={() => previewServerPdf(row)}
+              onDownload={() => downloadServerPdf(row)}
               onDuplicate={() => handleDuplicateQuotation(row)}
             />
           )}
@@ -289,14 +289,12 @@ export function QuotationsPage() {
           <DialogHeader>
             <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.quotationNumber}` : 'Create New Quotation'}</DialogTitle>
           </DialogHeader>
-          {(selectedProposal || editingQuotation) && (
-            <QuotationBuilder
-              proposal={selectedProposal ?? ({ id: editingQuotation!.proposalId, proposalNumber: editingQuotation!.proposalNumber, customerId: editingQuotation!.customerId, customerName: editingQuotation!.customerName } as Proposal)}
-              quotation={editingQuotation || undefined}
-              onSave={handleBuilderSave}
-              onCancel={() => { setIsBuilderDialogOpen(false); setEditingQuotation(null); setSelectedProposal(null); }}
-            />
-          )}
+          <QuotationBuilder
+            proposal={selectedProposal ?? (editingQuotation?.proposalId ? { id: editingQuotation.proposalId, proposalNumber: editingQuotation.proposalNumber, customerId: editingQuotation.customerId, customerName: editingQuotation.customerName } as Proposal : null)}
+            quotation={editingQuotation || undefined}
+            onSave={handleBuilderSave}
+            onCancel={() => { setIsBuilderDialogOpen(false); setEditingQuotation(null); setSelectedProposal(null); }}
+          />
         </DialogContent>
       </Dialog>
 

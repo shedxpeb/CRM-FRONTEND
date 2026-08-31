@@ -32,7 +32,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   onCancel,
 }: QuotationBuilderProps) {
   // Smart Autofill - fetch customer data and last quotation
-  const autofillData = useCustomerAutofill(proposal?.customerId || '');
+  const autofillData = useCustomerAutofill(proposal?.customerId || quotation?.customerId || '');
 
   const [materialSelections, setMaterialSelections] = useState<MaterialSelection[]>(
     quotation?.materialSelections || proposal?.materialSelections || []
@@ -88,7 +88,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
 
   const handleSave = () => {
     const quotationDto: CreateQuotationDto = {
-      proposalId: proposal?.id || '',
+      ...(proposal?.id ? { proposalId: proposal.id } : {}),
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       paymentTerms,
       deliveryTerms: '4-6 weeks from order confirmation',
@@ -129,9 +129,8 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold">Quotation Builder</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            From Proposal: {proposal?.proposalNumber || 'N/A'} | Customer: {proposal?.customerName || 'N/A'}
+          <h2 className="text-xl sm:text-2xl font-bold">Quotation Builder</h2>            <p className="text-xs sm:text-sm text-muted-foreground">
+            {proposal ? `From Proposal: ${proposal.proposalNumber}` : 'Standalone Quotation'} | Customer: {proposal?.customerName || quotation?.customerName || 'N/A'}
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">

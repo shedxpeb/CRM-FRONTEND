@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useCompany } from '@/features/settings/hooks/useSettings';
+import { apiClient } from '@/core/api';
 import type { Company } from '@/features/settings/types';
 import { DocumentPdfPreviewDialog } from '../components/DocumentPdfPreviewDialog';
 import { AnyCommercialDocument, getDocumentNumber, getDocumentType } from '../utils/documentHelpers';
@@ -21,6 +22,7 @@ export function useDocumentPdfActions() {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const previewUrlRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const companyPdfProps = useMemo(
     () =>
@@ -46,6 +48,11 @@ export function useDocumentPdfActions() {
   }, []);
 
   const closePreview = useCallback(() => {
+    // Abort any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setPreviewOpen(false);
     revokePreviewUrl();
     setPreviewDocument(null);
@@ -58,6 +65,8 @@ export function useDocumentPdfActions() {
     },
     [closePreview]
   );
+
+  // ─── Client-side PDF (existing React-PDF flow) ──────────────────────────
 
   const previewPdf = useCallback(
     async (document: AnyCommercialDocument) => {
@@ -91,6 +100,88 @@ export function useDocumentPdfActions() {
       }
     },
     [companyPdfProps]
+  );
+
+  // ─── Server-side PDF (backend Playwright + Handlebars) ─────────────────
+
+  const generateServerPdf = useCallback(async (document: AnyCommercialDocument): Promise<Blob | null> => {
+    const doc = document as unknown as Record<string, unknown>;
+    const id = doc.id as string;
+    if (!id) return null;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      setLoading(true);
+      const response = await apiClient.get(`/quotations/${id}/pdf`, {
+        responseType: 'blob',
+        signal: controller.signal as any,
+      });
+
+      // response.data is already a Blob from axios responseType: 'blob'
+      const blob = response.data instanceof Blob ? response.data : new Blob([response.data], { type: 'application/pdf' });
+      return blob;
+    } catch (error: any) {
+      if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
+        return null;
+      }
+      throw error;
+    } finally {
+      abortControllerRef.current = null;
+      setLoading(false);
+    }
+  }, []);
+
+  const previewServerPdf = useCallback(
+    async (document: AnyCommercialDocument) => {
+      setPreviewOpen(true);
+      setPreviewDocument(document);
+      setPreviewTitle(`Quotation ${(document as unknown as Record<string, unknown>).quotationNumber || getDocumentNumber(document)}`);
+      revokePreviewUrl();
+
+      try {
+        const blob = await generateServerPdf(document);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          previewUrlRef.current = url;
+          setPreviewUrl(url);
+        }
+      } catch (error) {
+        setPreviewUrl(null);
+      }
+    },
+    [generateServerPdf, revokePreviewUrl]
+  );
+
+  const downloadServerPdf = useCallback(
+    async (document: AnyCommercialDocument) => {
+      setDownloading(true);
+      try {
+        // Reuse existing blob if preview is open for same document
+        if (previewUrlRef.current && previewDocument?.id === document.id) {
+          const link = window.document.createElement('a');
+          link.href = previewUrlRef.current;
+          link.download = `${(document as unknown as Record<string, unknown>).quotationNumber || 'quotation'}.pdf`;
+          link.click();
+        } else {
+          const blob = await generateServerPdf(document);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = window.document.createElement('a');
+            link.href = url;
+            link.download = `${(document as unknown as Record<string, unknown>).quotationNumber || 'quotation'}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+          }
+        }
+      } catch (error) {
+        // Failed to download PDF
+      } finally {
+        setDownloading(false);
+      }
+    },
+    [generateServerPdf, previewDocument]
   );
 
   const downloadPreviewPdf = useCallback(async () => {
@@ -127,6 +218,9 @@ export function useDocumentPdfActions() {
   return {
     previewPdf,
     downloadPdf,
+    previewServerPdf,
+    downloadServerPdf,
+    generateServerPdf,
     PdfPreviewDialog,
     pdfLoading: loading,
     pdfDownloading: downloading,
