@@ -1,5 +1,5 @@
 /**
- * PEB CRM Design System
+ * BuildX CRM Design System
  * Consistent UI/UX standards across all modules
  */
 
