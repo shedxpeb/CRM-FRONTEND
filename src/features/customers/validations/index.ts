@@ -25,9 +25,8 @@ export const createCustomerSchema = z.object({
     .refine(val => !val || val === '' || /^\+?[\d\s\-()]{7,15}$/.test(val), 'Alternate mobile number is invalid'),
 
   email: z.string()
-    .optional()
-    .nullable()
-    .refine(val => !val || val === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Invalid email address'),
+    .min(1, 'Email is required')
+    .email('Invalid email address'),
 
   gstNumber: z.string()
     .optional()
@@ -39,9 +38,13 @@ export const createCustomerSchema = z.object({
     .nullable()
     .refine(val => !val || val === '' || /^[A-Z]{5}\d{4}[A-Z]{1}$/.test(val), 'Invalid PAN number format'),
 
-  industry: z.string().min(1, 'Industry is required'),
+  industry: z.string()
+    .optional()
+    .nullable(),
 
-  businessType: z.string().min(1, 'Business type is required'),
+  businessType: z.string()
+    .optional()
+    .nullable(),
 
   website: z.string()
     .optional()
@@ -76,7 +79,7 @@ export const createCustomerSchema = z.object({
 
   source: z.string().min(1, 'Source is required'),
 
-  status: z.string().optional().default('Prospect'),
+  status: z.string().optional().default('Active'),
 
   notes: z.string()
     .optional()
@@ -88,9 +91,8 @@ export const createCustomerSchema = z.object({
     .nullable(),
 
   projectTitle: z.string()
-    .optional()
-    .nullable()
-    .refine(val => !val || val === '' || (val.length >= 3 && val.length <= 200), 'Project name must be between 3 and 200 characters'),
+    .min(1, 'Project name is required')
+    .refine(val => val.length >= 3 && val.length <= 200, 'Project name must be between 3 and 200 characters'),
 
   projectType: z.string()
     .optional()
@@ -101,9 +103,23 @@ export const createCustomerSchema = z.object({
     .nullable()
     .refine(val => !val || val === '' || val.length <= 50, 'Project code must be less than 50 characters'),
 
-  accountTier: z.string().optional(),
+  accountTier: z.string()
+    .optional()
+    .nullable()
+    .refine(val => !val || val === '' || val.length <= 50, 'Account tier must be less than 50 characters'),
 
-  creditLimit: z.number().optional(),
+  creditLimit: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) {
+        return null;
+      }
+      return Number(val);
+    },
+    z.number()
+      .nullable()
+      .optional()
+      .refine(val => val === null || val === undefined || val >= 0, 'Credit limit must be a positive number')
+  ),
 
   customFields: z.record(z.string(), z.any()).optional(),
 });
