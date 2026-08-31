@@ -570,11 +570,11 @@ export interface Quotation {
   quotationNumber: string;
   version: number;
   
-  // Source Proposal
-  proposalId: string;
-  proposalNumber: string;
-  sourceEstimateId: string;
-  sourceEstimateNumber: string;
+  // Source Proposal (optional — standalone quotations have these as null)
+  proposalId?: string;
+  proposalNumber?: string;
+  sourceEstimateId?: string;
+  sourceEstimateNumber?: string;
   
   // Customer (inherited from Proposal)
   customerId: string;
@@ -830,9 +830,9 @@ export interface UpdateProposalDto {
 
 // Quotation DTOs
 export interface CreateQuotationDto {
-  proposalId: string;
+  proposalId?: string | null;
   validUntil?: Date;
-  paymentTerms: string;
+  paymentTerms?: string;
   deliveryTerms?: string;
   pricingConfiguration: PricingConfiguration;
   termsAndConditions?: string;
