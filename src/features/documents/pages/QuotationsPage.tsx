@@ -36,7 +36,7 @@ export function QuotationsPage() {
   const shouldCreate = searchParams.get('create') === 'true';
 
   const { data: quotationsResponse, loading, createQuotation, updateQuotation, deleteQuotation, refetch } = useQuotations({ page: 1, pageSize: 1000 });
-  const { previewPdf, downloadPdf, PdfPreviewDialog } = useDocumentPdfActions();
+  const { previewPdf, downloadPdf, previewServerPdf, downloadServerPdf, PdfPreviewDialog } = useDocumentPdfActions();
   const quotations = quotationsResponse || [];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -276,8 +276,8 @@ export function QuotationsPage() {
               onDelete={() => handleDeleteQuotation(row)}
               onSend={() => {}}
               onConvertToProject={() => handleConvertToProject(row)}
-              onPreviewPdf={() => previewPdf(row)}
-              onDownload={() => downloadPdf(row)}
+              onPreviewPdf={() => previewServerPdf(row)}
+              onDownload={() => downloadServerPdf(row)}
               onDuplicate={() => handleDuplicateQuotation(row)}
             />
           )}
