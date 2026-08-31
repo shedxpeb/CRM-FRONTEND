@@ -89,6 +89,13 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   const handleSave = () => {
     const quotationDto: CreateQuotationDto = {
       ...(proposal?.id ? { proposalId: proposal.id } : {}),
+      customerId: proposal?.customerId || quotation?.customerId || autofillData?.companyName || undefined,
+      customerName: proposal?.customerName || quotation?.customerName || autofillData?.contactPerson || autofillData?.companyName || 'Customer',
+      customerEmail: proposal?.customerEmail || quotation?.customerEmail || autofillData?.email || undefined,
+      customerPhone: proposal?.customerPhone || quotation?.customerPhone || autofillData?.phone || undefined,
+      customerAddress: proposal?.customerAddress || quotation?.customerAddress || autofillData?.siteAddress || undefined,
+      customerGST: proposal?.customerGST || quotation?.customerGST || autofillData?.gstNumber || undefined,
+      projectName: proposal?.projectName || quotation?.projectName || undefined,
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       paymentTerms,
       deliveryTerms: '4-6 weeks from order confirmation',
