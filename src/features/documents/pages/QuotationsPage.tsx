@@ -94,7 +94,7 @@ export function QuotationsPage() {
         quot.quotationNumber.toLowerCase().includes(q) ||
         quot.customerName.toLowerCase().includes(q) ||
         (quot.projectName?.toLowerCase().includes(q) ?? false) ||
-        quot.proposalNumber.toLowerCase().includes(q) ||
+        (quot.proposalNumber?.toLowerCase().includes(q) ?? false) ||
         quot.status.toLowerCase().includes(q) ||
         creator.toLowerCase().includes(q);
       return matchesStatus && matchesCustomer && matchesProject && matchesCreator && matchesSearch;
@@ -206,12 +206,12 @@ export function QuotationsPage() {
         proposalId: quotation.proposalId || undefined,
         customerName: quotation.customerName,
         customerId: quotation.customerId || undefined,
-        paymentTerms: quotation.paymentTerms,
-        pricingConfiguration: quotation.pricingConfiguration,
+        paymentTerms: (quotation as any).paymentTerms,
+        pricingConfiguration: (quotation as any).pricingConfiguration,
         validUntil: quotation.validUntil,
-        deliveryTerms: quotation.deliveryTerms,
-        termsAndConditions: quotation.termsAndConditions,
-        notes: quotation.notes,
+        deliveryTerms: (quotation as any).deliveryTerms,
+        termsAndConditions: (quotation as any).termsAndConditions,
+        notes: (quotation as any).notes,
       };
       await createQuotation(duplicateData);
       toast.success(`Quotation duplicated as ${quotation.quotationNumber}`);
