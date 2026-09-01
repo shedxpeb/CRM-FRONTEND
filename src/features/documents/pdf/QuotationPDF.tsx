@@ -12,7 +12,7 @@ import { DocumentSignature } from './components/DocumentSignature';
 import { Quotation } from '../types/peb-commercial';
 
 interface QuotationPDFProps {
-  quotation: Quotation;
+  quotation: any;
   companyName: string;
   companyLogo?: string;
   companyAddress?: string;
@@ -138,70 +138,36 @@ export function QuotationPDF({
     { key: 'chargeability', label: 'Charge', width: 0.10, align: 'center' as const },
   ];
 
-  const tableData = quotation.materialSelections.map(selection => ({
-    itemCode: selection.itemCode,
-    itemName: selection.itemName,
-    description: selection.customDescription || selection.specification || '-',
-    quantity: selection.quantity?.toString() || '-',
-    unit: selection.unit || '-',
-    rate: selection.rate?.toFixed(2) || '-',
-    amount: selection.amount?.toFixed(2) || '-',
-    chargeability: selection.config?.chargeability || '-',
+  const tableData = (quotation.lineItems || []).map((item: any) => ({
+    itemCode: item.itemCode || '',
+    itemName: item.itemName || '',
+    description: item.description || '-',
+    quantity: item.quantity?.toString() || '-',
+    unit: item.unit || '-',
+    rate: item.rate?.toFixed(2) || '-',
+    amount: item.amount?.toFixed(2) || '-',
+    chargeability: '-',
   }));
 
-  // Calculate totals from pricing configuration
-  const materialCost = quotation.pricingConfiguration?.materialRates?.reduce(
-    (sum, m) => sum + (m.amount || 0),
-    0
-  ) || 0;
-  const labourCost = quotation.pricingConfiguration?.labourCost || 0;
-  const installationCost = quotation.pricingConfiguration?.installationCost || 0;
-  const transportationCost = quotation.pricingConfiguration?.transportationCost || 0;
-  const craneCost = quotation.pricingConfiguration?.craneCost || 0;
-  const civilCost = quotation.pricingConfiguration?.civilCost || 0;
-  const accommodationCost = quotation.pricingConfiguration?.accommodationCost || 0;
-  const erectionCost = quotation.pricingConfiguration?.erectionCost || 0;
-  const freightCost = quotation.pricingConfiguration?.freightCost || 0;
-  const otherCosts = quotation.pricingConfiguration?.additionalServiceCosts?.reduce(
-    (sum, s) => sum + (s.cost || 0),
-    0
-  ) || 0;
+  // Use stored pricing totals from the quotation
+  const materialCost = quotation.subtotal || 0;
+  const labourCost = 0;
+  const installationCost = 0;
+  const transportationCost = 0;
+  const craneCost = 0;
+  const civilCost = 0;
+  const accommodationCost = 0;
+  const erectionCost = 0;
+  const freightCost = 0;
+  const otherCosts = 0;
 
-  let subtotal = materialCost + labourCost + installationCost + transportationCost + 
-                 craneCost + civilCost + accommodationCost + erectionCost + freightCost + otherCosts;
-
-  // Apply markup
-  if (quotation.pricingConfiguration?.markupPercentage && quotation.pricingConfiguration.markupPercentage > 0) {
-    subtotal = subtotal * (1 + quotation.pricingConfiguration.markupPercentage / 100);
-  }
-
-  // Apply discount
-  let discountAmount = 0;
-  if (quotation.pricingConfiguration?.discountType === 'percentage' && quotation.pricingConfiguration.discountValue) {
-    discountAmount = subtotal * (quotation.pricingConfiguration.discountValue / 100);
-  } else if (quotation.pricingConfiguration?.discountType === 'fixed' && quotation.pricingConfiguration.discountValue) {
-    discountAmount = quotation.pricingConfiguration.discountValue;
-  }
-
+  // Use stored pricing from the quotation (backend calculates)
+  const subtotal = quotation.subtotal || materialCost;
+  const discountAmount = quotation.discountAmount || 0;
   const afterDiscount = subtotal - discountAmount;
-
-  // Calculate GST
-  let taxAmount = 0;
-  const gstType = quotation.pricingConfiguration?.gstType || 'CGST';
-  const gstRate = quotation.pricingConfiguration?.gstRate || 18;
-  
-  if (gstType === 'CGST' || gstType === 'SGST') {
-    taxAmount = afterDiscount * (gstRate / 100);
-  } else if (gstType === 'IGST') {
-    taxAmount = afterDiscount * (gstRate / 100);
-  }
-
-  // Add cess
-  if (quotation.pricingConfiguration?.cessRate && quotation.pricingConfiguration.cessRate > 0) {
-    taxAmount += afterDiscount * (quotation.pricingConfiguration.cessRate / 100);
-  }
-
-  const grandTotal = afterDiscount + taxAmount;
+  const gstRate = quotation.gstRate || 18;
+  const taxAmount = quotation.taxAmount || (afterDiscount * gstRate / 100);
+  const grandTotal = quotation.grandTotal || afterDiscount + taxAmount;
 
   return (
     <Document>
@@ -297,55 +263,43 @@ export function QuotationPDF({
                   {new Date(quotation.validUntil).toLocaleDateString()}
                 </Text>
               </View>
-              {quotation.paymentTerms && (
+              {(quotation as any).paymentTermsOverride && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Payment Terms:</Text>
-                  <Text style={styles.infoValue}>{quotation.paymentTerms}</Text>
+                  <Text style={styles.infoValue}>{(quotation as any).paymentTermsOverride}</Text>
                 </View>
               )}
-              {quotation.deliveryTerms && (
+              {(quotation as any).deliveryOverride && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Delivery Terms:</Text>
-                  <Text style={styles.infoValue}>{quotation.deliveryTerms}</Text>
+                  <Text style={styles.infoValue}>{(quotation as any).deliveryOverride}</Text>
                 </View>
               )}
             </View>
           </View>
         )}
 
-        {/* Technical Specifications */}
-        {quotation.technicalSpecifications && (
+        {/* Building Specification */}
+        {quotation.buildingSpec && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Technical Specifications</Text>
+            <Text style={styles.sectionTitle}>Building Specification</Text>
             <View style={styles.specifications}>
-              {quotation.technicalSpecifications.buildingLength && (
+              {quotation.buildingSpec.width && (
                 <View style={styles.specRow}>
-                  <Text style={styles.specLabel}>Building Length:</Text>
-                  <Text style={styles.specValue}>{quotation.technicalSpecifications.buildingLength}m</Text>
+                  <Text style={styles.specLabel}>Width:</Text>
+                  <Text style={styles.specValue}>{quotation.buildingSpec.width}</Text>
                 </View>
               )}
-              {quotation.technicalSpecifications.buildingWidth && (
+              {quotation.buildingSpec.length && (
                 <View style={styles.specRow}>
-                  <Text style={styles.specLabel}>Building Width:</Text>
-                  <Text style={styles.specValue}>{quotation.technicalSpecifications.buildingWidth}m</Text>
+                  <Text style={styles.specLabel}>Length:</Text>
+                  <Text style={styles.specValue}>{quotation.buildingSpec.length}</Text>
                 </View>
               )}
-              {quotation.technicalSpecifications.buildingHeight && (
+              {quotation.buildingSpec.clearHeight && (
                 <View style={styles.specRow}>
-                  <Text style={styles.specLabel}>Building Height:</Text>
-                  <Text style={styles.specValue}>{quotation.technicalSpecifications.buildingHeight}m</Text>
-                </View>
-              )}
-              {quotation.technicalSpecifications.baySpacing && (
-                <View style={styles.specRow}>
-                  <Text style={styles.specLabel}>Bay Spacing:</Text>
-                  <Text style={styles.specValue}>{quotation.technicalSpecifications.baySpacing}m</Text>
-                </View>
-              )}
-              {quotation.technicalSpecifications.roofSlope && (
-                <View style={styles.specRow}>
-                  <Text style={styles.specLabel}>Roof Slope:</Text>
-                  <Text style={styles.specValue}>{quotation.technicalSpecifications.roofSlope}°</Text>
+                  <Text style={styles.specLabel}>Clear Height:</Text>
+                  <Text style={styles.specValue}>{quotation.buildingSpec.clearHeight}</Text>
                 </View>
               )}
             </View>
@@ -362,17 +316,17 @@ export function QuotationPDF({
         <DocumentTotals
           subtotal={subtotal}
           taxAmount={taxAmount}
-          gstType={gstType}
+          gstType={quotation.gstType || 'CGST'}
           grandTotal={grandTotal}
           discountAmount={discountAmount}
-          discountPercentage={quotation.pricingConfiguration?.discountType === 'percentage' ? quotation.pricingConfiguration.discountValue : undefined}
+          discountPercentage={quotation.discountPercentage}
         />
 
         {/* Inclusions */}
-        {quotation.inclusions && quotation.inclusions.length > 0 && (
+        {false && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Inclusions</Text>
-            {quotation.inclusions.map((inclusion, index) => (
+            {quotation.inclusions.map((inclusion: string, index: number) => (
               <Text key={index} style={{ fontSize: 9, marginBottom: 2 }}>
                 • {inclusion}
               </Text>
@@ -384,7 +338,7 @@ export function QuotationPDF({
         {quotation.exclusions && quotation.exclusions.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Exclusions</Text>
-            {quotation.exclusions.map((exclusion, index) => (
+            {quotation.exclusions.map((exclusion: string, index: number) => (
               <Text key={index} style={{ fontSize: 9, marginBottom: 2 }}>
                 • {exclusion}
               </Text>

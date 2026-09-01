@@ -11,6 +11,7 @@ import { FilterConfig } from '@/components/layout/FilterBar';
 import { QuotationBuilder } from '@/features/documents/components/QuotationBuilder';
 import { DocumentRowActions } from '@/features/documents/components/DocumentRowActions';
 import { useQuotations } from '@/features/documents/hooks';
+import { toast } from '@/components/ui/toast';
 import { useDocumentConfiguration } from '@/features/documents/hooks/useDocuments';
 import { useDocumentPdfActions } from '@/features/documents/hooks/useDocumentPdfActions';
 import { Quotation, CreateQuotationDto, Proposal } from '@/features/documents/types/peb-commercial';
@@ -201,14 +202,17 @@ export function QuotationsPage() {
 
   const handleDuplicateQuotation = async (quotation: Quotation) => {
     try {
-      const duplicateData: CreateQuotationDto = {
-        ...(quotation.proposalId ? { proposalId: quotation.proposalId } : {}),
-        paymentTerms: quotation.paymentTerms,
-        pricingConfiguration: quotation.pricingConfiguration,
-        validUntil: quotation.validUntil,
-        deliveryTerms: quotation.deliveryTerms,
-        termsAndConditions: quotation.termsAndConditions,
-        notes: quotation.notes,
+      const duplicateData: any = {
+        customerName: quotation.customerName,
+        customerAddress: quotation.customerAddress,
+        customerGST: quotation.customerGST,
+        buildingSpec: quotation.buildingSpec,
+        designCode: quotation.designCode,
+        designLoad: quotation.designLoad,
+        lineItems: quotation.lineItems,
+        subtotal: quotation.subtotal,
+        gstRate: quotation.gstRate,
+        grandTotal: quotation.grandTotal,
       };
       await createQuotation(duplicateData);
       refetch();
@@ -217,10 +221,14 @@ export function QuotationsPage() {
     }
   };
 
-  const handleBuilderSave = async (data: CreateQuotationDto) => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleBuilderSave = async (data: any) => {
+    if (isSaving) return; // prevent duplicate saves
+    setIsSaving(true);
     try {
       if (editingQuotation) {
-        await updateQuotation(editingQuotation.id, data as Partial<Quotation>);
+        await updateQuotation(editingQuotation.id, data);
       } else {
         await createQuotation(data);
       }
@@ -228,8 +236,12 @@ export function QuotationsPage() {
       setEditingQuotation(null);
       setSelectedProposal(null);
       refetch();
-    } catch (err) {
-      // Failed to save quotation
+      toast.success('Quotation saved successfully');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save quotation';
+      toast.error(`Save failed: ${String(msg)}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -294,6 +306,7 @@ export function QuotationsPage() {
             quotation={editingQuotation || undefined}
             onSave={handleBuilderSave}
             onCancel={() => { setIsBuilderDialogOpen(false); setEditingQuotation(null); setSelectedProposal(null); }}
+            isSaving={isSaving}
           />
         </DialogContent>
       </Dialog>

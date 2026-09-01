@@ -358,7 +358,7 @@ export default function DocumentDetailPage() {
           <Section title="Related Records" defaultOpen={false}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {document.customerId && (
-                <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.customersDetail(document.customerId))}>
+                <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(ROUTES.customersDetail(document.customerId!))}>
                   <div className="flex items-center gap-2 mb-2">
                     <User className="h-4 w-4 text-blue-600" />
                     <span className="text-xs font-medium">Customer</span>
