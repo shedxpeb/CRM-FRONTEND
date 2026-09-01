@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, ArrowLeft, Trash2, Plus, IndianRupee } from 'lucide-react';
-import { 
-  Quotation, 
+import { Save, ArrowLeft, Trash2, Plus, IndianRupee, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  Quotation,
   Proposal,
   CreateQuotationDto,
   MaterialSelection,
@@ -21,9 +21,11 @@ import { ItemPicker } from './ItemPicker';
 interface QuotationBuilderProps {
   proposal?: Proposal | null;
   quotation?: Quotation;
-  onSave: (quotation: CreateQuotationDto) => void;
+  onSave: (quotation: CreateQuotationDto) => Promise<void>;
   onCancel: () => void;
 }
+
+type SaveState = 'idle' | 'saving' | 'success' | 'error';
 
 export const QuotationBuilder = memo(function QuotationBuilder({
   proposal,
@@ -37,7 +39,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   const [materialSelections, setMaterialSelections] = useState<MaterialSelection[]>(
     quotation?.materialSelections || proposal?.materialSelections || []
   );
-  
+
   const [serviceCosts, setServiceCosts] = useState({
     labour: 0,
     installation: 0,
@@ -48,34 +50,41 @@ export const QuotationBuilder = memo(function QuotationBuilder({
     erection: 0,
     freight: 0,
   });
-  
+
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState(0);
   const [gstRate, setGstRate] = useState(18);
-  
+
   const [paymentTerms, setPaymentTerms] = useState(
     quotation?.paymentTerms || '30% advance, 60% before dispatch, 10% on erection.'
   );
-  
+
   const [inclusions, setInclusions] = useState('');
   const [exclusions, setExclusions] = useState('');
   const [terms, setTerms] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
+
+  // ── Save state management ──────────────────────────────────────────────
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const isSaving = saveState === 'saving';
 
   // Calculate totals
   const calculations = useMemo(() => {
     const materialTotal = materialSelections.reduce((sum, m) => sum + ((m.rate || 0) * (m.quantity || 0)), 0);
     const serviceTotal = Object.values(serviceCosts).reduce((sum, val) => sum + val, 0);
     const subtotal = materialTotal + serviceTotal;
-    
-    const discountAmount = discountType === 'percentage' 
-      ? (subtotal * discountValue) / 100 
+
+    const discountAmount = discountType === 'percentage'
+      ? (subtotal * discountValue) / 100
       : discountValue;
-    
+
     const afterDiscount = subtotal - discountAmount;
     const taxAmount = (afterDiscount * gstRate) / 100;
     const grandTotal = afterDiscount + taxAmount;
-    
+
     return {
       materialTotal,
       serviceTotal,
@@ -86,9 +95,78 @@ export const QuotationBuilder = memo(function QuotationBuilder({
     };
   }, [materialSelections, serviceCosts, discountType, discountValue, gstRate]);
 
-  const handleSave = () => {
+  // ── Frontend validation ────────────────────────────────────────────────
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    const customerName = proposal?.customerName || autofillData?.companyName || '';
+    if (!customerName.trim()) {
+      errors.customerName = 'Customer name is required.';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // ── Extract backend error message ──────────────────────────────────────
+  const extractErrorMessage = (err: unknown): string => {
+    if (err && typeof err === 'object') {
+      // Axios error with response
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string; error?: string; statusCode?: number } } };
+      if (axiosErr.response) {
+        const status = axiosErr.response.status;
+        const data = axiosErr.response.data;
+
+        if (status === 401) return 'Your session has expired. Please sign in again.';
+        if (status === 403) return 'You do not have permission to create quotations.';
+        if (status === 404) return 'The requested resource was not found.';
+        if (status === 409) return 'A conflict occurred. This quotation may already exist.';
+        if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+        if (status === 500) return 'The server encountered an error. Please try again later.';
+        if (status === 502 || status === 503) return 'The server is temporarily unavailable. Please try again.';
+
+        // Use backend message if available
+        if (data?.message) return data.message;
+        if (data?.error) return data.error;
+      }
+
+      // Network error
+      if (err instanceof Error) {
+        if (err.message?.includes('timeout')) return 'Request timed out. Please check your connection and try again.';
+        if (err.message?.includes('Network Error') || err.message?.includes('ECONNREFUSED'))
+          return 'Unable to reach the server. Please check your connection.';
+      }
+
+      // Generic fallback
+      const msg = (err as { message?: string })?.message;
+      if (msg) return msg;
+    }
+
+    return 'An unexpected error occurred. Please try again.';
+  };
+
+  // ── Handle save ────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    // Validate before sending
+    if (!validate()) {
+      setSaveState('error');
+      setErrorMessage('Please correct the highlighted fields.');
+      return;
+    }
+
+    // Prevent double save
+    if (isSaving) return;
+
+    setSaveState('saving');
+    setErrorMessage(null);
+    setFieldErrors({});
+
+    const customerName = proposal?.customerName || autofillData?.companyName || 'Customer';
+
     const quotationDto: CreateQuotationDto = {
-      proposalId: proposal?.id || '',
+      proposalId: proposal?.id || undefined,
+      customerName,
+      customerId: proposal?.customerId || undefined,
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       paymentTerms,
       deliveryTerms: '4-6 weeks from order confirmation',
@@ -120,28 +198,91 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       notes: inclusions,
       internalNotes,
     };
-    
-    onSave(quotationDto);
+
+    try {
+      await onSave(quotationDto);
+      // onSuccess: the parent (QuotationsPage) closes the dialog
+      setSaveState('success');
+    } catch (err) {
+      // On error: keep form open, preserve data, show error
+      setSaveState('error');
+      setErrorMessage(extractErrorMessage(err));
+    }
   };
-  
+
+  // ── Dismiss error banner ──────────────────────────────────────────────
+  const dismissError = () => {
+    setErrorMessage(null);
+    setFieldErrors({});
+    setSaveState('idle');
+  };
+
   return (
     <div className="space-y-6">
+      {/* ── Error Banner ──────────────────────────────────────────────── */}
+      {errorMessage && (
+        <div className="flex items-start gap-3 p-3 sm:p-4 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-red-600" />
+          <div className="flex-1">
+            <p className="font-medium">Quotation could not be saved.</p>
+            <p className="mt-1 text-red-700">{errorMessage}</p>
+          </div>
+          <button
+            onClick={dismissError}
+            className="text-red-400 hover:text-red-600 shrink-0"
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* ── Customer Name Field Error ─────────────────────────────────── */}
+      {fieldErrors.customerName && (
+        <div className="text-sm text-red-600 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" />
+          {fieldErrors.customerName}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Quotation Builder</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            From Proposal: {proposal?.proposalNumber || 'N/A'} | Customer: {proposal?.customerName || 'N/A'}
+            {proposal
+              ? `From Proposal: ${proposal.proposalNumber || 'N/A'} | Customer: ${proposal.customerName || 'N/A'}`
+              : `Standalone Quotation | Customer: ${autofillData?.companyName || 'Not selected'}`
+            }
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={onCancel} className="flex-1 sm:flex-none h-8 sm:h-9 text-xs">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="flex-1 sm:flex-none h-8 sm:h-9 text-xs"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} className="flex-1 sm:flex-none h-8 sm:h-9 text-xs">
-            <Save className="h-3.5 w-3.5 mr-1.5" />
-            <span className="hidden sm:inline">Save Quotation</span>
-            <span className="sm:hidden">Save</span>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-1 sm:flex-none h-8 sm:h-9 text-xs"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                <span className="hidden sm:inline">Saving...</span>
+                <span className="sm:hidden">Saving</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                <span className="hidden sm:inline">Save Quotation</span>
+                <span className="sm:hidden">Save</span>
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -196,6 +337,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                           setMaterialSelections(updated);
                         }}
                         className="h-8 text-xs"
+                        disabled={isSaving}
                       />
                     </div>
                     <div>
@@ -209,6 +351,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                           setMaterialSelections(updated);
                         }}
                         className="h-8 text-xs"
+                        disabled={isSaving}
                       />
                     </div>
                   </div>
@@ -238,6 +381,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                       onChange={(e) => setServiceCosts({ ...serviceCosts, [service]: Number(e.target.value) })}
                       className="h-8 text-xs"
                       placeholder="Rate"
+                      disabled={isSaving}
                     />
                     <div className="text-xs sm:text-sm font-medium text-right">
                       <IndianRupee className="h-3 w-3 inline" /> {cost}
@@ -257,7 +401,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                 <div>
                   <Label className="text-[10px] sm:text-xs">Discount Type</Label>
-                  <Select value={discountType} onValueChange={(value: 'percentage' | 'fixed') => setDiscountType(value)}>
+                  <Select value={discountType} onValueChange={(value: 'percentage' | 'fixed') => setDiscountType(value)} disabled={isSaving}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
@@ -274,6 +418,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                     value={discountValue}
                     onChange={(e) => setDiscountValue(Number(e.target.value))}
                     className="h-8 text-xs"
+                    disabled={isSaving}
                   />
                 </div>
                 <div>
@@ -283,6 +428,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                     value={gstRate}
                     onChange={(e) => setGstRate(Number(e.target.value))}
                     className="h-8 text-xs"
+                    disabled={isSaving}
                   />
                 </div>
               </div>
@@ -330,6 +476,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                   onChange={(e) => setPaymentTerms(e.target.value)}
                   rows={4}
                   className="text-xs"
+                  disabled={isSaving}
                 />
               </div>
             </CardContent>
@@ -345,6 +492,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                 onChange={(e) => setInclusions(e.target.value)}
                 rows={3}
                 className="text-xs"
+                disabled={isSaving}
               />
             </div>
             <div>
@@ -354,6 +502,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                 onChange={(e) => setExclusions(e.target.value)}
                 rows={3}
                 className="text-xs"
+                disabled={isSaving}
               />
             </div>
             <div>
@@ -363,6 +512,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                 onChange={(e) => setTerms(e.target.value)}
                 rows={3}
                 className="text-xs"
+                disabled={isSaving}
               />
             </div>
             <div>
@@ -372,6 +522,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                 onChange={(e) => setInternalNotes(e.target.value)}
                 rows={3}
                 className="text-xs"
+                disabled={isSaving}
               />
             </div>
           </div>

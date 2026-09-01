@@ -830,11 +830,19 @@ export interface UpdateProposalDto {
 
 // Quotation DTOs
 export interface CreateQuotationDto {
-  proposalId: string;
-  validUntil?: Date;
-  paymentTerms: string;
+  proposalId?: string;
+  customerId?: string;
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  customerGST?: string;
+  projectId?: string;
+  projectName?: string;
+  validUntil?: Date | string;
+  paymentTerms?: string;
   deliveryTerms?: string;
-  pricingConfiguration: PricingConfiguration;
+  pricingConfiguration?: PricingConfiguration;
   termsAndConditions?: string;
   notes?: string;
   internalNotes?: string;
