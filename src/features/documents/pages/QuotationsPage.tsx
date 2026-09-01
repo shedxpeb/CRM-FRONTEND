@@ -202,17 +202,16 @@ export function QuotationsPage() {
 
   const handleDuplicateQuotation = async (quotation: Quotation) => {
     try {
-      const duplicateData: any = {
+      const duplicateData: CreateQuotationDto = {
+        proposalId: quotation.proposalId || undefined,
         customerName: quotation.customerName,
-        customerAddress: quotation.customerAddress,
-        customerGST: quotation.customerGST,
-        buildingSpec: quotation.buildingSpec,
-        designCode: quotation.designCode,
-        designLoad: quotation.designLoad,
-        lineItems: quotation.lineItems,
-        subtotal: quotation.subtotal,
-        gstRate: quotation.gstRate,
-        grandTotal: quotation.grandTotal,
+        customerId: quotation.customerId || undefined,
+        paymentTerms: quotation.paymentTerms,
+        pricingConfiguration: quotation.pricingConfiguration,
+        validUntil: quotation.validUntil,
+        deliveryTerms: quotation.deliveryTerms,
+        termsAndConditions: quotation.termsAndConditions,
+        notes: quotation.notes,
       };
       await createQuotation(duplicateData);
       refetch();
@@ -228,7 +227,7 @@ export function QuotationsPage() {
     setIsSaving(true);
     try {
       if (editingQuotation) {
-        await updateQuotation(editingQuotation.id, data);
+        await updateQuotation(editingQuotation.id, data as Partial<Quotation>);
       } else {
         await createQuotation(data);
       }
@@ -302,12 +301,11 @@ export function QuotationsPage() {
             <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.quotationNumber}` : 'Create New Quotation'}</DialogTitle>
           </DialogHeader>
           <QuotationBuilder
-            proposal={selectedProposal ?? (editingQuotation?.proposalId ? { id: editingQuotation.proposalId, proposalNumber: editingQuotation.proposalNumber, customerId: editingQuotation.customerId, customerName: editingQuotation.customerName } as Proposal : null)}
-            quotation={editingQuotation || undefined}
-            onSave={handleBuilderSave}
-            onCancel={() => { setIsBuilderDialogOpen(false); setEditingQuotation(null); setSelectedProposal(null); }}
-            isSaving={isSaving}
-          />
+              proposal={selectedProposal ?? (editingQuotation ? { id: editingQuotation.proposalId, proposalNumber: editingQuotation.proposalNumber, customerId: editingQuotation.customerId, customerName: editingQuotation.customerName } as Proposal : undefined)}
+              quotation={editingQuotation || undefined}
+              onSave={handleBuilderSave}
+              onCancel={() => { setIsBuilderDialogOpen(false); setEditingQuotation(null); setSelectedProposal(null); }}
+            />
         </DialogContent>
       </Dialog>
 

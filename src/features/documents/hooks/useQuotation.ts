@@ -1,8 +1,30 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
-import { apiClient } from '@/core/api';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/core/api';
 import type { CreateQuotationDto, Quotation } from '../types/peb-commercial';
 
-interface UseQuotationsParams {
+// ─── Types ────────────────────────────────────────────────────────────────
+
+interface BackendResponse<T> {
+  data: T;
+  message?: string;
+}
+
+interface PaginatedData<T> {
+  rows: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  };
+}
+
+// ─── useQuotations ────────────────────────────────────────────────────────
+
+export function useQuotations(params?: {
   page?: number;
   pageSize?: number;
   customerId?: string;
@@ -10,153 +32,142 @@ interface UseQuotationsParams {
   proposalId?: string;
   projectId?: string;
   search?: string;
-}
+}) {
+  const queryClient = useQueryClient();
 
-interface QuotationsResponse {
-  message: string;
-  data: {
-    data: Quotation[];
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  };
-}
+  const {
+    data: response,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['quotations', params],
+    queryFn: async () => {
+      const queryParams: Record<string, string> = {};
+      if (params?.page) queryParams.page = String(params.page);
+      if (params?.pageSize) queryParams.pageSize = String(params.pageSize);
+      if (params?.customerId) queryParams.customerId = params.customerId;
+      if (params?.status) queryParams.status = params.status;
+      if (params?.search) queryParams.search = params.search;
 
-export function useQuotations(params?: UseQuotationsParams) {
-  const [data, setData] = useState<Quotation[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const mountedRef = useRef(true);
+      const res = await api.get<BackendResponse<PaginatedData<Quotation>>>('/quotations', {
+        params: queryParams,
+      });
+      return res.data.rows;
+    },
+    staleTime: 30_000,
+  });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const createMutation = useMutation({
+    mutationFn: async (dto: CreateQuotationDto) => {
+      const res = await api.post<BackendResponse<Quotation>>('/quotations', dto);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    },
+  });
 
-      const searchParams = new URLSearchParams();
-      if (params?.page) searchParams.set('page', String(params.page));
-      if (params?.pageSize) searchParams.set('pageSize', String(params.pageSize));
-      if (params?.status) searchParams.set('status', params.status);
-      if (params?.customerId) searchParams.set('customerId', params.customerId);
-      if (params?.search) searchParams.set('search', params.search);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Quotation> }) => {
+      const res = await api.patch<BackendResponse<Quotation>>(`/quotations/${id}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    },
+  });
 
-      const url = `/quotations?${searchParams.toString()}`;
-      const response = await apiClient.get<QuotationsResponse>(url);
-      const result = response.data?.data;
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/quotations/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    },
+  });
 
-      if (mountedRef.current) {
-        setData(result?.data || []);
-        setTotal(result?.total || 0);
-        setLoading(false);
-      }
-    } catch (err: any) {
-      if (mountedRef.current) {
-        setError(err?.message || 'Failed to load quotations');
-        setLoading(false);
-      }
-    }
-  }, [params?.page, params?.pageSize, params?.status, params?.customerId, params?.search]);
+  const createQuotation = useCallback(
+    (dto: CreateQuotationDto) => createMutation.mutateAsync(dto),
+    [createMutation],
+  );
 
-  useEffect(() => {
-    mountedRef.current = true;
-    fetchData();
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [fetchData]);
+  const updateQuotation = useCallback(
+    (id: string, data: Partial<Quotation>) =>
+      updateMutation.mutateAsync({ id, data }),
+    [updateMutation],
+  );
 
-  const refetch = useCallback(async () => {
-    await fetchData();
-  }, [fetchData]);
+  const deleteQuotation = useCallback(
+    (id: string) => deleteMutation.mutateAsync(id),
+    [deleteMutation],
+  );
 
-  const createQuotation = useCallback(async (dto: any): Promise<Quotation> => {
-    const response = await apiClient.post<{ message: string; data: Quotation }>('/quotations', dto);
-    return response.data.data;
-  }, []);
+  const updateStatus = useCallback(
+    async (id: string, status: string) => {
+      const res = await api.patch<BackendResponse<Quotation>>(`/quotations/${id}/status`, { status });
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      return res.data;
+    },
+    [queryClient],
+  );
 
-  const updateQuotation = useCallback(async (id: string, dto: Partial<Quotation>): Promise<Quotation> => {
-    const response = await apiClient.patch<{ message: string; data: Quotation }>(`/quotations/${id}`, dto);
-    return response.data.data;
-  }, []);
-
-  const deleteQuotation = useCallback(async (id: string): Promise<void> => {
-    await apiClient.delete(`/quotations/${id}`);
-  }, []);
-
-  const updateStatus = useCallback(async (id: string, status: string): Promise<Quotation> => {
-    const response = await apiClient.patch<{ message: string; data: Quotation }>(`/quotations/${id}/status`, { status });
-    return response.data.data;
-  }, []);
-
-  const convertToProject = useCallback(async (id: string): Promise<any> => {
-    const response = await apiClient.patch<{ message: string; data: any }>(`/quotations/${id}/convert-to-project`);
-    return response.data.data;
-  }, []);
+  const convertToProject = useCallback(
+    async (id: string, _data?: unknown) => {
+      const res = await api.patch<BackendResponse<Quotation>>(`/quotations/${id}/convert-to-project`);
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      return res.data;
+    },
+    [queryClient],
+  );
 
   return {
-    data,
-    total,
+    data: (response ?? []) as Quotation[],
+    total: response?.length ?? 0,
     loading,
-    error,
+    error: queryError ? (queryError as Error).message : null,
     createQuotation,
     updateQuotation,
     deleteQuotation,
     updateStatus,
     convertToProject,
-    refetch,
+    refetch: useCallback(() => refetch(), [refetch]),
   };
 }
 
+// ─── useQuotation (single) ────────────────────────────────────────────────
+
 export function useQuotation(id: string) {
-  const [data, setData] = useState<Quotation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: response,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['quotation', id],
+    queryFn: async () => {
+      const res = await api.get<BackendResponse<Quotation>>(`/quotations/${id}`);
+      return res.data;
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchQuotation = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await apiClient.get<{ message: string; data: Quotation }>(`/quotations/${id}`);
-        setData(response.data.data);
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load quotation');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchQuotation();
-  }, [id]);
-
-  const refetch = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoading(true);
-      const response = await apiClient.get<{ message: string; data: Quotation }>(`/quotations/${id}`);
-      setData(response.data.data);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load quotation');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  return { data, loading, error, refetch };
+  return {
+    data: (response ?? null) as Quotation | null,
+    loading,
+    error: queryError ? (queryError as Error).message : null,
+    refetch: useCallback(() => refetch(), [refetch]),
+  };
 }
 
+// ─── useQuotationStats ────────────────────────────────────────────────────
+
 export function useQuotationStats(_enabled: boolean = true) {
+  // Stats are computed client-side from the quotations list for now
   return {
     data: null,
     loading: false,
     error: null,
-    refetch: async () => undefined,
   };
 }
