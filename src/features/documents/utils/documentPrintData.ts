@@ -264,40 +264,32 @@ export function buildDocumentPrintModel(document: AnyCommercialDocument): Docume
 
   if (isQuotation(document)) {
     const costBreakdown = [
-      { label: 'Material Cost', amount: document.materialCost ?? 0 },
-      { label: 'Labour', amount: document.labourCost ?? 0 },
-      { label: 'Installation', amount: document.installationCost ?? 0 },
-      { label: 'Transportation', amount: document.transportationCost ?? 0 },
-      { label: 'Crane', amount: document.craneCost ?? 0 },
-      { label: 'Civil', amount: document.civilCost ?? 0 },
-      { label: 'Erection', amount: document.erectionCost ?? 0 },
-      { label: 'Freight', amount: document.freightCost ?? 0 },
+      { label: 'Subtotal', amount: document.subtotal ?? 0 },
     ].filter((row) => row.amount > 0);
 
     return {
       ...base,
       validUntil: document.validUntil,
-      paymentTerms: document.paymentTerms,
-      deliveryTerms: document.deliveryTerms,
+      paymentTerms: (document as any).paymentTermsOverride,
+      deliveryTerms: (document as any).deliveryOverride,
       discountPercentage: document.discountPercentage,
       gstType: document.gstType,
-      cgstAmount: document.cgstAmount,
-      sgstAmount: document.sgstAmount,
-      igstAmount: document.igstAmount,
+      cgstAmount: undefined,
+      sgstAmount: undefined,
+      igstAmount: undefined,
       amountInWords: document.amountInWords,
-      lineItems: document.materialSelections.map((m) => ({
+      lineItems: (document.lineItems || []).map((m: any) => ({
         id: m.id,
         itemCode: m.itemCode,
-        description: m.itemName,
+        description: m.itemName || m.description,
         quantity: m.quantity ?? '-',
         unit: m.unit ?? '-',
         rate: m.rate,
         amount: m.amount,
-        extra: m.config?.chargeability,
       })),
       quotationSections: {
-        proposalNumber: document.proposalNumber,
-        sourceEstimateNumber: document.sourceEstimateNumber,
+        proposalNumber: (document as any).proposalNumber,
+        sourceEstimateNumber: (document as any).sourceEstimateNumber,
         validityLabel: document.validUntil
           ? new Date(document.validUntil).toLocaleDateString('en-IN')
           : undefined,

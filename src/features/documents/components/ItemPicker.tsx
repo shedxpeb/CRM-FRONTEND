@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Trash2, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +50,7 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
   const [search, setSearch] = useState('');
 
   // Fetch items from Item using React Query
-  const { data: itemMasters, isLoading: itemsLoading } = useItemMasters({
+  const { data: itemMasters, isLoading: itemsLoading, error: itemsError, refetch } = useItemMasters({
     filter: {
       search: search || undefined,
     },
@@ -58,17 +58,24 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
 
   const items = itemMasters || [];
 
-  // Group items by category and subcategory
+  // Group items by category and subcategory — handle uncategorized items
   const tree = useMemo(() => {
     const out: { category: string; subGroups: Record<string, ItemMaster[]> }[] = [];
     const needle = search.trim().toLowerCase();
 
     for (const cat of ITEM_CATEGORY_ORDER) {
       const groups: Record<string, ItemMaster[]> = {};
-      
-      // Filter items by category
-      const categoryItems = items.filter((item: ItemMaster) => item.category === cat);
-      
+
+      // Include items that match the category OR items with no recognized category (show under "Other")
+      const categoryItems = items.filter((item: ItemMaster) => {
+        const itemCat = item.category || 'Other';
+        if (cat === 'Other') {
+          // "Other" shows items with null/undefined category or category not in the known list
+          return !item.category || !ITEM_CATEGORY_ORDER.includes(item.category);
+        }
+        return itemCat === cat;
+      });
+
       // Group by subcategory
       for (const item of categoryItems) {
         const sub = item.subCategory || 'General';
@@ -83,7 +90,7 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
         const filtered: Record<string, ItemMaster[]> = {};
         for (const [sub, subItems] of Object.entries(groups)) {
           const matches = subItems.filter((it) =>
-            [it.itemName, it.itemCode, it.specification, it.brand]
+            [it.itemName, it.itemCode, it.specification, it.brand, it.description]
               .join(' ')
               .toLowerCase()
               .includes(needle),
@@ -112,10 +119,10 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
         itemMasterId: it.id,
         itemCode: it.itemCode,
         itemName: it.itemName,
-        specification: it.specification || '',
+        specification: it.specification || it.description || '',
         quantity: 1,
-        unit: it.unit,
-        category: it.category,
+        unit: it.unit || 'Nos',
+        category: it.category || 'Other',
         subCategory: it.subCategory,
         brand: it.brand,
         grade: it.grade,
@@ -134,6 +141,29 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
   };
 
   const removeRow = (idx: number) => onChange(value.filter((_, i) => i !== idx));
+
+  // Error state
+  if (itemsError) {
+    return (
+      <div className="grid gap-3 lg:grid-cols-[320px_1fr]">
+        <div className="rounded-md border bg-destructive/10 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            <p className="text-xs font-medium text-destructive">Failed to load items</p>
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-3">
+            {(itemsError as Error)?.message || 'Could not fetch inventory items. Check your connection and permissions.'}
+          </p>
+          <Button size="sm" variant="outline" onClick={() => refetch()} className="h-7 text-xs">
+            Retry
+          </Button>
+        </div>
+        <div className="rounded-md border p-6 text-center">
+          <p className="text-xs text-muted-foreground">Items could not be loaded.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (itemsLoading) {
     return (
@@ -158,8 +188,11 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
           />
         </div>
         <div className="max-h-[420px] overflow-y-auto">
-          {tree.length === 0 && (
-            <p className="p-3 text-xs text-muted-foreground">No matches.</p>
+          {items.length === 0 && !search && (
+            <p className="p-3 text-xs text-muted-foreground">No inventory items found. Add items in Item Master first.</p>
+          )}
+          {items.length > 0 && tree.length === 0 && search && (
+            <p className="p-3 text-xs text-muted-foreground">No matches for &ldquo;{search}&rdquo;.</p>
           )}
           {tree.map(({ category, subGroups }) => {
             const open = openCats[category] ?? Boolean(search);
@@ -203,7 +236,7 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
                                 <div className="min-w-0">
                                   <p className="truncate font-medium">{it.itemName}</p>
                                   <p className="truncate text-[10px] text-muted-foreground">
-                                    {it.brand} · {it.specification} · {it.unit}
+                                    {it.brand ? `${it.brand} · ` : ''}{it.specification || it.description || it.itemCode} · {it.unit || 'Nos'}
                                   </p>
                                 </div>
                                 <Button
@@ -247,7 +280,13 @@ export function ItemPicker({ value, onChange }: ItemPickerProps) {
           {ITEM_CATEGORY_ORDER.map((cat) => {
             const rows = value
               .map((m, idx) => ({ m, idx }))
-              .filter(({ m }) => m.category === cat);
+              .filter(({ m }) => {
+                const itemCat = m.category || 'Other';
+                if (cat === 'Other') {
+                  return !m.category || !ITEM_CATEGORY_ORDER.includes(m.category);
+                }
+                return itemCat === cat;
+              });
             if (rows.length === 0) return null;
             return (
               <div key={cat} className="border-b last:border-b-0">

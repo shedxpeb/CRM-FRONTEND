@@ -71,9 +71,9 @@ export function useQuotations(params?: UseQuotationsParams) {
     await fetchData();
   }, [fetchData]);
 
-  const createQuotation = useCallback(async (dto: CreateQuotationDto): Promise<Quotation> => {
-    const response = await apiClient.post<{ message: string; data: { data: Quotation } }>('/quotations', dto);
-    return response.data.data.data;
+  const createQuotation = useCallback(async (dto: any): Promise<Quotation> => {
+    const response = await apiClient.post<{ message: string; data: Quotation }>('/quotations', dto);
+    return response.data.data;
   }, []);
 
   const updateQuotation = useCallback(async (id: string, dto: Partial<Quotation>): Promise<Quotation> => {
