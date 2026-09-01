@@ -11,7 +11,6 @@ import { FilterConfig } from '@/components/layout/FilterBar';
 import { QuotationBuilder } from '@/features/documents/components/QuotationBuilder';
 import { DocumentRowActions } from '@/features/documents/components/DocumentRowActions';
 import { useQuotations } from '@/features/documents/hooks';
-import { toast } from '@/components/ui/toast';
 import { useDocumentConfiguration } from '@/features/documents/hooks/useDocuments';
 import { useDocumentPdfActions } from '@/features/documents/hooks/useDocumentPdfActions';
 import { Quotation, CreateQuotationDto, Proposal } from '@/features/documents/types/peb-commercial';
@@ -27,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ROUTES } from '@/core/routes';
 import { useDebounce } from '@/shared/hooks/useDebounce';
+import { toast } from '@/components/ui/toast';
 import { FileSpreadsheet, Plus, Clock, CheckCircle, TrendingUp } from 'lucide-react';
 
 export function QuotationsPage() {
@@ -37,7 +37,7 @@ export function QuotationsPage() {
   const shouldCreate = searchParams.get('create') === 'true';
 
   const { data: quotationsResponse, loading, createQuotation, updateQuotation, deleteQuotation, refetch } = useQuotations({ page: 1, pageSize: 1000 });
-  const { previewPdf, downloadPdf, previewServerPdf, downloadServerPdf, PdfPreviewDialog } = useDocumentPdfActions();
+  const { previewPdf, downloadPdf, PdfPreviewDialog } = useDocumentPdfActions();
   const quotations = quotationsResponse || [];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,7 +94,7 @@ export function QuotationsPage() {
         quot.quotationNumber.toLowerCase().includes(q) ||
         quot.customerName.toLowerCase().includes(q) ||
         (quot.projectName?.toLowerCase().includes(q) ?? false) ||
-        (quot.proposalNumber?.toLowerCase().includes(q) ?? false) ||
+        quot.proposalNumber.toLowerCase().includes(q) ||
         quot.status.toLowerCase().includes(q) ||
         creator.toLowerCase().includes(q);
       return matchesStatus && matchesCustomer && matchesProject && matchesCreator && matchesSearch;
@@ -214,34 +214,26 @@ export function QuotationsPage() {
         notes: quotation.notes,
       };
       await createQuotation(duplicateData);
+      toast.success(`Quotation duplicated as ${quotation.quotationNumber}`);
       refetch();
     } catch (err) {
-      // Failed to duplicate quotation
+      const msg = err instanceof Error ? err.message : 'Failed to duplicate quotation.';
+      toast.error(msg);
     }
   };
 
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleBuilderSave = async (data: any) => {
-    if (isSaving) return; // prevent duplicate saves
-    setIsSaving(true);
-    try {
-      if (editingQuotation) {
-        await updateQuotation(editingQuotation.id, data as Partial<Quotation>);
-      } else {
-        await createQuotation(data);
-      }
-      setIsBuilderDialogOpen(false);
-      setEditingQuotation(null);
-      setSelectedProposal(null);
-      refetch();
-      toast.success('Quotation saved successfully');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to save quotation';
-      toast.error(`Save failed: ${String(msg)}`);
-    } finally {
-      setIsSaving(false);
+  const handleBuilderSave = async (data: CreateQuotationDto) => {
+    if (editingQuotation) {
+      await updateQuotation(editingQuotation.id, data as Partial<Quotation>);
+    } else {
+      await createQuotation(data);
     }
+    // Only reached on success — the error path is handled by QuotationBuilder
+    toast.success(editingQuotation ? 'Quotation updated successfully.' : 'Quotation created successfully.');
+    setIsBuilderDialogOpen(false);
+    setEditingQuotation(null);
+    setSelectedProposal(null);
+    refetch();
   };
 
   return (
@@ -287,8 +279,8 @@ export function QuotationsPage() {
               onDelete={() => handleDeleteQuotation(row)}
               onSend={() => {}}
               onConvertToProject={() => handleConvertToProject(row)}
-              onPreviewPdf={() => previewServerPdf(row)}
-              onDownload={() => downloadServerPdf(row)}
+              onPreviewPdf={() => previewPdf(row)}
+              onDownload={() => downloadPdf(row)}
               onDuplicate={() => handleDuplicateQuotation(row)}
             />
           )}
