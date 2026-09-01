@@ -179,6 +179,15 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   const [roofAccessories, setRoofAccessories] = useState<AccessoryRow[]>(
     (quotation?.roofAccessories as AccessoryRow[]) || []
   );
+  const [wallAccessories, setWallAccessories] = useState<AccessoryRow[]>(
+    ((quotation as any)?.wallAccessories as AccessoryRow[]) || []
+  );
+  const [materialSpecs, setMaterialSpecs] = useState<MaterialSpecRow[]>(
+    ((quotation as any)?.materialSpecs as MaterialSpecRow[]) || []
+  );
+  const [materialSelections, setMaterialSelections] = useState<MaterialSelection[]>(
+    ((quotation as any)?.materialSelections as MaterialSelection[]) || []
+  );
 
   const [serviceCosts, setServiceCosts] = useState({
     labour: 0,
@@ -196,7 +205,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   const [gstRate, setGstRate] = useState(18);
 
   const [paymentTerms, setPaymentTerms] = useState(
-    quotation?.paymentTerms || '30% advance, 60% before dispatch, 10% on erection.'
+    (quotation as any)?.paymentTerms || '30% advance, 60% before dispatch, 10% on erection.'
   );
 
   const [inclusions, setInclusions] = useState('');
@@ -209,12 +218,12 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const isSaving = saveState === 'saving';
+  const isSavingInternal = saveState === 'saving';
 
   // Calculate totals
   const calculations = useMemo(() => {
-    const materialTotal = materialSelections.reduce((sum, m) => sum + ((m.rate || 0) * (m.quantity || 0)), 0);
-    const serviceTotal = Object.values(serviceCosts).reduce((sum, val) => sum + val, 0);
+    const materialTotal = materialSelections.reduce((sum: number, m: MaterialSelection) => sum + ((m.rate || 0) * (m.quantity || 0)), 0);
+    const serviceTotal = Object.values(serviceCosts).reduce((sum: number, val: number) => sum + val, 0);
     const subtotal = materialTotal + serviceTotal;
 
     const discountAmount = discountType === 'percentage'
@@ -234,6 +243,47 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       grandTotal,
     };
   }, [materialSelections, serviceCosts, discountType, discountValue, gstRate]);
+
+  // ── Handler functions ─────────────────────────────────────────────────────
+  const updateDesignCode = (key: string, value: string) => {
+    setDesignCode((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  const updateDesignLoad = (key: string, value: string) => {
+    setDesignLoad((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  const addAccessory = (type: 'roof' | 'wall') => {
+    if (type === 'roof') {
+      setRoofAccessories((prev: AccessoryRow[]) => [...prev, emptyAccessory()]);
+    } else {
+      setWallAccessories((prev: AccessoryRow[]) => [...prev, emptyAccessory()]);
+    }
+  };
+
+  const updateAccessory = (type: 'roof' | 'wall', index: number, updates: Partial<AccessoryRow>) => {
+    if (type === 'roof') {
+      setRoofAccessories((prev: AccessoryRow[]) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], ...updates };
+        return updated;
+      });
+    } else {
+      setWallAccessories((prev: AccessoryRow[]) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], ...updates };
+        return updated;
+      });
+    }
+  };
+
+  const removeAccessory = (type: 'roof' | 'wall', index: number) => {
+    if (type === 'roof') {
+      setRoofAccessories((prev: AccessoryRow[]) => prev.filter((_: AccessoryRow, i: number) => i !== index));
+    } else {
+      setWallAccessories((prev: AccessoryRow[]) => prev.filter((_: AccessoryRow, i: number) => i !== index));
+    }
+  };
 
   // ── Frontend validation ────────────────────────────────────────────────
   const validate = (): boolean => {
@@ -295,7 +345,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
     }
 
     // Prevent double save
-    if (isSaving) return;
+    if (isSavingInternal) return;
 
     setSaveState('saving');
     setErrorMessage(null);
@@ -311,7 +361,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       paymentTerms,
       deliveryTerms: '4-6 weeks from order confirmation',
       pricingConfiguration: {
-        materialRates: materialSelections.map(m => ({
+        materialRates: materialSelections.map((m: MaterialSelection) => ({
           materialSelectionId: m.id,
           rate: m.rate || 0,
           quantity: m.quantity || 0,
@@ -400,17 +450,17 @@ export const QuotationBuilder = memo(function QuotationBuilder({
           <Button
             variant="outline"
             onClick={onCancel}
-            disabled={isSaving}
+            disabled={isSavingInternal}
             className="flex-1 sm:flex-none h-8 sm:h-9 text-xs"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSavingInternal}
             className="flex-1 sm:flex-none h-8 sm:h-9 text-xs"
           >
-            {isSaving ? (
+            {isSavingInternal ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 <span className="hidden sm:inline">Saving...</span>
@@ -460,7 +510,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {materialSelections.map((material, index) => (
+                {materialSelections.map((material: MaterialSelection, index: number) => (
                   <div key={material.id} className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3 items-center p-2 sm:p-3 border rounded-md">
                     <div className="col-span-1 sm:col-span-2">
                       <Label className="text-[10px] sm:text-xs">Item</Label>
@@ -478,7 +528,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                           setMaterialSelections(updated);
                         }}
                         className="h-8 text-xs"
-                        disabled={isSaving}
+                        disabled={isSavingInternal}
                       />
                     </div>
                     <div>
@@ -492,7 +542,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                           setMaterialSelections(updated);
                         }}
                         className="h-8 text-xs"
-                        disabled={isSaving}
+                        disabled={isSavingInternal}
                       />
                     </div>
                   </div>
@@ -544,7 +594,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                       onChange={(e) => setServiceCosts({ ...serviceCosts, [service]: Number(e.target.value) })}
                       className="h-8 text-xs"
                       placeholder="Rate"
-                      disabled={isSaving}
+                      disabled={isSavingInternal}
                     />
                     <div className="text-xs sm:text-sm font-medium text-right">
                       <IndianRupee className="h-3 w-3 inline" /> {cost}
@@ -567,7 +617,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                 <div>
                   <Label className="text-[10px] sm:text-xs">Discount Type</Label>
-                  <Select value={discountType} onValueChange={(value: 'percentage' | 'fixed') => setDiscountType(value)} disabled={isSaving}>
+                  <Select value={discountType} onValueChange={(value: 'percentage' | 'fixed') => setDiscountType(value)} disabled={isSavingInternal}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
@@ -584,7 +634,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                     value={discountValue}
                     onChange={(e) => setDiscountValue(Number(e.target.value))}
                     className="h-8 text-xs"
-                    disabled={isSaving}
+                    disabled={isSavingInternal}
                   />
                 </div>
                 <div>
@@ -594,7 +644,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                     value={gstRate}
                     onChange={(e) => setGstRate(Number(e.target.value))}
                     className="h-8 text-xs"
-                    disabled={isSaving}
+                    disabled={isSavingInternal}
                   />
                 </div>
               </div>
@@ -639,7 +689,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
                   onChange={(e) => setPaymentTerms(e.target.value)}
                   rows={4}
                   className="text-xs"
-                  disabled={isSaving}
+                  disabled={isSavingInternal}
                 />
               </div>
             </CardContent>

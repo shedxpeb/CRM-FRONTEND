@@ -53,7 +53,7 @@ export function useQuotations(params?: {
       const res = await api.get<BackendResponse<PaginatedData<Quotation>>>('/quotations', {
         params: queryParams,
       });
-      return res.data.rows;
+      return res.data?.rows ?? [];
     },
     staleTime: 30_000,
   });

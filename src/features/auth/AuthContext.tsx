@@ -84,6 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const hasToken = await authService.bootstrapSession();
         if (!hasToken) {
           clearSession();
+          setIsLoading(false);
+          return;
+        }
+
+        // Verify we actually have an access token after bootstrap
+        const accessToken = getAccessToken();
+        if (!accessToken) {
+          clearSession();
+          setIsLoading(false);
           return;
         }
 
