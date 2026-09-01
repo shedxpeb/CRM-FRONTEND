@@ -87,7 +87,26 @@ export function VendorForm({ open, onOpenChange, onSubmit, initialData, isSubmit
   });
 
   useEffect(() => {
-    if (!initialData) {
+    if (initialData) {
+      reset({
+        companyName: initialData.companyName,
+        gstNumber: initialData.gstNumber || '',
+        panNumber: initialData.panNumber || '',
+        contactPerson: initialData.contactPerson,
+        email: initialData.email || '',
+        phone: initialData.phone,
+        address: initialData.address || '',
+        city: initialData.city || '',
+        state: initialData.state || '',
+        pincode: initialData.pincode || '',
+        country: initialData.country || '',
+        paymentTerms: initialData.paymentTerms || '',
+        creditLimit: initialData.creditLimit || undefined,
+        creditDays: initialData.creditDays || undefined,
+        status: initialData.status || 'Active',
+        notes: initialData.notes || '',
+      });
+    } else {
       reset({
         status: 'Active',
         country: 'India',

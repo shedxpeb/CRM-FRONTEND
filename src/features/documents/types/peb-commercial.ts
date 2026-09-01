@@ -565,107 +565,70 @@ export interface CoverPage {
  * No manual calculations
  */
 export interface Quotation {
-  // Base Document Info
   id: string;
   quotationNumber: string;
   version: number;
-  
-  // Source Proposal
-  proposalId: string;
-  proposalNumber: string;
-  sourceEstimateId: string;
-  sourceEstimateNumber: string;
-  
-  // Customer (inherited from Proposal)
-  customerId: string;
+  status: string;
+  proposalId?: string;
+  proposalNumber?: string;
+  sourceEstimateId?: string;
+  sourceEstimateNumber?: string;
+
+  // ── GENERAL ──
+  date?: Date;
+  inquiryNumber?: string;
+  customerId?: string;
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;
   customerAddress?: string;
   customerGST?: string;
-  
-  // Lead/Project Reference
+  projectName?: string;
+  projectId?: string;
   leadId?: string;
   leadNumber?: string;
-  projectId?: string;
-  projectName?: string;
-  
-  // Status
-  status: DocumentStatus;
-  approvalStatus?: ApprovalStatus;
-  
-  // Validity
   validUntil?: Date;
-  paymentTerms: string;
-  deliveryTerms?: string;
-  
-  // Inherited Data (from Proposal)
-  materialSelections: MaterialSelection[];
-  scopeConfiguration: ScopeConfiguration;
-  technicalSpecifications: TechnicalSpecifications;
-  inclusions: string[];
-  exclusions: string[];
-  proposalConfiguration: ProposalConfiguration;
-  timeline?: ProposalTimeline;
-  
-  // Quotation Pricing Configuration
-  pricingConfiguration: PricingConfiguration;
-  
-  // Calculated Amounts (System Calculated)
-  materialCost: number;
-  labourCost: number;
-  installationCost: number;
-  transportationCost: number;
-  craneCost: number;
-  civilCost: number;
-  accommodationCost: number;
-  erectionCost: number;
-  freightCost: number;
-  otherCosts: number;
-  
-  // Totals
+  internalNotes?: string;
+  createdById?: string;
+  createdBy?: string;
+
+  // ── STRUCTURED SECTIONS (JSON) ──
+  buildingSpec?: any;
+  designCode?: any;
+  designLoad?: any;
+  mezzanineLoad?: any;
+  craneDetail?: any;
+  roofAccessories?: any[];
+  wallAccessories?: any[];
+  materialSpecifications?: any[];
+  designWeightSummary?: any[];
+  lineItems?: any[];
+
+  // ── PRICING ──
   subtotal: number;
   discountAmount: number;
   discountPercentage?: number;
+  gstRate?: number;
   taxAmount: number;
-  gstType: 'CGST' | 'SGST' | 'IGST' | 'CESS';
-  cgstAmount?: number;
-  sgstAmount?: number;
-  igstAmount?: number;
-  cessAmount?: number;
+  gstType: string;
   grandTotal: number;
-  
-  // Amount in Words
   amountInWords?: string;
-  
-  // Terms
-  termsAndConditions?: string;
-  notes?: string;
-  internalNotes?: string;
-  
-  // Conversion Tracking
+
+  // ── OVERRIDES ──
+  paymentTermsOverride?: string;
+  exclusionsOverride?: string;
+  deliveryOverride?: string;
+  specialNotes?: string;
+
+  // ── TEMPLATE ──
+  templateSnapshot?: any;
   convertedToProjectId?: string;
   convertedAt?: Date;
-
-  // Stock Reservation (Inventory Integration)
-  // Stock reservation happens at project creation, not quotation
-  // No stock reservation fields here - handled in Project module
-
-  // Finance Tracking
-  // Finance module is independent - no direct invoice generation from quotation
-  // Revenue pipeline tracking only - no invoice/payment fields here
-
-  // Template
   templateId?: string;
-  
-  // Timestamps
+
+  // ── TIMESTAMPS ──
   createdAt?: Date;
   updatedAt?: Date;
-  sentAt?: Date;
-  viewedAt?: Date;
-  acceptedAt?: Date;
-  rejectedAt?: Date;
-  createdBy?: string;
 }
 
 /**

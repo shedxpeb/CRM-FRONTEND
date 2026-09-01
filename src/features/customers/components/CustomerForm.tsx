@@ -97,28 +97,29 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
         customerName: '',
         companyName: '',
         mobile: '',
-        alternateMobile: '',
         email: '',
-        gstNumber: '',
-        panNumber: '',
-        industry: 'Manufacturing',
-        businessType: 'PrivateLimited',
-        website: '',
         address: '',
         city: '',
         state: '',
         country: 'India',
-        pincode: '',
         source: 'Website',
-        status: 'Prospect',
-        notes: '',
+        status: 'Active',
         projectTitle: '',
-        projectType: '',
-        projectCode: '',
-        accountTier: '',
-        creditLimit: undefined,
         customFields: initialData?.customFields ?? {},
         ...initialData,
+        // Normalize null values to empty strings/undefined for form inputs
+        alternateMobile: initialData.alternateMobile ?? '',
+        gstNumber: initialData.gstNumber ?? '',
+        panNumber: initialData.panNumber ?? '',
+        industry: initialData.industry ?? 'Manufacturing',
+        businessType: initialData.businessType ?? 'PrivateLimited',
+        website: initialData.website ?? '',
+        pincode: initialData.pincode ?? '',
+        notes: initialData.notes ?? '',
+        projectType: initialData.projectType ?? '',
+        projectCode: initialData.projectCode ?? '',
+        accountTier: initialData.accountTier ?? '',
+        creditLimit: initialData.creditLimit ?? undefined,
       });
       setErrors({});
       setTouchedFields(new Set());
@@ -144,7 +145,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
     country: 'India',
     pincode: '',
     source: 'Website',
-    status: 'Prospect',
+    status: 'Active',
     notes: '',
     projectTitle: '',
     projectType: '',
@@ -271,10 +272,10 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
 
     const submitData: Record<string, any> = {};
     for (const [key, value] of Object.entries(rawSubmitData)) {
-      // For optional fields that can be cleared, send empty string to clear the value
+      // For optional fields that can be cleared, send null to clear the value
       if (value === '' || value === undefined) {
-        if (['email', 'alternateMobile', 'gstNumber', 'panNumber', 'website', 'notes', 'pincode', 'country', 'accountTier'].includes(key)) {
-          submitData[key] = ''; // Send empty string to clear the field
+        if (['email', 'alternateMobile', 'gstNumber', 'panNumber', 'website', 'notes', 'pincode', 'country', 'accountTier', 'projectTitle', 'projectType', 'projectCode', 'industry', 'businessType'].includes(key)) {
+          submitData[key] = null; // Send null to clear the field
           continue;
         }
       }
@@ -305,8 +306,13 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
           if (JSON.stringify(previous) !== JSON.stringify(value)) {
             changed[key] = value;
           }
-        } else if (String(previous ?? '') !== String(value ?? '')) {
-          changed[key] = value;
+        } else {
+          // Properly detect cleared fields: if value is null and previous was not null, it's a change
+          const previousStr = String(previous ?? '');
+          const valueStr = String(value ?? '');
+          if (previousStr !== valueStr) {
+            changed[key] = value;
+          }
         }
       }
       onSubmit(changed);
@@ -551,7 +557,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
             )}
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Project Type *</label>
+            <label className="text-sm font-medium">Project Type</label>
             <Select
               value={formData.projectType}
               onValueChange={(v) => handleChange('projectType', v)}
@@ -622,7 +628,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Industry *</label>
+              <label className="text-sm font-medium">Industry</label>
               <Select
                 value={formData.industry}
                 onValueChange={(v) => handleChange('industry', v)}
@@ -646,7 +652,7 @@ export const CustomerForm = memo(function CustomerForm({ initialData, onSubmit, 
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Business Type *</label>
+              <label className="text-sm font-medium">Business Type</label>
               <Select
                 value={formData.businessType}
                 onValueChange={(v) => handleChange('businessType', v)}

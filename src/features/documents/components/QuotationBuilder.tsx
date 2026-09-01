@@ -17,12 +17,131 @@ import {
 } from '../types/peb-commercial';
 import { useCustomerAutofill } from '../hooks/useCustomerAutofill';
 import { ItemPicker } from './ItemPicker';
+import { apiClient } from '@/core/api';
+
+// ── Types for structured sections ──────────────────────────────────
+
+interface LineItem {
+  id: string;
+  itemMasterId?: string;
+  itemCode: string;
+  itemName: string;
+  description?: string;
+  unit: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
+interface AccessoryRow {
+  id: string;
+  description: string;
+  size: string;
+  quantity: string;
+  location: string;
+}
+
+interface MaterialSpecRow {
+  id: string;
+  component: string;
+  specification: string;
+  make: string;
+  yieldStrength: string;
+}
+
+interface WeightRow {
+  id: string;
+  description: string;
+  weight: string;
+  unit: string;
+  remarks: string;
+}
+
+// ── Defaults ───────────────────────────────────────────────────────
+
+const defaultBuildingSpec = {
+  frameType: 'PEB Frame',
+  endFrameCondition: 'Non-Expandable',
+  width: '',
+  length: '',
+  clearHeight: '',
+  widthModule: 'AS PER DESIGN',
+  roofSlope: '1:10',
+  opening: 'AS PER DESIGN',
+  sidewallBaySpacing: 'AS PER DESIGN',
+  endwallBaySpacing: 'AS PER DESIGN',
+  brickwallCondition: '',
+  canopy: 'AS PER DESIGN',
+  roofSheeting: '0.5 mm Bare PPGL',
+  wallSheeting: '0.5 mm Color PPGL',
+  gutter: 'Standard Eave Gutter',
+  downTakePipe: 'PVC',
+  bracingType: 'X Bracing',
+  fascia: '',
+  futureExpansion: '',
+};
+
+const defaultDesignCode = {
+  windLoadApplication: 'MBMA-2012, Design According to AISC-2010',
+  seismicCode: 'IS 1893:2005 (Part-I)',
+  responseFactor: '4',
+  importanceFactor: '1',
+  seismicZone: 'Z-III',
+  seismicCoefficient: '0.16',
+};
+
+const defaultDesignLoad = {
+  deadLoad: '',
+  columnLoad: '',
+  windSpeed: '',
+  liveLoad: '',
+  mezzanineLoad: '',
+  collateralLoad: '',
+  seismicZone: '',
+};
+
+const emptyLineItem: LineItem = {
+  id: crypto.randomUUID(),
+  itemCode: '',
+  itemName: '',
+  unit: 'Nos',
+  quantity: 1,
+  rate: 0,
+  amount: 0,
+};
+
+const emptyAccessory = (): AccessoryRow => ({
+  id: crypto.randomUUID(),
+  description: '',
+  size: '',
+  quantity: '',
+  location: '',
+});
+
+const emptyMaterialSpec = (): MaterialSpecRow => ({
+  id: crypto.randomUUID(),
+  component: '',
+  specification: '',
+  make: '',
+  yieldStrength: '',
+});
+
+const emptyWeightRow = (): WeightRow => ({
+  id: crypto.randomUUID(),
+  description: '',
+  weight: '',
+  unit: 'MT',
+  remarks: '',
+});
+
+// ── Component ──────────────────────────────────────────────────────
 
 interface QuotationBuilderProps {
   proposal?: Proposal | null;
   quotation?: Quotation;
   onSave: (quotation: CreateQuotationDto) => Promise<void>;
   onCancel: () => void;
+  isSaving?: boolean;
 }
 
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
@@ -32,12 +151,33 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   quotation,
   onSave,
   onCancel,
+  isSaving = false,
 }: QuotationBuilderProps) {
-  // Smart Autofill - fetch customer data and last quotation
-  const autofillData = useCustomerAutofill(proposal?.customerId || '');
+  // ── GENERAL ──
+  const autofillData = useCustomerAutofill(proposal?.customerId || quotation?.customerId || '');
+  const [date, setDate] = useState(() => {
+    if (quotation?.date) return new Date(quotation.date).toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
+  });
+  const [inquiryNumber, setInquiryNumber] = useState(quotation?.inquiryNumber || '');
+  const [customerName, setCustomerName] = useState(quotation?.customerName || proposal?.customerName || autofillData?.contactPerson || '');
+  const [customerAddress, setCustomerAddress] = useState(quotation?.customerAddress || proposal?.customerAddress || autofillData?.siteAddress || '');
+  const [customerGST, setCustomerGST] = useState(quotation?.customerGST || proposal?.customerGST || autofillData?.gstNumber || '');
+  const [validUntil, setValidUntil] = useState(() => {
+    if (quotation?.validUntil) return new Date(quotation.validUntil).toISOString().split('T')[0];
+    const d = new Date(); d.setDate(d.getDate() + 20); return d.toISOString().split('T')[0];
+  });
 
-  const [materialSelections, setMaterialSelections] = useState<MaterialSelection[]>(
-    quotation?.materialSelections || proposal?.materialSelections || []
+  // ── STRUCTURED SECTIONS ──
+  const [buildingSpec, setBuildingSpec] = useState(quotation?.buildingSpec || defaultBuildingSpec);
+  const [designCode, setDesignCode] = useState(quotation?.designCode || defaultDesignCode);
+  const [designLoad, setDesignLoad] = useState(quotation?.designLoad || defaultDesignLoad);
+  const [mezzanineLoad, setMezzanineLoad] = useState(quotation?.mezzanineLoad || null);
+  const [craneDetail, setCraneDetail] = useState(quotation?.craneDetail || null);
+
+  // ── ACCESSORIES TABLES ──
+  const [roofAccessories, setRoofAccessories] = useState<AccessoryRow[]>(
+    (quotation?.roofAccessories as AccessoryRow[]) || []
   );
 
   const [serviceCosts, setServiceCosts] = useState({
@@ -287,32 +427,33 @@ export const QuotationBuilder = memo(function QuotationBuilder({
         </div>
       </div>
 
-      {/* Main Content */}
-      <Tabs defaultValue="products">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="products" className="text-xs sm:text-sm">
-            Products/Services
-          </TabsTrigger>
-          <TabsTrigger value="pricing" className="text-xs sm:text-sm">
-            Pricing
-          </TabsTrigger>
-          <TabsTrigger value="payment" className="text-xs sm:text-sm">
-            Payment Terms
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="text-xs sm:text-sm">
-            Notes
-          </TabsTrigger>
+      <Tabs defaultValue="general">
+        <TabsList className="grid w-full grid-cols-6 h-8">
+          <TabsTrigger value="general" className="text-[10px]">General</TabsTrigger>
+          <TabsTrigger value="building" className="text-[10px]">Building</TabsTrigger>
+          <TabsTrigger value="design" className="text-[10px]">Design</TabsTrigger>
+          <TabsTrigger value="accessories" className="text-[10px]">Accessories</TabsTrigger>
+          <TabsTrigger value="materials" className="text-[10px]">Materials</TabsTrigger>
+          <TabsTrigger value="pricing" className="text-[10px]">Pricing</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="products" className="space-y-4">
-          <ItemPicker
-            value={materialSelections}
-            onChange={setMaterialSelections}
-          />
+        {/* ── TAB: GENERAL ── */}
+        <TabsContent value="general" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">General Information</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Date</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-8 text-xs" /></div>
+              <div><Label className="text-xs">Inquiry Number</Label><Input value={inquiryNumber} onChange={e => setInquiryNumber(e.target.value)} placeholder="e.g. SHX-26-025" className="h-8 text-xs" /></div>
+              <div><Label className="text-xs">Customer / Company *</Label><Input value={customerName} onChange={e => setCustomerName(e.target.value)} className="h-8 text-xs" /></div>
+              <div><Label className="text-xs">Address</Label><Input value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} className="h-8 text-xs" /></div>
+              <div><Label className="text-xs">GST</Label><Input value={customerGST} onChange={e => setCustomerGST(e.target.value)} className="h-8 text-xs" /></div>
+              <div><Label className="text-xs">Valid Until</Label><Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} className="h-8 text-xs" /></div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="pricing" className="space-y-4">
-          {/* Material Rates */}
+        {/* ── TAB: BUILDING SPECIFICATION ── */}
+        <TabsContent value="building" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Material Rates</CardTitle>
@@ -364,12 +505,34 @@ export const QuotationBuilder = memo(function QuotationBuilder({
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Service Costs */}
+        {/* ── TAB: DESIGN CODE + LOAD + CRANE + MEZZ ── */}
+        <TabsContent value="design" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Service Costs</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-sm">Design Code</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              {Object.entries(defaultDesignCode).map(([key, defaultVal]) => (
+                <div key={key}>
+                  <Label className="text-xs">{key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</Label>
+                  <Input value={(designCode as any)[key] || ''} onChange={e => updateDesignCode(key, e.target.value)} placeholder={defaultVal} className="h-8 text-xs" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Design Load</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              {Object.entries(defaultDesignLoad).map(([key]) => (
+                <div key={key}>
+                  <Label className="text-xs">{key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</Label>
+                  <Input value={(designLoad as any)[key] || ''} onChange={e => updateDesignLoad(key, e.target.value)} placeholder="N/A" className="h-8 text-xs" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Crane Detail</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {Object.entries(serviceCosts).map(([service, cost]) => (
@@ -391,11 +554,14 @@ export const QuotationBuilder = memo(function QuotationBuilder({
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Discount */}
+        {/* ── TAB: ACCESSORIES ── */}
+        <TabsContent value="accessories" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Discount</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Roof Accessories</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => addAccessory('roof')} className="h-7 text-xs"><Plus className="h-3 w-3 mr-1" /> Add Row</Button>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -434,39 +600,36 @@ export const QuotationBuilder = memo(function QuotationBuilder({
               </div>
             </CardContent>
           </Card>
-
-          {/* Summary */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Summary</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Wall Accessories</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => addAccessory('wall')} className="h-7 text-xs"><Plus className="h-3 w-3 mr-1" /> Add Row</Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span className="font-medium"><IndianRupee className="h-3 w-3 inline" /> {calculations.subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Discount</span>
-                  <span className="font-medium text-red-600">-<IndianRupee className="h-3 w-3 inline" /> {calculations.discountAmount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>GST ({gstRate}%)</span>
-                  <span className="font-medium"><IndianRupee className="h-3 w-3 inline" /> {calculations.taxAmount.toLocaleString()}</span>
-                </div>
-                <div className="border-t pt-2 flex justify-between text-base font-bold">
-                  <span>Grand Total</span>
-                  <span><IndianRupee className="h-4 w-4 inline" /> {calculations.grandTotal.toLocaleString()}</span>
-                </div>
-              </div>
+              <table className="w-full text-xs">
+                <thead><tr className="border-b"><th className="text-left py-1">Description</th><th className="text-left py-1">Size</th><th className="text-left py-1">Qty</th><th className="text-left py-1">Location</th><th /></tr></thead>
+                <tbody>
+                  {wallAccessories.map((row, i) => (
+                    <tr key={row.id} className="border-t">
+                      <td className="py-1"><Input value={row.description} onChange={e => updateAccessory('wall', i, { description: e.target.value })} className="h-7 text-xs" /></td>
+                      <td className="py-1"><Input value={row.size} onChange={e => updateAccessory('wall', i, { size: e.target.value })} className="h-7 text-xs" /></td>
+                      <td className="py-1"><Input value={row.quantity} onChange={e => updateAccessory('wall', i, { quantity: e.target.value })} className="h-7 text-xs w-16" /></td>
+                      <td className="py-1"><Input value={row.location} onChange={e => updateAccessory('wall', i, { location: e.target.value })} className="h-7 text-xs" /></td>
+                      <td className="py-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeAccessory('wall', i)}><Trash2 className="h-3 w-3" /></Button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="payment" className="space-y-4">
+        {/* ── TAB: MATERIALS + WEIGHT ── */}
+        <TabsContent value="materials" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Payment Terms</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Material Specification</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setMaterialSpecs(prev => [...prev, emptyMaterialSpec()])} className="h-7 text-xs"><Plus className="h-3 w-3 mr-1" /> Add Row</Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">

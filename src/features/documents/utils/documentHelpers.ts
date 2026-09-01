@@ -151,7 +151,7 @@ export function normalizeQuotation(quotation: Quotation): UnifiedDocument {
     kind: 'quotation',
     documentType: 'Quotation',
     documentNumber: quotation.quotationNumber,
-    customerId: quotation.customerId,
+    customerId: quotation.customerId || '',
     customerName: quotation.customerName,
     projectId: quotation.projectId,
     projectName: quotation.projectName,
