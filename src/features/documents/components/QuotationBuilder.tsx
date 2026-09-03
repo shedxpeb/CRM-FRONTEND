@@ -50,6 +50,8 @@ interface MaterialSpecRow {
   specification: string;
   make: string;
   yieldStrength: string;
+  isChild?: boolean; // For grouped rows like Bracing children
+  parentId?: string; // For grouping
 }
 
 interface WeightRow {
@@ -58,6 +60,16 @@ interface WeightRow {
   weight: string;
   unit: string;
   remarks: string;
+}
+
+interface ContractPriceRow {
+  id: string;
+  serialNo: number;
+  description: string;
+  unit: string;
+  quantity: string;
+  rate: string;
+  amount: number;
 }
 
 // ── Defaults ───────────────────────────────────────────────────────
@@ -121,6 +133,119 @@ const emptyAccessory = (): AccessoryRow => ({
   location: '',
 });
 
+// Default Roof Accessories (8 rows) - preloaded on CREATE mode
+const defaultRoofAccessories: AccessoryRow[] = [
+  {
+    id: crypto.randomUUID(),
+    description: 'Roof Area',
+    size: '',
+    quantity: '12800 SQ Yard',
+    location: '',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Roof Sheeting',
+    size: '',
+    quantity: '14,080 SQ Yard',
+    location: '',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Skylight',
+    size: 'Single skin translucent, Frp thick-3mm, UV Approved, Protected, Profiled with Safety Mesh',
+    quantity: '20 SQM',
+    location: 'As specified / Protected',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Turbo vents',
+    size: '600mm Dia',
+    quantity: 'N/A',
+    location: 'Roof',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Insulation',
+    size: 'N/A',
+    quantity: 'N/A',
+    location: 'Roof Area',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Roof Monitor',
+    size: 'N/A',
+    quantity: 'N/A',
+    location: 'Roof Area',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Louvers',
+    size: 'N/A',
+    quantity: 'N/A',
+    location: 'Sidewall',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Life Line',
+    size: 'N/A',
+    quantity: '',
+    location: 'Periphery of the building',
+  },
+];
+
+// Default Wall Accessories (7 rows) - preloaded on CREATE mode
+const defaultWallAccessories: AccessoryRow[] = [
+  {
+    id: crypto.randomUUID(),
+    description: 'Frame opening',
+    size: '4.0MX4.0M',
+    quantity: '2nos',
+    location: 'As Per Standard',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Cantilever canopy & without Soffit with Curved Eave',
+    size: '2.0 m Projected x Bay spacing',
+    quantity: '2nos',
+    location: 'Sidewall',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Bubble insulation',
+    size: 'N/A.',
+    quantity: 'N. A',
+    location: 'As Per Standard',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Wall light: Single skin translucent, polycarbonate, thick 2mm, UV Protected',
+    size: 'N/A',
+    quantity: 'N/A',
+    location: 'As per Requirement',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'S-type Louvers',
+    size: 'N/A',
+    quantity: 'N/A',
+    location: 'As Per Drawings',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Cage ladder',
+    size: 'As per Standard',
+    quantity: 'N/A',
+    location: 'At any side of side wall/end wall.',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Wall Sheet',
+    size: '0.5mm thick Color Sheeting considered. Including 10M height Partition wall at Center Column Full length (Single Side)',
+    quantity: 'N/A',
+    location: 'As per Requirement.',
+  },
+];
+
 const emptyMaterialSpec = (): MaterialSpecRow => ({
   id: crypto.randomUUID(),
   component: '',
@@ -136,6 +261,130 @@ const emptyWeightRow = (): WeightRow => ({
   unit: 'MT',
   remarks: '',
 });
+
+// Default Material Specification rows - preloaded on CREATE mode
+const defaultMaterialSpecs: MaterialSpecRow[] = [
+  {
+    id: crypto.randomUUID(),
+    component: 'Built-up Hot Rolled Beam/Channel',
+    specification: 'ASTM A572M Grade50 Type 1',
+    make: 'SAIL/ESSAR',
+    yieldStrength: '345 MPa',
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Built-up Hot Rolled Beam/Channel',
+    specification: 'As per IS 2062',
+    make: 'AMIBCA/VIZAG, SAIL/VARSANA',
+    yieldStrength: '245 MPa',
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Exterior Roof',
+    specification: 'ASTM A792 M Grade 345 Class 1- Bare Galvalume Coating AZ150',
+    make: 'JSW',
+    yieldStrength: '550 MPa',
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Wall Panel',
+    specification: 'ASTM A792 M Grade 345 Class 1- Bare Galvalume Coating AZ150/Standing',
+    make: 'JSW',
+    yieldStrength: '550 MPa',
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Cold form',
+    specification: 'ASTM A653M Grade 340 Class1 Coating Z120 - GI',
+    make: 'AM/NS',
+    yieldStrength: '345 MPa',
+  },
+  // Bracing group - parent
+  {
+    id: crypto.randomUUID(),
+    component: 'Bracing',
+    specification: '',
+    make: '',
+    yieldStrength: '',
+  },
+  // Bracing children
+  {
+    id: crypto.randomUUID(),
+    component: 'Rod',
+    specification: 'As per IS 2062',
+    make: '',
+    yieldStrength: '245 MPa',
+    isChild: true,
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Square/Rectangular Hollow Section',
+    specification: 'As per IS 4923',
+    make: 'Apollo/Surani',
+    yieldStrength: '310 MPa',
+    isChild: true,
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Angle',
+    specification: 'As per IS 2062',
+    make: '',
+    yieldStrength: '245 MPa',
+    isChild: true,
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Anchor Bolt',
+    specification: 'As per IS2062 EN-8 Grade unpainted',
+    make: 'ASSL Standard',
+    yieldStrength: '245 MPa',
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Primary Connection Bolts',
+    specification: 'As per IS 1363 Chrome Zinc Coated',
+    make: '',
+    yieldStrength: 'GR8.8',
+  },
+  {
+    id: crypto.randomUUID(),
+    component: 'Secondary Connection Bolts',
+    specification: 'As per IS 1363 Zinc Coated',
+    make: '',
+    yieldStrength: 'GR4.6',
+  },
+];
+
+// Default Contract Price rows - preloaded on CREATE mode
+const defaultContractPriceRows: ContractPriceRow[] = [
+  {
+    id: crypto.randomUUID(),
+    serialNo: 1,
+    description: 'Total basic cost for Supply, Fabrication & Erection of Primary, Secondary Structure and Roofing sheet\n\nCivil work of Shed\n\nExcavation for footing 7 ft.\nMetal soiling GSB230\nPCC M-10 (100 MM)\nRCC M-25 (150 MM) for beam & column.\n6 feet Brick Wall surrounding Shed.\nCement plaster 20 MM thickness both side.\nFlooring with Trimix\n(PEB+Civil Shed Area)',
+    unit: 'SQ Yard',
+    quantity: '1425',
+    rate: '7500',
+    amount: 10687500,
+  },
+  {
+    id: crypto.randomUUID(),
+    serialNo: 2,
+    description: 'Shed Outer Side Civil Work',
+    unit: 'SQ Yard',
+    quantity: '1560',
+    rate: '3000',
+    amount: 4680000,
+  },
+  {
+    id: crypto.randomUUID(),
+    serialNo: 3,
+    description: 'SQF',
+    unit: 'N/A',
+    quantity: 'N/A',
+    rate: 'N/A',
+    amount: 0,
+  },
+];
 
 // ── Component ──────────────────────────────────────────────────────
 
@@ -181,22 +430,114 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   const [craneDetail, setCraneDetail] = useState(quotation?.craneDetail || null);
 
   // ── ACCESSORIES TABLES ──
-  const [roofAccessories, setRoofAccessories] = useState<AccessoryRow[]>(
-    (quotation?.roofAccessories as AccessoryRow[]) || []
-  );
-  const [wallAccessories, setWallAccessories] = useState<AccessoryRow[]>(
-    ((quotation as any)?.wallAccessories as AccessoryRow[]) || []
-  );
-  const [materialSpecs, setMaterialSpecs] = useState<MaterialSpecRow[]>(
-    ((quotation as any)?.materialSpecs as MaterialSpecRow[]) || []
-  );
+  // CREATE mode: pre-load default rows. EDIT mode: load saved rows exactly.
+  const [roofAccessories, setRoofAccessories] = useState<AccessoryRow[]>(() => {
+    if (quotation?.roofAccessories && (quotation.roofAccessories as AccessoryRow[]).length > 0) {
+      // EDIT mode: deep-copy saved rows
+      return JSON.parse(JSON.stringify(quotation.roofAccessories));
+    }
+    // CREATE mode: deep-copy default rows
+    return JSON.parse(JSON.stringify(defaultRoofAccessories));
+  });
+  const [wallAccessories, setWallAccessories] = useState<AccessoryRow[]>(() => {
+    if ((quotation as any)?.wallAccessories && ((quotation as any).wallAccessories as AccessoryRow[]).length > 0) {
+      // EDIT mode: deep-copy saved rows
+      return JSON.parse(JSON.stringify((quotation as any).wallAccessories));
+    }
+    // CREATE mode: deep-copy default rows
+    return JSON.parse(JSON.stringify(defaultWallAccessories));
+  });
+  const [materialSpecs, setMaterialSpecs] = useState<MaterialSpecRow[]>(() => {
+    if ((quotation as any)?.materialSpecs && ((quotation as any).materialSpecs as MaterialSpecRow[]).length > 0) {
+      // EDIT mode: deep-copy saved rows
+      return JSON.parse(JSON.stringify((quotation as any).materialSpecs));
+    }
+    // CREATE mode: deep-copy default rows
+    return JSON.parse(JSON.stringify(defaultMaterialSpecs));
+  });
   const [materialSelections, setMaterialSelections] = useState<MaterialSelection[]>(
     ((quotation as any)?.materialSelections as MaterialSelection[]) || []
   );
+  const [contractPriceRows, setContractPriceRows] = useState<ContractPriceRow[]>(() => {
+    if ((quotation as any)?.contractPriceRows && ((quotation as any).contractPriceRows as ContractPriceRow[]).length > 0) {
+      // EDIT mode: deep-copy saved rows
+      return JSON.parse(JSON.stringify((quotation as any).contractPriceRows));
+    }
+    // CREATE mode: deep-copy default rows
+    return JSON.parse(JSON.stringify(defaultContractPriceRows));
+  });
 
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState(0);
   const [gstRate, setGstRate] = useState(18);
+
+  // ── Safe numeric utility for quotation calculations ─────────────────────
+  const safeParseNumber = (value: string | number): number => {
+    if (typeof value === 'number') return isNaN(value) ? 0 : value;
+    if (!value || value === 'N/A' || value === 'N. A') return 0;
+    // Remove commas and parse
+    const cleaned = String(value).replace(/,/g, '').trim();
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  const formatIndianCurrency = (value: number): string => {
+    if (isNaN(value) || value === 0) return '';
+    return value.toLocaleString('en-IN');
+  };
+
+  // Calculate Contract Price totals
+  const contractPriceCalculations = useMemo(() => {
+    const basicTotal = contractPriceRows.reduce((sum, row) => {
+      const qty = safeParseNumber(row.quantity);
+      const rate = safeParseNumber(row.rate);
+      return sum + (qty * rate);
+    }, 0);
+
+    const gstAmount = (basicTotal * gstRate) / 100;
+    const grandTotal = basicTotal + gstAmount;
+
+    return {
+      basicTotal,
+      gstAmount,
+      grandTotal,
+    };
+  }, [contractPriceRows, gstRate]);
+
+  // Update contract price row amount when qty or rate changes
+  const updateContractPriceRow = (index: number, field: keyof ContractPriceRow, value: string | number) => {
+    const updated = [...contractPriceRows];
+    updated[index] = { ...updated[index], [field]: value };
+    
+    // Auto-calculate amount if qty or rate changes
+    if (field === 'quantity' || field === 'rate') {
+      const qty = safeParseNumber(value);
+      const rate = safeParseNumber(field === 'quantity' ? updated[index].rate : updated[index].quantity);
+      updated[index].amount = qty * rate;
+    }
+    
+    setContractPriceRows(updated);
+  };
+
+  const addContractPriceRow = () => {
+    const newSerialNo = contractPriceRows.length + 1;
+    setContractPriceRows([
+      ...contractPriceRows,
+      {
+        id: crypto.randomUUID(),
+        serialNo: newSerialNo,
+        description: '',
+        unit: '',
+        quantity: '',
+        rate: '',
+        amount: 0,
+      },
+    ]);
+  };
+
+  const removeContractPriceRow = (index: number) => {
+    setContractPriceRows(contractPriceRows.filter((_, i) => i !== index));
+  };
 
   const [paymentTerms, setPaymentTerms] = useState(
     (quotation as any)?.paymentTerms || '30% advance, 60% before dispatch, 10% on erection.'
@@ -418,6 +759,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       roofAccessories,
       wallAccessories,
       materialSpecs,
+      contractPriceRows,
       // Add inquiry number and date
       inquiryNumber,
       date: date ? new Date(date).toISOString() : undefined,
@@ -925,6 +1267,103 @@ export const QuotationBuilder = memo(function QuotationBuilder({
 
         {/* ── TAB: PRICING ── */}
         <TabsContent value="pricing" className="space-y-4">
+          {/* Contract Price Section */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Contract Price</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={addContractPriceRow} disabled={isSavingInternal} className="text-xs h-8">
+                + Add Line Item
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {contractPriceRows.map((row, index) => (
+                  <div key={row.id} className="grid grid-cols-1 sm:grid-cols-7 gap-2 sm:gap-3 items-start p-2 sm:p-3 border rounded-md">
+                    <div className="col-span-1">
+                      <Label className="text-[10px] sm:text-xs">Sr. No.</Label>
+                      <Input
+                        type="number"
+                        value={row.serialNo}
+                        onChange={(e) => updateContractPriceRow(index, 'serialNo', Number(e.target.value))}
+                        className="h-8 text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div className="col-span-1 sm:col-span-2">
+                      <Label className="text-[10px] sm:text-xs">Description</Label>
+                      <Textarea
+                        value={row.description}
+                        onChange={(e) => updateContractPriceRow(index, 'description', e.target.value)}
+                        rows={3}
+                        placeholder="Enter description"
+                        className="text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] sm:text-xs">Unit</Label>
+                      <Input
+                        value={row.unit}
+                        onChange={(e) => updateContractPriceRow(index, 'unit', e.target.value)}
+                        placeholder="SQ Yard"
+                        className="h-8 text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] sm:text-xs">Qty</Label>
+                      <Input
+                        value={row.quantity}
+                        onChange={(e) => updateContractPriceRow(index, 'quantity', e.target.value)}
+                        placeholder="1425"
+                        className="h-8 text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] sm:text-xs">Rate</Label>
+                      <Input
+                        value={row.rate}
+                        onChange={(e) => updateContractPriceRow(index, 'rate', e.target.value)}
+                        placeholder="7500"
+                        className="h-8 text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <Label className="text-[10px] sm:text-xs">Amount</Label>
+                      <div className="text-xs sm:text-sm font-medium text-right">
+                        <IndianRupee className="h-3 w-3 inline" /> {formatIndianCurrency(row.amount) || 'N/A'}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeContractPriceRow(index)}
+                        disabled={isSavingInternal}
+                        className="text-xs h-6 text-red-600 hover:text-red-700"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {contractPriceRows.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No contract price items. Add line items above.
+                  </p>
+                )}
+              </div>
+              
+              {/* Contract Price Summary */}
+              <div className="border-t pt-3 mt-3 space-y-2">
+                <div className="flex justify-between text-xs"><span>TOTAL:</span><span className="font-medium">₹{formatIndianCurrency(contractPriceCalculations.basicTotal) || '0'}/-</span></div>
+                <div className="flex justify-between text-xs"><span>GST @ {gstRate}%:</span><span className="font-medium">₹{formatIndianCurrency(contractPriceCalculations.gstAmount) || '0'}/-</span></div>
+                <div className="flex justify-between text-sm font-bold border-t pt-2"><span>GRAND TOTAL:</span><span className="text-green-600">₹{formatIndianCurrency(contractPriceCalculations.grandTotal) || '0'}/-</span></div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Inventory Items</CardTitle>
