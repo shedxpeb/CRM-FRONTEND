@@ -827,6 +827,7 @@ export interface CreateQuotationDto {
   roofAccessories?: any;
   wallAccessories?: any;
   materialSpecs?: any;
+  contractPriceRows?: any;
   weightRows?: any;
 
   // Page 2: Prepared By snapshot
