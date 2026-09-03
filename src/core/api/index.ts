@@ -261,7 +261,10 @@ function processRefreshQueue(error: unknown, token: string | null = null) {
 
 apiClient.interceptors.response.use(
   (response) => {
-    if (response.data) {
+    // Skip parseDates for blob responses (PDFs, files, images, etc.)
+    const responseType = response.config?.responseType;
+    const contentType = String(response.headers?.['content-type'] || '');
+    if (response.data && responseType !== 'blob' && !contentType.includes('application/pdf') && !contentType.includes('image/')) {
       response.data = parseDates(response.data);
     }
     return response;

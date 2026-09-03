@@ -126,6 +126,19 @@ export function QuotationPDF({
   authorizedBy,
   authorizedDesignation,
 }: QuotationPDFProps) {
+  // Helper to convert object arrays to strings for backward compatibility
+  const normalizeStringArray = (arr: any[]): string[] => {
+    return (arr || []).map((item: any) => {
+      if (typeof item === 'string') return item;
+      if (typeof item === 'number') return String(item);
+      if (item === null || item === undefined) return '';
+      // Handle object with description/name
+      const desc = item.description || item.name || item.itemName || 'Accessory';
+      const qty = item.quantity ? ` (${item.quantity})` : '';
+      return String(desc + qty);
+    });
+  };
+
   // Prepare table data
   const tableColumns = [
     { key: 'itemCode', label: 'Item Code', width: 0.12 },
@@ -139,14 +152,14 @@ export function QuotationPDF({
   ];
 
   const tableData = (quotation.lineItems || []).map((item: any) => ({
-    itemCode: item.itemCode || '',
-    itemName: item.itemName || '',
-    description: item.description || '-',
-    quantity: item.quantity?.toString() || '-',
-    unit: item.unit || '-',
-    rate: item.rate?.toFixed(2) || '-',
-    amount: item.amount?.toFixed(2) || '-',
-    chargeability: '-',
+    itemCode: String(item.itemCode || ''),
+    itemName: String(item.itemName || ''),
+    description: String(item.description || '-'),
+    quantity: String(item.quantity?.toString() || '-'),
+    unit: String(item.unit || '-'),
+    rate: String(item.rate?.toFixed(2) || '-'),
+    amount: String(item.amount?.toFixed(2) || '-'),
+    chargeability: String('-'),
   }));
 
   // Use stored pricing totals from the quotation
@@ -190,30 +203,30 @@ export function QuotationPDF({
           <View style={styles.customerInfo}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Customer:</Text>
-              <Text style={styles.infoValue}>{quotation.customerName}</Text>
+              <Text style={styles.infoValue}>{String(quotation.customerName || '')}</Text>
             </View>
             {quotation.customerAddress && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Address:</Text>
-                <Text style={styles.infoValue}>{quotation.customerAddress}</Text>
+                <Text style={styles.infoValue}>{String(quotation.customerAddress)}</Text>
               </View>
             )}
             {quotation.customerPhone && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Phone:</Text>
-                <Text style={styles.infoValue}>{quotation.customerPhone}</Text>
+                <Text style={styles.infoValue}>{String(quotation.customerPhone)}</Text>
               </View>
             )}
             {quotation.customerEmail && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Email:</Text>
-                <Text style={styles.infoValue}>{quotation.customerEmail}</Text>
+                <Text style={styles.infoValue}>{String(quotation.customerEmail)}</Text>
               </View>
             )}
             {quotation.customerGST && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>GST:</Text>
-                <Text style={styles.infoValue}>{quotation.customerGST}</Text>
+                <Text style={styles.infoValue}>{String(quotation.customerGST)}</Text>
               </View>
             )}
           </View>
@@ -227,25 +240,25 @@ export function QuotationPDF({
               {quotation.leadNumber && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Lead #:</Text>
-                  <Text style={styles.infoValue}>{quotation.leadNumber}</Text>
+                  <Text style={styles.infoValue}>{String(quotation.leadNumber)}</Text>
                 </View>
               )}
               {quotation.proposalNumber && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Proposal #:</Text>
-                  <Text style={styles.infoValue}>{quotation.proposalNumber}</Text>
+                  <Text style={styles.infoValue}>{String(quotation.proposalNumber)}</Text>
                 </View>
               )}
               {quotation.sourceEstimateNumber && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Estimate #:</Text>
-                  <Text style={styles.infoValue}>{quotation.sourceEstimateNumber}</Text>
+                  <Text style={styles.infoValue}>{String(quotation.sourceEstimateNumber)}</Text>
                 </View>
               )}
               {quotation.projectName && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Project:</Text>
-                  <Text style={styles.infoValue}>{quotation.projectName}</Text>
+                  <Text style={styles.infoValue}>{String(quotation.projectName)}</Text>
                 </View>
               )}
             </View>
@@ -260,19 +273,19 @@ export function QuotationPDF({
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Valid Until:</Text>
                 <Text style={styles.infoValue}>
-                  {new Date(quotation.validUntil).toLocaleDateString()}
+                  {String(new Date(quotation.validUntil).toLocaleDateString())}
                 </Text>
               </View>
               {(quotation as any).paymentTermsOverride && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Payment Terms:</Text>
-                  <Text style={styles.infoValue}>{(quotation as any).paymentTermsOverride}</Text>
+                  <Text style={styles.infoValue}>{String((quotation as any).paymentTermsOverride)}</Text>
                 </View>
               )}
               {(quotation as any).deliveryOverride && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Delivery Terms:</Text>
-                  <Text style={styles.infoValue}>{(quotation as any).deliveryOverride}</Text>
+                  <Text style={styles.infoValue}>{String((quotation as any).deliveryOverride)}</Text>
                 </View>
               )}
             </View>
@@ -287,19 +300,19 @@ export function QuotationPDF({
               {quotation.buildingSpec.width && (
                 <View style={styles.specRow}>
                   <Text style={styles.specLabel}>Width:</Text>
-                  <Text style={styles.specValue}>{quotation.buildingSpec.width}</Text>
+                  <Text style={styles.specValue}>{String(quotation.buildingSpec.width)}</Text>
                 </View>
               )}
               {quotation.buildingSpec.length && (
                 <View style={styles.specRow}>
                   <Text style={styles.specLabel}>Length:</Text>
-                  <Text style={styles.specValue}>{quotation.buildingSpec.length}</Text>
+                  <Text style={styles.specValue}>{String(quotation.buildingSpec.length)}</Text>
                 </View>
               )}
               {quotation.buildingSpec.clearHeight && (
                 <View style={styles.specRow}>
                   <Text style={styles.specLabel}>Clear Height:</Text>
-                  <Text style={styles.specValue}>{quotation.buildingSpec.clearHeight}</Text>
+                  <Text style={styles.specValue}>{String(quotation.buildingSpec.clearHeight)}</Text>
                 </View>
               )}
             </View>
@@ -323,10 +336,10 @@ export function QuotationPDF({
         />
 
         {/* Inclusions */}
-        {false && (
+        {quotation.inclusions && quotation.inclusions.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Inclusions</Text>
-            {quotation.inclusions.map((inclusion: string, index: number) => (
+            {normalizeStringArray(quotation.inclusions).map((inclusion: string, index: number) => (
               <Text key={index} style={{ fontSize: 9, marginBottom: 2 }}>
                 • {inclusion}
               </Text>
@@ -338,7 +351,7 @@ export function QuotationPDF({
         {quotation.exclusions && quotation.exclusions.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Exclusions</Text>
-            {quotation.exclusions.map((exclusion: string, index: number) => (
+            {normalizeStringArray(quotation.exclusions).map((exclusion: string, index: number) => (
               <Text key={index} style={{ fontSize: 9, marginBottom: 2 }}>
                 • {exclusion}
               </Text>
@@ -351,7 +364,7 @@ export function QuotationPDF({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Terms & Conditions</Text>
             <View style={styles.terms}>
-              <Text style={styles.termsText}>{quotation.termsAndConditions}</Text>
+              <Text style={styles.termsText}>{String(quotation.termsAndConditions)}</Text>
             </View>
           </View>
         )}
@@ -360,7 +373,7 @@ export function QuotationPDF({
         {quotation.notes && (
           <View style={styles.notes}>
             <Text style={styles.notesTitle}>Notes</Text>
-            <Text style={styles.notesText}>{quotation.notes}</Text>
+            <Text style={styles.notesText}>{String(quotation.notes)}</Text>
           </View>
         )}
 
