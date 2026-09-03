@@ -193,11 +193,17 @@ export function useDocumentPdfActions() {
 
   const previewPdf = useCallback(
     async (document: AnyCommercialDocument) => {
+      const docType = getDocumentType(document);
+      console.log('[previewPdf] Document type detected:', docType);
+      console.log('[previewPdf] Document:', document);
+      
       // For quotations, force server-side PDF
-      if (getDocumentType(document) === 'Quotation') {
+      if (docType === 'Quotation') {
+        console.log('[previewPdf] Using server-side PDF for Quotation');
         return previewServerPdf(document);
       }
       // For other document types, use client-side PDF
+      console.log('[previewPdf] Using client-side PDF for non-Quotation:', docType);
       setLoading(true);
       setPreviewOpen(true);
       setPreviewDocument(document);
@@ -218,11 +224,17 @@ export function useDocumentPdfActions() {
 
   const downloadPdf = useCallback(
     async (document: AnyCommercialDocument) => {
+      const docType = getDocumentType(document);
+      console.log('[downloadPdf] Document type detected:', docType);
+      console.log('[downloadPdf] Document:', document);
+      
       // For quotations, force server-side PDF
-      if (getDocumentType(document) === 'Quotation') {
+      if (docType === 'Quotation') {
+        console.log('[downloadPdf] Using server-side PDF for Quotation');
         return downloadServerPdf(document);
       }
       // For other document types, use client-side PDF
+      console.log('[downloadPdf] Using client-side PDF for non-Quotation:', docType);
       setDownloading(true);
       try {
         await downloadDocumentPdf(document, companyPdfProps);
