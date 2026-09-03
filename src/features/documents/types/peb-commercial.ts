@@ -805,11 +805,47 @@ export interface CreateQuotationDto {
   validUntil?: Date | string;
   paymentTerms?: string;
   deliveryTerms?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  address?: string;
+  finalSignatureName?: string;
+  finalSignatureMobile?: string;
+  finalSignatureCompany?: string;
   pricingConfiguration?: PricingConfiguration;
   termsAndConditions?: string;
   notes?: string;
   internalNotes?: string;
   templateId?: string;
+  inquiryNumber?: string;
+  date?: string;
+  buildingSpec?: any;
+  designCode?: any;
+  designLoad?: any;
+  mezzanineLoad?: any;
+  craneDetail?: any;
+  roofAccessories?: any;
+  wallAccessories?: any;
+  materialSpecs?: any;
+  weightRows?: any;
+
+  // Page 2: Prepared By snapshot
+  preparedByCompany?: string;
+  preparedByAddress?: string;
+  preparedByGstin?: string;
+  preparedByName?: string;
+  preparedByDesignation?: string;
+  preparedByMobile?: string;
+  preparedByEmail?: string;
+
+  // Page 2: Document content
+  subject?: string;
+  introduction?: string;
+  signaturePrefix?: string;
+  signatureName?: string;
+  signatureDesignation?: string;
+  signatureMobile?: string;
+  signatureEmail?: string;
 }
 
 export interface UpdateQuotationDto {

@@ -54,8 +54,8 @@ function InfoGrid({ items }: { items: { label: string; value: React.ReactNode; i
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map(item => (
         <div key={item.label} className="space-y-1">
-          <p className="text-xs text-muted-foreground flex items-center gap-1">{item.icon}{item.label}</p>
-          <p className="text-sm font-medium">{item.value}</p>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">{item.icon}{item.label}</div>
+          <div className="text-sm font-medium">{item.value}</div>
         </div>
       ))}
     </div>
@@ -103,7 +103,7 @@ export default function DocumentDetailPage() {
     [company]
   );
 
-  const { previewPdf, downloadPdf, PdfPreviewDialog } = useDocumentPdfActions();
+  const { previewPdf, downloadPdf, previewServerPdf, downloadServerPdf, PdfPreviewDialog } = useDocumentPdfActions();
 
   if (loading) {
     return (
@@ -138,6 +138,12 @@ export default function DocumentDetailPage() {
     ? document.customFields
     : (document as { customFields?: Record<string, unknown> }).customFields;
 
+  // Debug logging to trace document type
+  console.log('[DocumentDetail] Document ID:', id);
+  console.log('[DocumentDetail] Document type:', docType);
+  console.log('[DocumentDetail] Document source:', document);
+  console.log('[DocumentDetail] Is Quotation?', docType === 'Quotation');
+
   return (
     <MainLayout>
       {printModel && (
@@ -170,11 +176,11 @@ export default function DocumentDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => previewPdf(document)}>
+            <Button variant="outline" size="sm" onClick={() => docType === 'Quotation' ? previewServerPdf(document) : previewPdf(document)}>
               <FileSearch className="h-4 w-4 mr-2" />
               Preview PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={() => downloadPdf(document)}>
+            <Button variant="outline" size="sm" onClick={() => docType === 'Quotation' ? downloadServerPdf(document) : downloadPdf(document)}>
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>

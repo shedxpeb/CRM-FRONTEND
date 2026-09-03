@@ -66,42 +66,6 @@ export function useDocumentPdfActions() {
     [closePreview]
   );
 
-  // ─── Client-side PDF (existing React-PDF flow) ──────────────────────────
-
-  const previewPdf = useCallback(
-    async (document: AnyCommercialDocument) => {
-      setLoading(true);
-      setPreviewOpen(true);
-      setPreviewDocument(document);
-      setPreviewTitle(`${getDocumentType(document)} ${getDocumentNumber(document)}`);
-      revokePreviewUrl();
-      try {
-        const url = await createDocumentPdfPreviewUrl(document, companyPdfProps);
-        previewUrlRef.current = url;
-        setPreviewUrl(url);
-      } catch (error) {
-        setPreviewUrl(null);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [companyPdfProps, revokePreviewUrl]
-  );
-
-  const downloadPdf = useCallback(
-    async (document: AnyCommercialDocument) => {
-      setDownloading(true);
-      try {
-        await downloadDocumentPdf(document, companyPdfProps);
-      } catch (error) {
-        // Failed to download PDF
-      } finally {
-        setDownloading(false);
-      }
-    },
-    [companyPdfProps]
-  );
-
   // ─── Server-side PDF (backend Playwright + Handlebars) ─────────────────
 
   const generateServerPdf = useCallback(async (document: AnyCommercialDocument): Promise<Blob | null> => {
@@ -119,8 +83,40 @@ export function useDocumentPdfActions() {
         signal: controller.signal as any,
       });
 
+      // Debug logging to identify the 15-byte response
+      console.log('[generateServerPdf] Response status:', response.status);
+      console.log('[generateServerPdf] Response headers:', response.headers);
+      console.log('[generateServerPdf] Response data type:', typeof response.data);
+      console.log('[generateServerPdf] Response data is Blob?', response.data instanceof Blob);
+
+      const contentType = String(response.headers['content-type'] || '');
+      console.log('[generateServerPdf] Content-Type:', contentType);
+
+      // Validate response before creating Blob
+      if (response.status < 200 || response.status >= 300) {
+        const errorText = await response.data.text();
+        console.error('[generateServerPdf] Non-OK response:', response.status, errorText);
+        throw new Error(`PDF generation failed: ${response.status} - ${errorText}`);
+      }
+
+      if (!contentType.includes('application/pdf')) {
+        const errorText = await response.data.text();
+        console.error('[generateServerPdf] Invalid content-type:', contentType, errorText);
+        throw new Error(`Expected PDF but received ${contentType}: ${errorText}`);
+      }
+
       // response.data is already a Blob from axios responseType: 'blob'
       const blob = response.data instanceof Blob ? response.data : new Blob([response.data], { type: 'application/pdf' });
+
+      console.log('[generateServerPdf] Blob size:', blob.size);
+
+      if (blob.size < 100) {
+        console.error('[generateServerPdf] Invalid PDF size:', blob.size);
+        const errorText = await blob.text();
+        console.error('[generateServerPdf] Blob content:', errorText);
+        throw new Error(`Received invalid PDF (size: ${blob.size} bytes): ${errorText}`);
+      }
+
       return blob;
     } catch (error: any) {
       if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
@@ -135,6 +131,10 @@ export function useDocumentPdfActions() {
 
   const previewServerPdf = useCallback(
     async (document: AnyCommercialDocument) => {
+      const docId = (document as unknown as Record<string, unknown>).id;
+      console.log('[previewServerPdf] Called for document ID:', docId);
+      console.log('[previewServerPdf] Document:', document);
+
       setPreviewOpen(true);
       setPreviewDocument(document);
       setPreviewTitle(`Quotation ${(document as unknown as Record<string, unknown>).quotationNumber || getDocumentNumber(document)}`);
@@ -142,12 +142,15 @@ export function useDocumentPdfActions() {
 
       try {
         const blob = await generateServerPdf(document);
+        console.log('[previewServerPdf] Blob received, size:', blob?.size);
         if (blob) {
           const url = URL.createObjectURL(blob);
           previewUrlRef.current = url;
           setPreviewUrl(url);
+          console.log('[previewServerPdf] Preview URL created');
         }
       } catch (error) {
+        console.error('[previewServerPdf] Error:', error);
         setPreviewUrl(null);
       }
     },
@@ -182,6 +185,54 @@ export function useDocumentPdfActions() {
       }
     },
     [generateServerPdf, previewDocument]
+  );
+
+  // ─── Client-side PDF (existing React-PDF flow) ──────────────────────────
+  // Quotations MUST use server-side PDF generation (previewServerPdf/downloadServerPdf)
+  // Client-side PDF is only for other document types (Estimate, Invoice)
+
+  const previewPdf = useCallback(
+    async (document: AnyCommercialDocument) => {
+      // For quotations, force server-side PDF
+      if (getDocumentType(document) === 'Quotation') {
+        return previewServerPdf(document);
+      }
+      // For other document types, use client-side PDF
+      setLoading(true);
+      setPreviewOpen(true);
+      setPreviewDocument(document);
+      setPreviewTitle(`${getDocumentType(document)} ${getDocumentNumber(document)}`);
+      revokePreviewUrl();
+      try {
+        const url = await createDocumentPdfPreviewUrl(document, companyPdfProps);
+        previewUrlRef.current = url;
+        setPreviewUrl(url);
+      } catch (error) {
+        setPreviewUrl(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [companyPdfProps, revokePreviewUrl, previewServerPdf]
+  );
+
+  const downloadPdf = useCallback(
+    async (document: AnyCommercialDocument) => {
+      // For quotations, force server-side PDF
+      if (getDocumentType(document) === 'Quotation') {
+        return downloadServerPdf(document);
+      }
+      // For other document types, use client-side PDF
+      setDownloading(true);
+      try {
+        await downloadDocumentPdf(document, companyPdfProps);
+      } catch (error) {
+        // Failed to download PDF
+      } finally {
+        setDownloading(false);
+      }
+    },
+    [companyPdfProps, downloadServerPdf]
   );
 
   const downloadPreviewPdf = useCallback(async () => {

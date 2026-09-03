@@ -133,7 +133,7 @@ export function DocumentTable({
             
             return (
               <View key={column.key} style={cellStyle}>
-                <Text>{row[column.key] || '-'}</Text>
+                <Text>{String(row[column.key] || '-')}</Text>
               </View>
             );
           })}

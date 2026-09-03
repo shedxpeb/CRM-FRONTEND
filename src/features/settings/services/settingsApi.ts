@@ -272,4 +272,20 @@ export const settingsApi = {
   async updateSecuritySettings(_data: Partial<SecuritySettings>): Promise<SecuritySettings> {
     return pending('settings-security');
   },
+
+  async getOrganization(id?: string): Promise<any> {
+    const url = id ? `/organization/${id}` : '/organization/modules';
+    const response = await api.get(url) as any;
+    return response.data;
+  },
+
+  async getQuotationTemplateDefaults(organizationId: string): Promise<any> {
+    const response = await api.get<{ data: any }>(`/organization/${organizationId}/quotation-template`);
+    return response.data;
+  },
+
+  async updateQuotationTemplateDefaults(organizationId: string, defaults: any): Promise<any> {
+    const response = await api.patch<{ data: any }>(`/organization/${organizationId}/quotation-template`, defaults);
+    return response.data;
+  },
 };

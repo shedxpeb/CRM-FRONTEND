@@ -350,11 +350,44 @@ export const useSecuritySettings = (options?: UseQueryOptions<SecuritySettings>)
 
 export const useUpdateSecuritySettings = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: Partial<SecuritySettings>) => settingsApi.updateSecuritySettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'security-config'] });
+    },
+  });
+};
+
+// ─── Organization Hooks ───────────────────────────────────────────────────────
+
+export const useOrganization = (id?: string, options?: UseQueryOptions) => {
+  return useQuery({
+    queryKey: ['settings', 'organization', id],
+    queryFn: () => settingsApi.getOrganization(id),
+    staleTime: 10 * 60 * 1000,
+    ...options,
+  });
+};
+
+export const useQuotationTemplateDefaults = (organizationId: string, options?: UseQueryOptions) => {
+  return useQuery({
+    queryKey: ['settings', 'quotation-template', organizationId],
+    queryFn: () => settingsApi.getQuotationTemplateDefaults(organizationId),
+    staleTime: 10 * 60 * 1000,
+    enabled: !!organizationId,
+    ...options,
+  });
+};
+
+export const useUpdateQuotationTemplateDefaults = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ organizationId, defaults }: { organizationId: string; defaults: any }) =>
+      settingsApi.updateQuotationTemplateDefaults(organizationId, defaults),
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries({ queryKey: ['settings', 'quotation-template', organizationId] });
     },
   });
 };
