@@ -791,6 +791,14 @@ export interface UpdateProposalDto {
   templateId?: string;
 }
 
+// Design Weight Summary Row for Page 7
+export interface DesignWeightSummaryRow {
+  id: string;
+  description: string;
+  weightInMT: string | number;
+  remarks: string;
+}
+
 // Quotation DTOs
 export interface CreateQuotationDto {
   proposalId?: string;
@@ -829,6 +837,7 @@ export interface CreateQuotationDto {
   materialSpecs?: any;
   contractPriceRows?: any;
   weightRows?: any;
+  designWeightSummary?: DesignWeightSummaryRow[];
 
   // Page 2: Prepared By snapshot
   preparedByCompany?: string;

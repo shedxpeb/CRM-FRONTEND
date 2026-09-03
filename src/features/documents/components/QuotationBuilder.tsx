@@ -72,6 +72,13 @@ interface ContractPriceRow {
   amount: number;
 }
 
+interface DesignWeightSummaryRow {
+  id: string;
+  description: string;
+  weightInMT: string | number;
+  remarks: string;
+}
+
 // ── Defaults ───────────────────────────────────────────────────────
 
 const defaultBuildingSpec = {
@@ -386,6 +393,88 @@ const defaultContractPriceRows: ContractPriceRow[] = [
   },
 ];
 
+// Default Design Weight Summary rows for Page 7
+const defaultDesignWeightSummary: DesignWeightSummaryRow[] = [
+  {
+    id: crypto.randomUUID(),
+    description: 'Primary Steel',
+    weightInMT: '72.32',
+    remarks: 'All Built-up Members',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Secondary Steel',
+    weightInMT: '21',
+    remarks: 'All Coldformed members',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Roof Sheeting 2395.0 (Sq. M.)',
+    weightInMT: '0.00',
+    remarks: '50 mm PUF sandwich panel',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Wall Sheeting 2856.0 (Sq. M.)',
+    weightInMT: '13.71',
+    remarks: '0.50MM thick Color Coated panel',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Sheeting Accessories',
+    weightInMT: '2.66',
+    remarks: 'All Trims +Eave Gutter+Metal Downspout',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Building Accessories',
+    weightInMT: '3.59',
+    remarks: 'Bracing+Flange Brace+Sag rod',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Anchor bolts',
+    weightInMT: '2.47',
+    remarks: 'Anchor bolts & templates',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Connection bolts',
+    weightInMT: '6.27',
+    remarks: 'Connection bolts',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Hot Rolled',
+    weightInMT: '9.98',
+    remarks: 'Hot Rolled Members',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: '2 Nos. Staircase',
+    weightInMT: '20.00',
+    remarks: 'Including all accessories',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Mezzanine Beam',
+    weightInMT: '204.00',
+    remarks: 'Including mezz. main beams, Joist & columns.',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Crane Beam & Surge Beam',
+    weightInMT: '0.00',
+    remarks: 'Including crane beam,cap angle & connections',
+  },
+  {
+    id: crypto.randomUUID(),
+    description: 'Decking Panels',
+    weightInMT: '39.00',
+    remarks: '0.8mm thick deck sheet',
+  },
+];
+
 // ── Component ──────────────────────────────────────────────────────
 
 interface QuotationBuilderProps {
@@ -459,12 +548,28 @@ export const QuotationBuilder = memo(function QuotationBuilder({
     ((quotation as any)?.materialSelections as MaterialSelection[]) || []
   );
   const [contractPriceRows, setContractPriceRows] = useState<ContractPriceRow[]>(() => {
+    console.log('[QuotationBuilder] Initializing contractPriceRows');
+    console.log('[QuotationBuilder] quotation prop:', quotation);
+    console.log('[QuotationBuilder] quotation.contractPriceRows:', (quotation as any)?.contractPriceRows);
+    
     if ((quotation as any)?.contractPriceRows && ((quotation as any).contractPriceRows as ContractPriceRow[]).length > 0) {
       // EDIT mode: deep-copy saved rows
+      console.log('[QuotationBuilder] EDIT mode - using saved rows, count:', ((quotation as any).contractPriceRows as ContractPriceRow[]).length);
       return JSON.parse(JSON.stringify((quotation as any).contractPriceRows));
     }
     // CREATE mode: deep-copy default rows
+    console.log('[QuotationBuilder] CREATE mode - using default rows, count:', defaultContractPriceRows.length);
+    console.log('[QuotationBuilder] Default rows:', defaultContractPriceRows);
     return JSON.parse(JSON.stringify(defaultContractPriceRows));
+  });
+
+  const [designWeightSummary, setDesignWeightSummary] = useState<DesignWeightSummaryRow[]>(() => {
+    if ((quotation as any)?.designWeightSummary && ((quotation as any).designWeightSummary as DesignWeightSummaryRow[]).length > 0) {
+      // EDIT mode: deep-copy saved rows
+      return JSON.parse(JSON.stringify((quotation as any).designWeightSummary));
+    }
+    // CREATE mode: deep-copy default rows
+    return JSON.parse(JSON.stringify(defaultDesignWeightSummary));
   });
 
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
@@ -639,6 +744,39 @@ export const QuotationBuilder = memo(function QuotationBuilder({
     }
   };
 
+  // ── Design Weight Summary handlers ─────────────────────────────────────
+  const addDesignWeightRow = () => {
+    setDesignWeightSummary((prev: DesignWeightSummaryRow[]) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        description: '',
+        weightInMT: '',
+        remarks: '',
+      },
+    ]);
+  };
+
+  const updateDesignWeightRow = (index: number, field: keyof DesignWeightSummaryRow, value: any) => {
+    setDesignWeightSummary((prev: DesignWeightSummaryRow[]) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const removeDesignWeightRow = (index: number) => {
+    setDesignWeightSummary((prev: DesignWeightSummaryRow[]) => prev.filter((_: DesignWeightSummaryRow, i: number) => i !== index));
+  };
+
+  // Calculate grand total from designWeightSummary
+  const designWeightGrandTotal = useMemo(() => {
+    return designWeightSummary.reduce((sum: number, row: DesignWeightSummaryRow) => {
+      const weight = typeof row.weightInMT === 'number' ? row.weightInMT : parseFloat(String(row.weightInMT)) || 0;
+      return sum + weight;
+    }, 0);
+  }, [designWeightSummary]);
+
   // ── Frontend validation ────────────────────────────────────────────────
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
@@ -760,6 +898,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       wallAccessories,
       materialSpecs,
       contractPriceRows,
+      designWeightSummary,
       // Add inquiry number and date
       inquiryNumber,
       date: date ? new Date(date).toISOString() : undefined,
@@ -770,6 +909,10 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       subject,
       introduction,
     };
+
+    console.log('[QuotationBuilder] Saving quotation with contractPriceRows count:', contractPriceRows.length);
+    console.log('[QuotationBuilder] contractPriceRows payload:', contractPriceRows);
+    console.log('[QuotationBuilder] Full quotationDto keys:', Object.keys(quotationDto));
 
     try {
       await onSave(quotationDto);
@@ -860,13 +1003,14 @@ export const QuotationBuilder = memo(function QuotationBuilder({
       </div>
 
       <Tabs defaultValue="general">
-        <TabsList className="grid w-full grid-cols-7 h-8">
+        <TabsList className="grid w-full grid-cols-8 h-8">
           <TabsTrigger value="general" className="text-[10px]">General</TabsTrigger>
           <TabsTrigger value="building" className="text-[10px]">Building</TabsTrigger>
           <TabsTrigger value="design" className="text-[10px]">Design</TabsTrigger>
           <TabsTrigger value="crane" className="text-[10px]">Crane</TabsTrigger>
           <TabsTrigger value="accessories" className="text-[10px]">Accessories</TabsTrigger>
           <TabsTrigger value="materials" className="text-[10px]">Materials</TabsTrigger>
+          <TabsTrigger value="designWeight" className="text-[10px]">Design Weight</TabsTrigger>
           <TabsTrigger value="pricing" className="text-[10px]">Pricing</TabsTrigger>
         </TabsList>
 
@@ -1501,6 +1645,90 @@ export const QuotationBuilder = memo(function QuotationBuilder({
               <div>
                 <Label className="text-xs">Company</Label>
                 <Input value={finalSignatureCompany} onChange={e => setFinalSignatureCompany(e.target.value)} className="h-8 text-xs" disabled={isSavingInternal} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── TAB: DESIGN WEIGHT SUMMARY ── */}
+        <TabsContent value="designWeight" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Design Weight Summary</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={addDesignWeightRow} disabled={isSavingInternal} className="text-xs h-8">
+                + Add Row
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {designWeightSummary.map((row, index) => (
+                  <div key={row.id} className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3 items-start p-2 sm:p-3 border rounded-md">
+                    <div className="col-span-1 sm:col-span-1">
+                      <Label className="text-[10px] sm:text-xs">Description</Label>
+                      <Textarea
+                        value={row.description}
+                        onChange={(e) => updateDesignWeightRow(index, 'description', e.target.value)}
+                        rows={2}
+                        placeholder="Enter description"
+                        className="text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] sm:text-xs">Weight in MT</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={row.weightInMT}
+                        onChange={(e) => updateDesignWeightRow(index, 'weightInMT', e.target.value)}
+                        placeholder="72.32"
+                        className="h-8 text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div className="col-span-1 sm:col-span-1">
+                      <Label className="text-[10px] sm:text-xs">Remarks</Label>
+                      <Textarea
+                        value={row.remarks}
+                        onChange={(e) => updateDesignWeightRow(index, 'remarks', e.target.value)}
+                        rows={2}
+                        placeholder="Enter remarks"
+                        className="text-xs"
+                        disabled={isSavingInternal}
+                      />
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <Label className="text-[10px] sm:text-xs">Action</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeDesignWeightRow(index)}
+                        disabled={isSavingInternal}
+                        className="text-xs h-8 text-red-600 hover:text-red-700"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {designWeightSummary.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No design weight items. Add rows above.
+                  </p>
+                )}
+              </div>
+
+              {/* Design Weight Summary Grand Total */}
+              <div className="border-t pt-3 mt-3 space-y-2">
+                <div className="flex justify-between text-sm font-bold">
+                  <span>Grand Total:</span>
+                  <span className="text-green-600">{designWeightGrandTotal.toFixed(2)} MT</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Weight Variation:</span>
+                  <span>± 5%</span>
+                </div>
               </div>
             </CardContent>
           </Card>
