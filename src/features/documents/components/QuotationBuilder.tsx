@@ -158,8 +158,8 @@ const defaultRoofAccessories: AccessoryRow[] = [
   },
   {
     id: crypto.randomUUID(),
-    description: 'Skylight',
-    size: 'Single skin translucent, Frp thick-3mm, UV Approved, Protected, Profiled with Safety Mesh',
+    description: 'Skylight : Single skin translucent, Frp thick-3mm, UV Approved, Protected, Profiled with Safety Mesh',
+    size: '600 MM',
     quantity: '20 SQM',
     location: 'As specified / Protected',
   },
@@ -521,17 +521,21 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   // ── ACCESSORIES TABLES ──
   // CREATE mode: pre-load default rows. EDIT mode: load saved rows exactly.
   const [roofAccessories, setRoofAccessories] = useState<AccessoryRow[]>(() => {
-    if (quotation?.roofAccessories && (quotation.roofAccessories as AccessoryRow[]).length > 0) {
-      // EDIT mode: deep-copy saved rows
-      return JSON.parse(JSON.stringify(quotation.roofAccessories));
+    const techSpecs = (quotation as any)?.technicalSpecifications;
+    const savedRoofAccessories = techSpecs?.roofAccessories;
+    if (savedRoofAccessories && savedRoofAccessories.length > 0) {
+      // EDIT mode: deep-copy saved rows from technicalSpecifications
+      return JSON.parse(JSON.stringify(savedRoofAccessories));
     }
     // CREATE mode: deep-copy default rows
     return JSON.parse(JSON.stringify(defaultRoofAccessories));
   });
   const [wallAccessories, setWallAccessories] = useState<AccessoryRow[]>(() => {
-    if ((quotation as any)?.wallAccessories && ((quotation as any).wallAccessories as AccessoryRow[]).length > 0) {
-      // EDIT mode: deep-copy saved rows
-      return JSON.parse(JSON.stringify((quotation as any).wallAccessories));
+    const techSpecs = (quotation as any)?.technicalSpecifications;
+    const savedWallAccessories = techSpecs?.wallAccessories;
+    if (savedWallAccessories && savedWallAccessories.length > 0) {
+      // EDIT mode: deep-copy saved rows from technicalSpecifications
+      return JSON.parse(JSON.stringify(savedWallAccessories));
     }
     // CREATE mode: deep-copy default rows
     return JSON.parse(JSON.stringify(defaultWallAccessories));
@@ -550,12 +554,14 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   const [contractPriceRows, setContractPriceRows] = useState<ContractPriceRow[]>(() => {
     console.log('[QuotationBuilder] Initializing contractPriceRows');
     console.log('[QuotationBuilder] quotation prop:', quotation);
-    console.log('[QuotationBuilder] quotation.contractPriceRows:', (quotation as any)?.contractPriceRows);
-    
-    if ((quotation as any)?.contractPriceRows && ((quotation as any).contractPriceRows as ContractPriceRow[]).length > 0) {
-      // EDIT mode: deep-copy saved rows
-      console.log('[QuotationBuilder] EDIT mode - using saved rows, count:', ((quotation as any).contractPriceRows as ContractPriceRow[]).length);
-      return JSON.parse(JSON.stringify((quotation as any).contractPriceRows));
+    const techSpecs = (quotation as any)?.technicalSpecifications;
+    const savedContractPriceRows = techSpecs?.contractPriceRows;
+    console.log('[QuotationBuilder] quotation.technicalSpecifications.contractPriceRows:', savedContractPriceRows);
+
+    if (savedContractPriceRows && savedContractPriceRows.length > 0) {
+      // EDIT mode: deep-copy saved rows from technicalSpecifications
+      console.log('[QuotationBuilder] EDIT mode - using saved rows, count:', savedContractPriceRows.length);
+      return JSON.parse(JSON.stringify(savedContractPriceRows));
     }
     // CREATE mode: deep-copy default rows
     console.log('[QuotationBuilder] CREATE mode - using default rows, count:', defaultContractPriceRows.length);
@@ -564,9 +570,11 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   });
 
   const [designWeightSummary, setDesignWeightSummary] = useState<DesignWeightSummaryRow[]>(() => {
-    if ((quotation as any)?.designWeightSummary && ((quotation as any).designWeightSummary as DesignWeightSummaryRow[]).length > 0) {
-      // EDIT mode: deep-copy saved rows
-      return JSON.parse(JSON.stringify((quotation as any).designWeightSummary));
+    const techSpecs = (quotation as any)?.technicalSpecifications;
+    const savedDesignWeightSummary = techSpecs?.designWeightSummary;
+    if (savedDesignWeightSummary && savedDesignWeightSummary.length > 0) {
+      // EDIT mode: deep-copy saved rows from technicalSpecifications
+      return JSON.parse(JSON.stringify(savedDesignWeightSummary));
     }
     // CREATE mode: deep-copy default rows
     return JSON.parse(JSON.stringify(defaultDesignWeightSummary));
@@ -721,16 +729,19 @@ export const QuotationBuilder = memo(function QuotationBuilder({
   };
 
   const updateAccessory = (type: 'roof' | 'wall', index: number, updates: Partial<AccessoryRow>) => {
+    console.log('[QuotationBuilder] updateAccessory called:', { type, index, updates });
     if (type === 'roof') {
       setRoofAccessories((prev: AccessoryRow[]) => {
         const updated = [...prev];
         updated[index] = { ...updated[index], ...updates };
+        console.log('[QuotationBuilder] roofAccessories updated:', updated);
         return updated;
       });
     } else {
       setWallAccessories((prev: AccessoryRow[]) => {
         const updated = [...prev];
         updated[index] = { ...updated[index], ...updates };
+        console.log('[QuotationBuilder] wallAccessories updated:', updated);
         return updated;
       });
     }
@@ -912,6 +923,10 @@ export const QuotationBuilder = memo(function QuotationBuilder({
 
     console.log('[QuotationBuilder] Saving quotation with contractPriceRows count:', contractPriceRows.length);
     console.log('[QuotationBuilder] contractPriceRows payload:', contractPriceRows);
+    console.log('[QuotationBuilder] roofAccessories count:', roofAccessories.length);
+    console.log('[QuotationBuilder] roofAccessories payload:', roofAccessories);
+    console.log('[QuotationBuilder] wallAccessories count:', wallAccessories.length);
+    console.log('[QuotationBuilder] wallAccessories payload:', wallAccessories);
     console.log('[QuotationBuilder] Full quotationDto keys:', Object.keys(quotationDto));
 
     try {
