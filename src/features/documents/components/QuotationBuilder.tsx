@@ -810,7 +810,12 @@ export const QuotationBuilder = memo(function QuotationBuilder({
         const data = axiosErr.response.data;
 
         if (status === 401) return 'Your session has expired. Please sign in again.';
-        if (status === 403) return 'You do not have permission to create quotations.';
+        if (status === 403) {
+          // Use the actual backend error message when available
+          const backendMsg = typeof data?.message === 'string' ? data.message : '';
+          if (backendMsg) return backendMsg;
+          return 'You do not have permission to save this quotation.';
+        }
         if (status === 404) return 'The requested resource was not found.';
         if (status === 409) return 'A conflict occurred. This quotation may already exist.';
         if (status === 429) return 'Too many requests. Please wait a moment and try again.';
@@ -818,7 +823,7 @@ export const QuotationBuilder = memo(function QuotationBuilder({
         if (status === 502 || status === 503) return 'The server is temporarily unavailable. Please try again.';
 
         // Use backend message if available
-        if (data?.message) return data.message;
+        if (data?.message) return typeof data.message === 'string' ? data.message : '';
         if (data?.error) return data.error;
       }
 
