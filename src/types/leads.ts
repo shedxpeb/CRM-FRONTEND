@@ -169,6 +169,7 @@ export interface Lead {
   createdAt: Date;
   lastFollowUp?: Date;
   nextFollowUpDate?: Date;
+  totalTun?: number;
   createdBy?: string;
   updatedBy?: string;
   updatedAt?: Date;
@@ -281,6 +282,7 @@ export interface CreateLeadDto {
   score?: number;
   remarks?: string;
   nextFollowUpDate?: Date;
+  totalTun?: number;
 }
 
 export interface UpdateLeadDto {
@@ -339,6 +341,7 @@ export interface UpdateLeadDto {
   score?: number;
   remarks?: string;
   nextFollowUpDate?: Date;
+  totalTun?: number;
   customerId?: string;
   convertedDate?: Date;
 }

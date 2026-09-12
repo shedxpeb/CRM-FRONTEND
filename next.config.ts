@@ -5,12 +5,6 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-const backendUrl = process.env.BACKEND_URL;
-
-if (!backendUrl) {
-  throw new Error('Missing required environment variable: BACKEND_URL');
-}
-
 const imageHostname = process.env.IMAGE_HOSTNAME || 'localhost';
 const imageProtocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
 
@@ -29,14 +23,6 @@ const nextConfig: NextConfig = {
         hostname: imageHostname,
       },
     ],
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/:path*`,
-      },
-    ];
   },
 };
 

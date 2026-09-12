@@ -270,15 +270,16 @@ export function buildDocumentPrintModel(document: AnyCommercialDocument): Docume
     return {
       ...base,
       validUntil: document.validUntil,
-      paymentTerms: (document as any).paymentTermsOverride,
-      deliveryTerms: (document as any).deliveryOverride,
+      // Saved payment/delivery terms win; *_override fields are future hooks
+      paymentTerms: (document as any).paymentTermsOverride || (document as any).paymentTerms,
+      deliveryTerms: (document as any).deliveryOverride || (document as any).deliveryTerms,
       discountPercentage: document.discountPercentage,
       gstType: document.gstType,
       cgstAmount: undefined,
       sgstAmount: undefined,
       igstAmount: undefined,
       amountInWords: document.amountInWords,
-      lineItems: (document.lineItems || []).map((m: any) => ({
+      lineItems: ((document as any).lineItems || (document as any).materialSelections || []).map((m: any) => ({
         id: m.id,
         itemCode: m.itemCode,
         description: m.itemName || m.description,

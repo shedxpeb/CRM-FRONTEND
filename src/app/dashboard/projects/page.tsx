@@ -405,6 +405,13 @@ export default function ProjectsPage() {
         ),
       },
       {
+        key: 'totalTun',
+        label: 'Total Tun',
+        className: 'hidden xl:table-cell min-w-[80px]',
+        headerClassName: 'hidden xl:table-cell',
+        render: (value) => <span className="text-xs tabular-nums">{value ?? '-'}</span>,
+      },
+      {
         key: 'healthStatus',
         label: 'Health',
         sortable: true,

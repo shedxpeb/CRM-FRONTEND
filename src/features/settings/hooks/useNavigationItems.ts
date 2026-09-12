@@ -99,7 +99,6 @@ const SETTINGS_ITEM: NavigationItem = {
  */
 const DOCUMENT_CHILDREN: NavigationItem[] = [
   { title: 'Dashboard', href: '/dashboard/documents/dashboard', icon: LayoutDashboard, roles: ['owner', 'admin', 'employee'], permission: 'document:list' },
-  { title: 'Estimates', href: '/dashboard/documents/estimates', icon: FileSpreadsheet, roles: ['owner', 'admin', 'employee'], permission: 'document:list' },
   { title: 'Quotations', href: '/dashboard/documents/quotations', icon: ReceiptText, roles: ['owner', 'admin', 'employee'], permission: 'document:list' },
 ];
 

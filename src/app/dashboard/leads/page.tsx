@@ -159,6 +159,13 @@ const baseColumns = [
     ),
   },
   {
+    key: 'totalTun' as const,
+    label: 'Total Tun',
+    className: 'min-w-[80px] whitespace-nowrap hidden lg:table-cell',
+    headerClassName: 'hidden lg:table-cell',
+    render: (value: number) => <span className="text-xs tabular-nums">{value ?? '-'}</span>,
+  },
+  {
     key: 'status' as const,
     label: 'Status',
     sortable: true,
