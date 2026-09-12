@@ -485,15 +485,70 @@ interface QuotationBuilderProps {
   isSaving?: boolean;
 }
 
+/**
+ * Normalize a raw backend Quotation entity into the DTO-style shape this builder reads.
+ * The backend stores the building spec in `scopeConfiguration` and the design/load/crane
+ * objects plus accessory arrays inside `technicalSpecifications` / `proposalConfiguration`,
+ * while this builder reads them as top-level properties. Without this mapping, editing an
+ * existing quotation silently falls back to CREATE defaults.
+ */
+function normalizeQuotationForEdit(q: Quotation): Quotation {
+  const raw = q as unknown as Record<string, any>;
+  if (!raw) return q;
+  const ts = (raw.technicalSpecifications as Record<string, any>) || {};
+  const sc = (raw.scopeConfiguration as Record<string, any>) || {};
+  const asObject = (v: unknown): Record<string, any> =>
+    v && typeof v === 'object' && !Array.isArray(v) ? { ...(v as Record<string, any>) } : {};
+  const deepCopy = <T,>(v: unknown): T | undefined =>
+    v === undefined || v === null ? undefined : JSON.parse(JSON.stringify(v));
+
+  // Saved crane/mezzanine objects may use either DTO keys (capacity/span/topOfMezzanineLoad)
+  // or this builder's state keys (craneCapacity/craneSpan/topOfSlab). Alias them so the
+  // inputs always find their value.
+  const cd = asObject(ts.craneDetail);
+  const craneDetail = Object.keys(cd).length
+    ? { ...cd, craneCapacity: cd.craneCapacity ?? cd.capacity, craneSpan: cd.craneSpan ?? cd.span }
+    : undefined;
+  const ml = asObject(ts.mezzanineLoad);
+  const mezzanineLoad = Object.keys(ml).length
+    ? { ...ml, topOfSlab: ml.topOfSlab ?? ml.topOfMezzanineLoad }
+    : undefined;
+
+  return {
+    ...raw,
+    buildingSpec: deepCopy(sc),
+    designCode: deepCopy(asObject(ts.designCode)),
+    designLoad: deepCopy(asObject(ts.designLoad)),
+    mezzanineLoad,
+    craneDetail,
+    roofAccessories: deepCopy(ts.roofAccessories),
+    wallAccessories: deepCopy(ts.wallAccessories),
+    contractPriceRows: deepCopy(ts.contractPriceRows),
+    designWeightSummary: deepCopy(ts.designWeightSummary),
+    materialSpecs: deepCopy(
+      Array.isArray(ts.materialSpecs) && ts.materialSpecs.length > 0
+        ? ts.materialSpecs
+        : (raw.proposalConfiguration as Record<string, any>)?.materialSpecs,
+    ),
+    specialNote: raw.specialNote ?? ts.specialNote,
+  } as unknown as Quotation;
+}
+
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
 
 export const QuotationBuilder = memo(function QuotationBuilder({
   proposal,
-  quotation,
+  quotation: quotationRaw,
   onSave,
   onCancel,
   isSaving = false,
 }: QuotationBuilderProps) {
+  // Map the raw backend entity (scopeConfiguration/technicalSpecifications JSON)
+  // into the DTO-style top-level shape every useState initializer below reads.
+  const quotation = useMemo(
+    () => (quotationRaw ? normalizeQuotationForEdit(quotationRaw) : undefined),
+    [quotationRaw],
+  );
   // ── GENERAL ──
   const autofillData = useCustomerAutofill(proposal?.customerId || quotation?.customerId || '');
   const [date, setDate] = useState(() => {

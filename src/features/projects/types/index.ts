@@ -111,6 +111,7 @@ export interface Project {
   insulation?: boolean;
   coveredArea?: number;
   totalWeight?: number;
+  totalTun?: number;
 
   // Status & Progress
   status: ProjectStatus;
@@ -305,6 +306,7 @@ export interface CreateProjectDto {
   insulation?: boolean;
   coveredArea?: number;
   totalWeight?: number;
+  totalTun?: number;
   status?: ProjectStatus;
   stage?: ProjectStage;
   progress?: number;
@@ -339,6 +341,7 @@ export interface UpdateProjectDto {
   insulation?: boolean | null;
   coveredArea?: number | null;
   totalWeight?: number | null;
+  totalTun?: number | null;
   status?: ProjectStatus;
   stage?: ProjectStage;
   progress?: number;

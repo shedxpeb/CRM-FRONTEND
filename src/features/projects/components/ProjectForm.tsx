@@ -255,6 +255,7 @@ export const ProjectForm = memo(function ProjectForm({
       status: 'New',
       stage: undefined,
       progress: 0,
+      totalTun: undefined,
       customFields: {},
     },
   });
@@ -293,6 +294,7 @@ export const ProjectForm = memo(function ProjectForm({
         insulation: initialData.insulation ?? false,
         coveredArea: initialData.coveredArea !== undefined ? initialData.coveredArea : undefined,
         totalWeight: initialData.totalWeight !== undefined ? initialData.totalWeight : undefined,
+        totalTun: initialData.totalTun !== undefined ? initialData.totalTun : undefined,
         status: initialData.status || 'New',
         stage: initialData.stage || undefined,
         progress: initialData.progress || 0,
@@ -329,6 +331,7 @@ export const ProjectForm = memo(function ProjectForm({
         insulation: false,
         coveredArea: undefined,
         totalWeight: undefined,
+        totalTun: undefined,
         status: 'New',
         stage: undefined,
         progress: 0,
@@ -454,7 +457,7 @@ export const ProjectForm = memo(function ProjectForm({
         'startDate', 'endDate', 'priority', 'projectManagerId', 'projectManager',
         'structureType', 'width', 'length', 'height', 'baySpacing', 'roofType',
         'craneSystem', 'mezzanine', 'wallType', 'insulation', 'coveredArea',
-        'totalWeight', 'status', 'stage', 'progress'
+        'totalWeight', 'totalTun', 'status', 'stage', 'progress'
       ];
 
       allFields.forEach((field) => {
@@ -462,7 +465,7 @@ export const ProjectForm = memo(function ProjectForm({
           // Convert empty strings to null for clearable fields
           if ((data as any)[field] === '') {
             updateData[field] = null;
-          } else if (['value', 'budget', 'width', 'length', 'height', 'baySpacing', 'coveredArea', 'totalWeight'].includes(field)) {
+          } else if (['value', 'budget', 'width', 'length', 'height', 'baySpacing', 'coveredArea', 'totalWeight', 'totalTun'].includes(field)) {
             // Convert numeric fields
             if ((data as any)[field] === undefined || (data as any)[field] === null) {
               updateData[field] = null;
@@ -879,6 +882,10 @@ export const ProjectForm = memo(function ProjectForm({
             <div className="space-y-2">
               <label className="text-sm font-medium">Total Weight (tons)</label>
               <Input type="number" {...register('totalWeight', { valueAsNumber: true })} placeholder="Total weight" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Total Tun</label>
+              <Input type="number" {...register('totalTun', { valueAsNumber: true })} placeholder="Total tun" />
             </div>
             <div className="flex items-center space-x-2 pt-6">
               <input type="checkbox" {...register('mezzanine')} className="h-4 w-4" />

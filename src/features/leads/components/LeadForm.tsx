@@ -96,6 +96,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
     priority: (initialData?.priority ?? config.priorities[1] ?? 'Medium') as LeadPriority,
     status: (initialData?.status ?? config.statuses[0] ?? 'New') as LeadStatus,
     nextFollowUpDate: initialData?.nextFollowUpDate ? new Date(initialData.nextFollowUpDate).toISOString().split('T')[0] : '',
+    totalTun: initialData?.totalTun?.toString() ?? '',
     customFields: initialData?.customFields ?? {},
   });
 
@@ -220,6 +221,7 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
             ? formData.nextFollowUpDate.toISOString()
             : new Date(formData.nextFollowUpDate).toISOString())
         : undefined,
+      totalTun: toNullableNumber(formData.totalTun),
       customFields: formData.customFields && Object.keys(formData.customFields).length > 0
         ? formData.customFields
         : undefined,
@@ -1008,6 +1010,15 @@ export const LeadForm = memo(function LeadForm({ initialData, existingLeads = []
                 </div>
               </>
             )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Total Tun</label>
+              <Input
+                type="number"
+                placeholder="Enter total tun"
+                value={formData.totalTun ?? ''}
+                onChange={(e) => handleInputChange('totalTun', e.target.value)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
