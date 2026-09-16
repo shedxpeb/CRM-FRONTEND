@@ -172,17 +172,18 @@ export function buildNavigation(
 
   // Finance group: Operations (Finance) + Accounting.
   // Parent shows if either child is visible (independent permissions).
-  const financeChildren = [get('finance'), get('accounting')].filter(
-    (item): item is NavigationItem => Boolean(item),
-  );
-  if (financeChildren.length > 0) {
-    tree.push({
-      title: 'Finance',
-      icon: Wallet,
-      roles: unionRoles(financeChildren),
-      children: financeChildren,
-    });
-  }
+  // TEMPORARILY HIDDEN - will be re-enabled when requested
+  // const financeChildren = [get('finance'), get('accounting')].filter(
+  //   (item): item is NavigationItem => Boolean(item),
+  // );
+  // if (financeChildren.length > 0) {
+  //   tree.push({
+  //     title: 'Finance',
+  //     icon: Wallet,
+  //     roles: unionRoles(financeChildren),
+  //     children: financeChildren,
+  //   });
+  // }
 
   // Documents: keeps its own landing route AND exposes document children.
   const documents = get('documents');
