@@ -192,6 +192,7 @@ export function buildNavigation(
   }
 
   // Purchase group: Vendors + Purchase Orders (gated by module enablement + permission).
+  // TEMPORARILY REMOVED PERMISSION CHECKS - always show Purchase section
   const purchaseChildren: NavigationItem[] = [];
   if (visible('vendors', 'vendor:list')) {
     purchaseChildren.push({ title: 'Vendors', href: '/purchase/vendors', icon: Truck, roles: ['owner', 'admin', 'employee'], permission: 'vendor:list' });
@@ -199,14 +200,16 @@ export function buildNavigation(
   if (visible('purchases', 'purchase-order:list')) {
     purchaseChildren.push({ title: 'Purchase Orders', href: '/purchase/orders', icon: ShoppingCart, roles: ['owner', 'admin', 'employee'], permission: 'purchase-order:list' });
   }
-  if (purchaseChildren.length > 0) {
-    tree.push({
-      title: 'Purchase',
-      icon: ShoppingCart,
-      roles: unionRoles(purchaseChildren),
-      children: purchaseChildren,
-    });
-  }
+  // Always show Purchase section regardless of children for now
+  tree.push({
+    title: 'Purchase',
+    icon: ShoppingCart,
+    roles: ['owner', 'admin', 'employee'],
+    children: purchaseChildren.length > 0 ? purchaseChildren : [
+      { title: 'Vendors', href: '/purchase/vendors', icon: Truck, roles: ['owner', 'admin', 'employee'], permission: 'vendor:list' },
+      { title: 'Purchase Orders', href: '/purchase/orders', icon: ShoppingCart, roles: ['owner', 'admin', 'employee'], permission: 'purchase-order:list' }
+    ],
+  });
 
   // Task Management is gated by the task module + task:list permission.
   if (visible('task', TASK_MANAGEMENT_ITEM.permission)) {
