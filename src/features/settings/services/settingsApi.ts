@@ -43,8 +43,7 @@ let moduleStore: Module[] = MODULES.map((module) => ({
 
 /**
  * Frontend module name → CRM canonical (singular) OrganizationModule key.
- * Modules not listed here (finance, accounting, boq) have no per-org
- * enablement row and stay enabled.
+ * Modules not listed here (boq) have no per-org enablement row and stay enabled.
  */
 const MODULE_TO_CRM_KEY: Record<string, string> = {
   leads: 'lead',
@@ -61,13 +60,15 @@ const MODULE_TO_CRM_KEY: Record<string, string> = {
   reports: 'report',
   user: 'user',
   role: 'role',
+  finance: 'finance',
+  accounting: 'accounting',
 };
 
 /**
  * Merges the static module catalog with the real per-organization
  * enablement state returned by GET /organization/modules.
  * - Legacy orgs with no module rows: everything stays enabled.
- * - Modules with no CRM row (finance/accounting/boq): stay enabled.
+ * - Modules with no CRM row (boq): stay enabled.
  * - Otherwise isEnabled reflects the OrganizationModule row.
  */
 async function loadModulesFromBackend(): Promise<Module[]> {

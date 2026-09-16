@@ -1224,7 +1224,7 @@ export default function FinancePage() {
     ) : undefined;
 
   return (
-    <RouteGuard requiredModule="finance">
+    <RouteGuard requiredModule="finance" requiredPermission="finance:list">
     <MainLayout title="Finance" subtitle="Operational finance derived from source records">
       <StandardPageLayout
         title="Finance"

@@ -55,7 +55,6 @@ export interface NavigationTree {
  * naturally under their parent (e.g. "Items", "Stock", "Operations").
  *
  * Sidebar visibility formula: moduleEnabled && hasPermission(permission).
- * Modules without a permission key (finance/accounting) are module-gated only.
  */
 const MODULE_NAV_MAP: Partial<
   Record<ModuleName, { href?: string; icon: LucideIcon; title?: string; permission?: string }>
@@ -65,8 +64,8 @@ const MODULE_NAV_MAP: Partial<
   items: { href: '/dashboard/item', icon: Package, title: 'Items', permission: 'item-master:list' },
   projects: { href: '/dashboard/projects', icon: FolderKanban, permission: 'project:list' },
   inventory: { href: '/dashboard/inventory', icon: Warehouse, title: 'Stock', permission: 'inventory:list' },
-  finance: { href: '/dashboard/finance', icon: DollarSign, title: 'Operations' },
-  accounting: { href: '/dashboard/accounting', icon: Calculator, title: 'Accounting' },
+  finance: { href: '/dashboard/finance', icon: DollarSign, title: 'Operations', permission: 'finance:list' },
+  accounting: { href: '/dashboard/accounting', icon: Calculator, title: 'Accounting', permission: 'finance:read' },
   documents: { icon: FileText, permission: 'document:list' },
 };
 
@@ -125,7 +124,6 @@ export function buildNavigation(
 
   const visible = (name: string, permission?: string): boolean => {
     if (!isEnabled(name as ModuleName)) return false;
-    // No permission key (e.g. finance/accounting) → module-only gating.
     if (!permission) return true;
     return hasPermission(permission);
   };
@@ -173,6 +171,7 @@ export function buildNavigation(
   }
 
   // Finance group: Operations (Finance) + Accounting.
+  // Parent shows if either child is visible (independent permissions).
   const financeChildren = [get('finance'), get('accounting')].filter(
     (item): item is NavigationItem => Boolean(item),
   );
