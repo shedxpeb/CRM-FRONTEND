@@ -65,6 +65,7 @@ import {
 } from '@/features/accounting/utils/accountingData';
 import { deriveInvoices, derivePayables } from '@/features/finance/utils/financeDerivedData';
 import { useAccountingModuleConfiguration } from '@/features/accounting/hooks/useAccountingConfiguration';
+import { RouteGuard } from '@/features/auth/RouteGuard';
 
 type AccountingTab =
   | 'dashboard'
@@ -599,6 +600,7 @@ export default function AccountingPage() {
   ];
 
   return (
+    <RouteGuard requiredModule="accounting" requiredPermission="finance:read">
     <MainLayout title="Accounting" subtitle="Financial truth engine derived from accounting records">
       <StandardPageLayout
         title="Accounting"
@@ -1349,5 +1351,6 @@ export default function AccountingPage() {
         </div>
       )}
     </MainLayout>
+    </RouteGuard>
   );
 }
