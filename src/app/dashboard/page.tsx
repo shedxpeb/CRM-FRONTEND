@@ -554,6 +554,35 @@ export default function DashboardPage() {
                   </ChartCard>
                 )}
 
+                {/* Total Leads by Source */}
+                {leadsEnabled && (
+                  <ChartCard
+                    title="Total leads by source"
+                    description="Where new leads are coming from"
+                    types={['bar', 'donut', 'pie', 'radar']}
+                    initial="bar"
+                    showPeriod={true}
+                  >
+                    {(type, period) => (
+                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
+                        <DynamicChart
+                          type={type}
+                          data={leadsSourceData}
+                          dataKey="value"
+                          nameKey="name"
+                        />
+                      </Suspense>
+                    )}
+                  </ChartCard>
+                )}
+              </>
+            </Suspense>
+            </div>
+
+            {/* ROW 3 - Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
+            <Suspense fallback={<><ChartSkeleton /><ChartSkeleton /></>}>
+              <>
                 {/* Revenue vs Expenses */}
                 {financeEnabled && (
                   <ChartCard
@@ -570,35 +599,6 @@ export default function DashboardPage() {
                           data={salesTrendData}
                           dataKey="pipeline"
                           secondKey="won"
-                          nameKey="name"
-                        />
-                      </Suspense>
-                    )}
-                  </ChartCard>
-                )}
-              </>
-            </Suspense>
-            </div>
-
-            {/* ROW 3 - Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
-            <Suspense fallback={<><ChartSkeleton /><ChartSkeleton /></>}>
-              <>
-                {/* Total Leads by Source */}
-                {leadsEnabled && (
-                  <ChartCard
-                    title="Total leads by source"
-                    description="Where new leads are coming from"
-                    types={['bar', 'donut', 'pie', 'radar']}
-                    initial="bar"
-                    showPeriod={true}
-                  >
-                    {(type, period) => (
-                      <Suspense fallback={<div className="h-48 w-full animate-pulse bg-card-hover rounded-md" />}>
-                        <DynamicChart
-                          type={type}
-                          data={leadsSourceData}
-                          dataKey="value"
                           nameKey="name"
                         />
                       </Suspense>
